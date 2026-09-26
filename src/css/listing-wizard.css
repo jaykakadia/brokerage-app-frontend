@@ -1,0 +1,224 @@
+    .business-premium-box {
+      background: #fdfefe;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      animation: fadeInSlide 0.4s ease-out;
+    }
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .bf-heading { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 22px; display: flex; align-items: center; gap: 8px; }
+    .bf-heading i { color: #0c6253; font-size: 20px; }
+
+    .premium-float { position: relative; margin-bottom: 16px; }
+    .premium-float input {
+      width: 100%;
+      padding: 14px 16px 14px 42px; /* Space for icon */
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+      color: #0f172a;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .bf-row .premium-float input { padding-left: 16px; } /* No icon in row inputs to save space */
+    
+    .premium-float input:focus, .premium-float input:not(:placeholder-shown) {
+      border-color: #0c6253;
+      box-shadow: 0 0 0 4px rgba(12, 98, 83, 0.1);
+    }
+    
+    .premium-float label {
+      position: absolute;
+      left: 42px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-size: 14px;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      background: transparent;
+    }
+    .bf-row .premium-float label { left: 16px; }
+    
+    .premium-float input:focus ~ label, .premium-float input:not(:placeholder-shown) ~ label {
+      top: -2px;
+      left: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #0c6253;
+      background: #fff;
+      padding: 0 4px;
+      transform: none;
+    }
+    
+    .premium-float .field-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      transition: color 0.2s;
+      pointer-events: none;
+    }
+    .premium-float input:focus ~ .field-icon { color: #0c6253; }
+
+    .bf-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .bf-row .premium-float { flex: 1; margin-bottom: 0; }
+    
+    .btn-premium {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #0c6253, #14a37a);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s;
+      margin-top: 24px;
+      box-shadow: 0 4px 12px rgba(12, 98, 83, 0.2);
+    }
+    .btn-premium:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(12, 98, 83, 0.3); }
+
+    /* Contact Details Additions */
+    .input-with-prefix input { padding-left: 80px !important; }
+    .input-with-prefix label { left: 80px !important; }
+    .input-with-prefix .prefix {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      font-size: 14px; font-weight: 600; color: #1a1a2e; border-right: 1.5px solid #e2e8f0; padding-right: 10px;
+    }
+    .premium-float.input-with-prefix input:focus ~ label, 
+    .premium-float.input-with-prefix input:not(:placeholder-shown) ~ label {
+      left: 12px !important; /* Move label to left edge when floating */
+    }
+    .add-link { font-size: 13px; color: #0c6253; text-decoration: none; font-weight: 600; display: inline-block; margin-top: -6px; margin-bottom: 12px; transition: color 0.2s; }
+    .add-link:hover { color: #14a37a; text-decoration: underline; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; margin-top: -6px; margin-bottom: 12px; }
+    .checkbox-label { font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+    .checkbox-label input { accent-color: #0c6253; width: 16px; height: 16px; }
+    .btn-outline {
+      padding: 14px; background: transparent; color: #64748b; border: 1.5px solid #cbd5e1;
+      border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.3s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; }
+
+    /* Category & Photos Styles */
+    .premium-select {
+      width: 100%; padding: 14px 16px 14px 42px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      font-size: 14px; font-family: inherit; background: #fff; color: #0f172a; outline: none; transition: all 0.2s;
+      appearance: none; cursor: pointer;
+    }
+    .premium-select:focus, .premium-select:valid, .premium-select.is-filled { border-color: #0c6253; box-shadow: 0 0 0 4px rgba(12, 98, 83, 0.1); }
+    .select-label {
+      position: absolute; left: 42px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 14px;
+      pointer-events: none; transition: all 0.2s ease; background: transparent; z-index: 1;
+    }
+    .premium-select:focus ~ .select-label, .premium-select:valid ~ .select-label, .premium-select.is-filled ~ .select-label {
+      top: -2px; left: 12px; font-size: 12px; font-weight: 600; color: #0c6253; background: #fff; padding: 0 4px; transform: none;
+    }
+
+    .contact-field-wrap { position: relative; }
+    .contact-edit-btn {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      width: 32px; height: 32px; border: none; border-radius: 8px; background: #ecfdf5;
+      color: #0c6253; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      z-index: 3; font-size: 12px;
+    }
+    .contact-edit-btn:hover { background: #d1fae5; }
+    .contact-field-wrap input { padding-right: 48px !important; }
+    .contact-field-wrap input[readonly] { background: #f8fafc; cursor: default; }
+
+    /* Category & Photos Styles (kept) */
+    .upload-area {
+      border: 2px dashed #cbd5e1; border-radius: 12px; padding: 30px 20px; text-align: center;
+      background: #f8fafc; cursor: pointer; transition: all 0.3s; margin-bottom: 15px;
+    }
+    .upload-area:hover { border-color: #0c6253; background: #f0faf7; }
+    .upload-icon { font-size: 32px; color: #94a3b8; margin-bottom: 12px; transition: color 0.3s; }
+    .upload-area:hover .upload-icon { color: #0c6253; }
+    .upload-title { font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 4px; }
+    .upload-sub { font-size: 12px; color: #64748b; }
+    
+    .thumbnails-container { display: flex; gap: 10px; flex-wrap: wrap; }
+    .thumbnail-box { width: 60px; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .thumbnail-box img { width: 100%; height: 100%; object-fit: cover; }
+    
+    /* Pill Radio Buttons for Property Form */
+    .form-label { font-size: 13px; font-weight: 700; color: #1a1a2e; display: block; margin-bottom: 8px; }
+    .pill-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .pill-radio input { display: none; }
+    .pill-radio span {
+      display: inline-block; padding: 8px 16px; border: 1.5px solid #e2e8f0; border-radius: 20px;
+      font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; transition: all 0.2s; background: #fff;
+    }
+    .pill-radio input:checked + span { border-color: #0c6253; background: #f0faf7; color: #0c6253; box-shadow: 0 2px 4px rgba(12, 98, 83, 0.1); }
+    .pill-radio span:hover { border-color: #cbd5e1; }
+
+    .cat-search-wrap { position: relative; z-index: 5; }
+    .cat-suggestions {
+      position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20;
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); max-height: 220px; overflow-y: auto;
+    }
+    .cat-suggestion-item {
+      display: block; width: 100%; text-align: left; border: none; background: #fff;
+      padding: 10px 14px; font-size: 14px; color: #0f172a; cursor: pointer; font-family: inherit;
+    }
+    .cat-suggestion-item:hover { background: #f0faf7; color: #0c6253; }
+    .cat-suggestion-empty { padding: 12px 14px; font-size: 13px; color: #64748b; }
+
+    .wizard-toast-stack {
+      position: fixed; top: 20px; right: 20px; z-index: 100000;
+      display: flex; flex-direction: column; gap: 10px;
+      width: min(380px, calc(100vw - 32px));
+      pointer-events: none;
+    }
+    .wizard-toast {
+      pointer-events: auto;
+      display: flex; align-items: flex-start; gap: 12px;
+      background: #fff; border: 1px solid #fecaca; border-radius: 14px;
+      padding: 14px 16px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+      opacity: 0; transform: translateY(-8px); transition: all 0.22s ease;
+    }
+    .wizard-toast.show { opacity: 1; transform: translateY(0); }
+    .wizard-toast.hiding { opacity: 0; transform: translateY(-6px); }
+    .wizard-toast-success { border-color: #bbf7d0; }
+    .wizard-toast-error { border-color: #fecaca; }
+    .wizard-toast-icon {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .wizard-toast-error .wizard-toast-icon { background: #fee2e2; color: #b91c1c; }
+    .wizard-toast-success .wizard-toast-icon { background: #dcfce7; color: #166534; }
+    .wizard-toast-body { flex: 1; min-width: 0; }
+    .wizard-toast-body strong { display: block; font-size: 14px; color: #0f172a; margin-bottom: 2px; }
+    .wizard-toast-msg { font-size: 13px; color: #4b5563; line-height: 1.4; }
+    .wizard-toast-close {
+      border: none; background: transparent; color: #94a3b8; font-size: 20px;
+      line-height: 1; cursor: pointer; padding: 0 2px;
+    }
+    .wizard-toast-close:hover { color: #475569; }
+    .field-error-flash {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15) !important;
+      animation: fieldShake 0.4s ease;
+    }
+    @keyframes fieldShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-4px); }
+      40% { transform: translateX(4px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
+    }
