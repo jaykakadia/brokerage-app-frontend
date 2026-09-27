@@ -1,22 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-export default function Header({ activeCity, onCitySelect, onNavigate, activePage, onOpenAuth }) {
+export default function Header({ onNavigate, activePage, onOpenAuth }) {
   const { user, logout } = useAuth();
-  const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const cities = ["All Cities", "Palwal", "Faridabad", "Gurugram", "Sonipat", "Hodal", "Delhi"];
 
   return (
     <>
-      <div className="top-bar">
-        <div className="top-bar-left">
-          <i className="fas fa-map-marker-alt"></i> Serving: Palwal · Faridabad · Gurugram · Sonipat · Hodal · Delhi
-        </div>
-        <div className="top-bar-right">FREE PROPERTY & RELATED BUSINESS LISTING</div>
-      </div>
-
       <header className="site-header" id="siteHeader">
         <div className="header-container">
           <div className="header-left">
@@ -34,35 +24,6 @@ export default function Header({ activeCity, onCitySelect, onNavigate, activePag
                 <span className="logo-india">India</span>
               </span>
             </a>
-
-            {/* City Dropdown */}
-            <div className="city-dropdown-wrap" id="cityDropWrap">
-              <button
-                type="button"
-                className={`city-dropdown-btn ${cityMenuOpen ? 'open' : ''}`}
-                onClick={() => setCityMenuOpen(!cityMenuOpen)}
-              >
-                <i className="fas fa-location-dot"></i>
-                <span id="cityBtnText">{activeCity || "All Cities"}</span>
-                <i className="fas fa-chevron-down arrow"></i>
-              </button>
-              {cityMenuOpen && (
-                <div className="city-dropdown-menu open" style={{ display: 'block' }}>
-                  {cities.map((city) => (
-                    <div
-                      key={city}
-                      className={`city-dropdown-item ${(activeCity === city || (!activeCity && city === "All Cities")) ? 'selected' : ''}`}
-                      onClick={() => {
-                        onCitySelect(city === "All Cities" ? "" : city);
-                        setCityMenuOpen(false);
-                      }}
-                    >
-                      {city}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
           <nav className="main-nav">
