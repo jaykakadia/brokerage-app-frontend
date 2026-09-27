@@ -13,7 +13,7 @@ const CSS = `
 
   /* LEFT */
   .login-left {
-    background: linear-gradient(155deg,#0a5446 0%,#0c6253 40%,#063d31 100%);
+    background: linear-gradient(320deg,#0a5446 0%,#0c6253 40%,#053d31 100%);
     display: flex; flex-direction: column; padding: 44px 52px; position: relative; overflow: hidden;
   }
   .login-left::before {
