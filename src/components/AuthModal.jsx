@@ -22,6 +22,58 @@ export default function AuthModal({ isOpen, onClose }) {
   const [regOtp, setRegOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
 
+  // Forgot password fields
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotOtpSent, setForgotOtpSent] = useState(false);
+
+  const handleForgotSendOtp = async () => {
+    if (!forgotEmail) {
+      setError('Please enter your email address.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/api/v1/auth/send-otp', {
+        email: forgotEmail,
+        action: 'forgot'
+      });
+      setForgotOtpSent(true);
+      setSuccessMsg(res.data.message || 'Reset OTP sent to your email.');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to send reset OTP.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotOtp) {
+      setError('Please enter the OTP received in your email.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/api/v1/auth/reset-password', {
+        email: forgotEmail,
+        otp: forgotOtp,
+        new_password: newPassword
+      });
+      setSuccessMsg(res.data.message || 'Password reset successfully! Please sign in.');
+      setTab('signin');
+      setLoginEmail(forgotEmail);
+      setLoginPassword('');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Password reset failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleSendOtp = async () => {
@@ -130,8 +182,17 @@ export default function AuthModal({ isOpen, onClose }) {
                 style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
               />
             </div>
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Password</label>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, margin: 0 }}>Password</label>
+                <button
+                  type="button"
+                  onClick={() => { setTab('forgot'); setError(''); setSuccessMsg(''); }}
+                  style={{ background: 'none', border: 'none', color: '#0c6253', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input
                 type="password"
                 required
@@ -148,6 +209,74 @@ export default function AuthModal({ isOpen, onClose }) {
               style={{ width: '100%', padding: '12px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
             >
               {loading ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+        ) : tab === 'forgot' ? (
+          <form onSubmit={handleResetPassword}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111827', marginBottom: '14px' }}>Reset Your Password</h3>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Email Address</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="email"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
+                />
+                <button
+                  type="button"
+                  onClick={handleForgotSendOtp}
+                  disabled={loading}
+                  style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Send OTP
+                </button>
+              </div>
+            </div>
+
+            {forgotOtpSent && (
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Enter 6-Digit OTP</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  value={forgotOtp}
+                  onChange={(e) => setForgotOtp(e.target.value)}
+                  placeholder="123456"
+                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px', letterSpacing: '4px', textAlign: 'center', fontWeight: 'bold' }}
+                />
+              </div>
+            )}
+
+            <div className="form-group" style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>New Password (min 6 chars)</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ width: '100%', padding: '12px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', marginBottom: '10px' }}
+            >
+              {loading ? 'Resetting Password...' : 'Reset Password'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTab('signin'); setError(''); }}
+              style={{ width: '100%', padding: '10px', background: 'transparent', color: '#6b7280', border: 'none', fontSize: '13px', cursor: 'pointer' }}
+            >
+              &larr; Back to Sign In
             </button>
           </form>
         ) : (

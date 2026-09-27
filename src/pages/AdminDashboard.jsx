@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import api, { getPlans, createPlan, updatePlan, deletePlan, getRazorpaySettings, saveRazorpaySettings } from '../services/api';
+import api, {
+  getPlans, createPlan, updatePlan, deletePlan,
+  getRazorpaySettings, saveRazorpaySettings,
+  getRoleLimits, saveRoleLimits,
+  getEmployees, saveEmployee, deleteEmployee,
+  getAdminBlogs, saveAdminBlog, deleteAdminBlog,
+  getMailSettings, saveMailSettings, sendTestMail
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from './HomePage';
 
 export default function AdminDashboard({ onNavigate }) {
   const { user } = useAuth();
 
-  const [activeModule, setActiveModule] = useState('listings'); // 'listings' | 'locations' | 'categories' | 'users' | 'plans' | 'razorpay'
+  const [activeModule, setActiveModule] = useState('listings'); // 'listings' | 'locations' | 'categories' | 'users' | 'plans' | 'tracker' | 'blogs' | 'settings' | 'razorpay'
   const [toast, setToast] = useState(null);
 
   // === LISTINGS MODULE STATE ===
@@ -43,6 +50,10 @@ export default function AdminDashboard({ onNavigate }) {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
 
+  // === ROLE LIMITS STATE ===
+  const [roleLimits, setRoleLimits] = useState({ Owner: 0, Agent: 0, Builder: 0 });
+  const [roleLimitsSaving, setRoleLimitsSaving] = useState(false);
+
   // === PLANS MODULE STATE ===
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(false);
@@ -57,6 +68,32 @@ export default function AdminDashboard({ onNavigate }) {
     status: 'active'
   });
   const [planSaving, setPlanSaving] = useState(false);
+
+  // === TRACKER / FIELD ASSOCIATES STATE ===
+  const [employees, setEmployees] = useState([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
+  const [employeeForm, setEmployeeForm] = useState({ id: 0, reference_code: '', name: '', status: 'active' });
+  const [employeeSaving, setEmployeeSaving] = useState(false);
+
+  // === BLOGS MODULE STATE ===
+  const [adminBlogs, setAdminBlogs] = useState([]);
+  const [blogsLoading, setBlogsLoading] = useState(false);
+  const [blogModalOpen, setBlogModalOpen] = useState(false);
+  const [blogForm, setBlogForm] = useState({
+    id: 0, title: '', category: 'Buy', content: '', permalink: '', tags: '', status: 'publish', featured_image: null
+  });
+  const [blogSaving, setBlogSaving] = useState(false);
+
+  // === SETTINGS (SMTP & CREDENTIALS) STATE ===
+  const [smtpSettings, setSmtpSettings] = useState({
+    host: '', port: 465, email: '', password: '', encryption: 'ssl', from_name: 'TradeCall India', has_password: false
+  });
+  const [smtpLoading, setSmtpLoading] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [credForm, setCredForm] = useState({ newUsername: '', currPassword: '', newPassword: '' });
+  const [credSaving, setCredSaving] = useState(false);
 
   // === RAZORPAY SETTINGS STATE ===
   const [rzpSettings, setRzpSettings] = useState({
@@ -390,6 +427,257 @@ export default function AdminDashboard({ onNavigate }) {
     }
   };
 
+  // --- ROLE LIMITS HANDLERS ---
+  const fetchRoleLimits = async () => {
+    try {
+      const res = await getRoleLimits();
+      if (res.data?.data) {
+        setRoleLimits({
+          Owner: res.data.data.Owner ?? 0,
+          Agent: res.data.data.Agent ?? 0,
+          Builder: res.data.data.Builder ?? 0
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load role limits', err);
+    }
+  };
+
+  const handleSaveRoleLimits = async (e) => {
+    e.preventDefault();
+    setRoleLimitsSaving(true);
+    try {
+      await saveRoleLimits(roleLimits);
+      showToast('Role limits saved successfully!');
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to save role limits', 'error');
+    } finally {
+      setRoleLimitsSaving(false);
+    }
+  };
+
+  // --- FIELD ASSOCIATES (TRACKER) HANDLERS ---
+  const fetchEmployees = async () => {
+    setEmployeesLoading(true);
+    try {
+      const res = await getEmployees();
+      if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
+        setEmployees(res.data.data);
+      }
+    } catch (err) {
+      showToast('Failed to load field associates', 'error');
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  const generateRefCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setEmployeeForm(prev => ({ ...prev, reference_code: code }));
+  };
+
+  const handleOpenEmployeeModal = (emp = null) => {
+    if (emp) {
+      setEmployeeForm({
+        id: emp.id,
+        reference_code: emp.reference_code,
+        name: emp.name,
+        status: emp.status || 'active'
+      });
+    } else {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      setEmployeeForm({
+        id: 0,
+        reference_code: code,
+        name: '',
+        status: 'active'
+      });
+    }
+    setEmployeeModalOpen(true);
+  };
+
+  const handleSaveEmployee = async (e) => {
+    e.preventDefault();
+    setEmployeeSaving(true);
+    try {
+      await saveEmployee(employeeForm);
+      showToast(employeeForm.id ? 'Field associate updated!' : 'Field associate created!');
+      setEmployeeModalOpen(false);
+      fetchEmployees();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to save field associate', 'error');
+    } finally {
+      setEmployeeSaving(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this field associate?')) return;
+    try {
+      await deleteEmployee(id);
+      showToast('Field associate deleted');
+      fetchEmployees();
+    } catch (err) {
+      showToast('Failed to delete field associate', 'error');
+    }
+  };
+
+  // --- BLOGS HANDLERS ---
+  const fetchBlogs = async () => {
+    setBlogsLoading(true);
+    try {
+      const res = await getAdminBlogs();
+      if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
+        setAdminBlogs(res.data.data);
+      }
+    } catch (err) {
+      showToast('Failed to load blogs', 'error');
+    } finally {
+      setBlogsLoading(false);
+    }
+  };
+
+  const handleOpenBlogModal = (blog = null) => {
+    if (blog) {
+      setBlogForm({
+        id: blog.id,
+        title: blog.title,
+        category: blog.category || 'Buy',
+        content: blog.content,
+        permalink: blog.slug || blog.permalink || '',
+        tags: blog.tags || '',
+        status: blog.status || 'publish',
+        featured_image: null
+      });
+    } else {
+      setBlogForm({
+        id: 0,
+        title: '',
+        category: 'Buy',
+        content: '',
+        permalink: '',
+        tags: '',
+        status: 'publish',
+        featured_image: null
+      });
+    }
+    setBlogModalOpen(true);
+  };
+
+  const handleSaveBlog = async (e) => {
+    e.preventDefault();
+    setBlogSaving(true);
+    try {
+      const fd = new FormData();
+      if (blogForm.id) fd.append('id', blogForm.id);
+      fd.append('title', blogForm.title);
+      fd.append('category', blogForm.category);
+      fd.append('content', blogForm.content);
+      if (blogForm.permalink) fd.append('permalink', blogForm.permalink);
+      if (blogForm.tags) fd.append('tags', blogForm.tags);
+      fd.append('status', blogForm.status);
+      if (blogForm.featured_image) {
+        fd.append('featured_image', blogForm.featured_image);
+      }
+      await saveAdminBlog(fd);
+      showToast(blogForm.id ? 'Blog updated successfully!' : 'Blog created successfully!');
+      setBlogModalOpen(false);
+      fetchBlogs();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to save blog', 'error');
+    } finally {
+      setBlogSaving(false);
+    }
+  };
+
+  const handleDeleteBlog = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this blog?')) return;
+    try {
+      await deleteAdminBlog(id);
+      showToast('Blog deleted successfully');
+      fetchBlogs();
+    } catch (err) {
+      showToast('Failed to delete blog', 'error');
+    }
+  };
+
+  // --- MAIL & CREDENTIALS SETTINGS HANDLERS ---
+  const fetchMailSettings = async () => {
+    setSmtpLoading(true);
+    try {
+      const res = await getMailSettings();
+      if (res.data?.status === 'success' && res.data?.data) {
+        setSmtpSettings({
+          host: res.data.data.host || '',
+          port: res.data.data.port || 465,
+          email: res.data.data.email || '',
+          password: '',
+          encryption: res.data.data.encryption || 'ssl',
+          from_name: res.data.data.from_name || 'TradeCall India',
+          has_password: res.data.data.has_password || false
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load mail settings', err);
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const handleSaveMailSettings = async (e) => {
+    e.preventDefault();
+    setSmtpSaving(true);
+    try {
+      await saveMailSettings(smtpSettings);
+      showToast('Mail settings saved successfully!');
+      setSmtpSettings(prev => ({ ...prev, password: '' }));
+      fetchMailSettings();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to save mail settings', 'error');
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const handleSendTestMail = async () => {
+    const testEmail = window.prompt('Where should the test email be sent?', smtpSettings.email || user?.email || '');
+    if (!testEmail) return;
+    try {
+      showToast('Sending test email...');
+      const res = await sendTestMail(testEmail);
+      if (res.data?.status === 'success') {
+        showToast(res.data?.message || 'Test email sent successfully!');
+      } else {
+        showToast(res.data?.message || 'Failed to send test email', 'error');
+      }
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to send test email', 'error');
+    }
+  };
+
+  const handleUpdateCredentials = async (e) => {
+    e.preventDefault();
+    setCredSaving(true);
+    try {
+      await api.post('/api/v1/auth/change-password', {
+        current_password: credForm.currPassword,
+        new_password: credForm.newPassword
+      });
+      showToast('Credentials updated successfully!');
+      setCredForm({ newUsername: '', currPassword: '', newPassword: '' });
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to update credentials', 'error');
+    } finally {
+      setCredSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (activeModule === 'listings') {
       fetchListingCounts();
@@ -400,8 +688,16 @@ export default function AdminDashboard({ onNavigate }) {
       fetchCategories();
     } else if (activeModule === 'users') {
       fetchUsers();
+      fetchRoleLimits();
     } else if (activeModule === 'plans') {
       fetchPlans();
+    } else if (activeModule === 'tracker') {
+      fetchEmployees();
+    } else if (activeModule === 'blogs') {
+      fetchBlogs();
+    } else if (activeModule === 'settings') {
+      fetchMailSettings();
+      fetchRazorpaySettings();
     } else if (activeModule === 'razorpay') {
       fetchRazorpaySettings();
     }
@@ -537,6 +833,45 @@ export default function AdminDashboard({ onNavigate }) {
             }}
           >
             <i className="fas fa-gem"></i> Plans & Pricing
+          </button>
+
+          <button
+            type="button"
+            className={`btn-outline ${activeModule === 'tracker' ? 'active' : ''}`}
+            onClick={() => setActiveModule('tracker')}
+            style={{
+              background: activeModule === 'tracker' ? '#0c6253' : '#fff',
+              color: activeModule === 'tracker' ? '#fff' : '#374151',
+              borderColor: activeModule === 'tracker' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-chart-line"></i> Field Associates
+          </button>
+
+          <button
+            type="button"
+            className={`btn-outline ${activeModule === 'blogs' ? 'active' : ''}`}
+            onClick={() => setActiveModule('blogs')}
+            style={{
+              background: activeModule === 'blogs' ? '#0c6253' : '#fff',
+              color: activeModule === 'blogs' ? '#fff' : '#374151',
+              borderColor: activeModule === 'blogs' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-blog"></i> Blog Management
+          </button>
+
+          <button
+            type="button"
+            className={`btn-outline ${activeModule === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveModule('settings')}
+            style={{
+              background: activeModule === 'settings' ? '#0c6253' : '#fff',
+              color: activeModule === 'settings' ? '#fff' : '#374151',
+              borderColor: activeModule === 'settings' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-cog"></i> Settings
           </button>
 
           <button
@@ -990,7 +1325,70 @@ export default function AdminDashboard({ onNavigate }) {
         {/* MODULE 4: USER MANAGEMENT */}
         {/* ======================================================== */}
         {activeModule === 'users' && (
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div>
+            {/* Role-Based Listing Limits Card */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px', color: '#111827' }}>
+                <i className="fas fa-sliders-h" style={{ color: '#0c6253', marginRight: '8px' }}></i>
+                Role-Based Listing Limits
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
+                Set max active listings allowed without a paid subscription plan. Set <strong>0</strong> for unlimited listings.
+              </p>
+              <form onSubmit={handleSaveRoleLimits}>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                      Owner Limit (Max Listings)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={roleLimits.Owner}
+                      onChange={(e) => setRoleLimits({ ...roleLimits, Owner: parseInt(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                      Agent Limit (Max Listings)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={roleLimits.Agent}
+                      onChange={(e) => setRoleLimits({ ...roleLimits, Agent: parseInt(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                      Builder Limit (Max Listings)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={roleLimits.Builder}
+                      onChange={(e) => setRoleLimits({ ...roleLimits, Builder: parseInt(e.target.value) || 0 })}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                      required
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ padding: '10px 22px', fontSize: '14px' }}
+                  disabled={roleLimitsSaving}
+                >
+                  {roleLimitsSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving Limits...</> : 'Save Limits'}
+                </button>
+              </form>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
                 User Accounts &amp; Role Management
@@ -1107,6 +1505,7 @@ export default function AdminDashboard({ onNavigate }) {
                 </table>
               </div>
             )}
+            </div>
           </div>
         )}
 
@@ -1416,6 +1815,686 @@ export default function AdminDashboard({ onNavigate }) {
                 </button>
               </form>
             )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODULE 7: FIELD ASSOCIATES (TRACKER) */}
+        {/* ======================================================== */}
+        {activeModule === 'tracker' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#111827', margin: 0 }}>
+                  Field Associates
+                </h1>
+                <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  Track field agent performance and listings attributed to unique reference codes.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ padding: '10px 20px' }}
+                onClick={() => handleOpenEmployeeModal()}
+              >
+                <i className="fas fa-plus"></i> Add Field Associate
+              </button>
+            </div>
+
+            {/* KPI Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: '36px', fontWeight: 800, color: '#0c6253' }}>
+                  {employees.reduce((acc, emp) => acc + (emp.listings_created || 0), 0)}
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginTop: '6px' }}>
+                  Total Listings Tracked
+                </div>
+              </div>
+
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontSize: '36px', fontWeight: 800, color: '#1d4ed8' }}>
+                  {employees.filter(emp => emp.status === 'active').length}
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginTop: '6px' }}>
+                  Active Reference Codes
+                </div>
+              </div>
+            </div>
+
+            {/* Associates Table Card */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: '#111827', marginBottom: '16px' }}>
+                Listing Count by Reference Code
+              </div>
+
+              {employeesLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
+                  <div>Loading field associates...</div>
+                </div>
+              ) : employees.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  No field associates found. Click "Add Field Associate" to create one.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="admin-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                        <th style={{ padding: '12px 14px' }}>Reference Code</th>
+                        <th style={{ padding: '12px 14px' }}>Associate Name</th>
+                        <th style={{ padding: '12px 14px' }}>Listings Created</th>
+                        <th style={{ padding: '12px 14px' }}>Status</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map(emp => (
+                        <tr key={emp.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '12px 14px' }}>
+                            <strong style={{ letterSpacing: '1px', color: '#111827' }}>
+                              <i className="fas fa-id-badge" style={{ color: '#9ca3af', marginRight: '6px' }}></i>
+                              {emp.reference_code}
+                            </strong>
+                          </td>
+                          <td style={{ padding: '12px 14px', fontWeight: 600, color: '#374151' }}>
+                            {emp.name}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <strong style={{ color: '#0c6253', fontSize: '16px' }}>
+                              {emp.listings_created || 0}
+                            </strong>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: emp.status === 'active' ? '#dcfce7' : '#fee2e2',
+                              color: emp.status === 'active' ? '#15803d' : '#b91c1c'
+                            }}>
+                              {emp.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ padding: '4px 8px', fontSize: '12px', marginRight: '8px' }}
+                              onClick={() => handleOpenEmployeeModal(emp)}
+                            >
+                              <i className="fas fa-edit"></i> Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ padding: '4px 8px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
+                              onClick={() => handleDeleteEmployee(emp.id)}
+                            >
+                              <i className="fas fa-trash"></i> Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODULE 8: BLOG MANAGEMENT */}
+        {/* ======================================================== */}
+        {activeModule === 'blogs' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#111827', margin: 0 }}>
+                  Blog Management
+                </h1>
+                <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  Create and manage news, market updates, and property guides.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ padding: '10px 20px' }}
+                onClick={() => handleOpenBlogModal()}
+              >
+                <i className="fas fa-pen"></i> Write New Blog
+              </button>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              {blogsLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
+                  <div>Loading blogs...</div>
+                </div>
+              ) : adminBlogs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  No blogs published yet. Click "Write New Blog" to post an article.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="admin-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                        <th style={{ padding: '12px 14px' }}>Blog Title</th>
+                        <th style={{ padding: '12px 14px' }}>Category</th>
+                        <th style={{ padding: '12px 14px' }}>Author</th>
+                        <th style={{ padding: '12px 14px' }}>Publish Date</th>
+                        <th style={{ padding: '12px 14px' }}>Tags</th>
+                        <th style={{ padding: '12px 14px' }}>Status</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminBlogs.map(blog => {
+                        const dateStr = blog.created_at
+                          ? new Date(blog.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : '-';
+                        return (
+                          <tr key={blog.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px 14px' }}>
+                              <strong style={{ color: '#111827' }}>{blog.title}</strong>
+                              <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '2px' }}>
+                                <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Views: {blog.views || 0}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 14px', color: '#0c6253', fontWeight: 600 }}>
+                              {blog.category || 'General'}
+                            </td>
+                            <td style={{ padding: '12px 14px', color: '#374151' }}>
+                              {blog.author || 'Admin'}
+                            </td>
+                            <td style={{ padding: '12px 14px', color: '#64748b' }}>
+                              {dateStr}
+                            </td>
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{ fontSize: '11px', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px', color: '#4b5563' }}>
+                                {blog.tags || 'none'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                background: blog.status === 'publish' ? '#dcfce7' : '#fef3c7',
+                                color: blog.status === 'publish' ? '#15803d' : '#b45309'
+                              }}>
+                                {blog.status === 'publish' ? 'Published' : 'Draft'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                className="btn-outline"
+                                style={{ padding: '4px 8px', fontSize: '12px', marginRight: '8px' }}
+                                onClick={() => handleOpenBlogModal(blog)}
+                              >
+                                <i className="fas fa-edit"></i> Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-outline"
+                                style={{ padding: '4px 8px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                onClick={() => handleDeleteBlog(blog.id)}
+                              >
+                                <i className="fas fa-trash"></i> Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODULE 9: SETTINGS (CREDENTIALS, SMTP & PAYMENTS) */}
+        {/* ======================================================== */}
+        {activeModule === 'settings' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px', alignItems: 'start' }}>
+            {/* Update Credentials Card */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px', color: '#111827' }}>
+                <i className="fas fa-user-lock" style={{ color: '#0c6253', marginRight: '8px' }}></i>
+                Update Credentials
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
+                Change your administrative password.
+              </p>
+              <form onSubmit={handleUpdateCredentials}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter current password"
+                    value={credForm.currPassword}
+                    onChange={(e) => setCredForm({ ...credForm, currPassword: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    required
+                  />
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter new password (min 6 characters)"
+                    value={credForm.newPassword}
+                    onChange={(e) => setCredForm({ ...credForm, newPassword: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ width: '100%', padding: '12px' }}
+                  disabled={credSaving}
+                >
+                  {credSaving ? <><i className="fas fa-spinner fa-spin"></i> Updating...</> : 'Update Credentials'}
+                </button>
+              </form>
+            </div>
+
+            {/* SMTP Mail Configuration Card */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <i className="fas fa-envelope" style={{ color: '#0c6253', fontSize: '20px' }}></i>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  Mail Configuration (SMTP)
+                </h2>
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
+                Registration and Forgot Password OTP emails are dispatched using these SMTP settings.
+              </p>
+
+              {smtpLoading ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
+                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
+                  <div>Loading mail settings...</div>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveMailSettings}>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      SMTP Host
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. smtp.gmail.com"
+                      value={smtpSettings.host}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, host: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      SMTP Mail ID / Username
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="youremail@domain.com"
+                      value={smtpSettings.email}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, email: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      SMTP Password / App Password {smtpSettings.has_password && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showSmtpPassword ? 'text' : 'password'}
+                        placeholder={smtpSettings.has_password ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter SMTP password'}
+                        value={smtpSettings.password}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, password: e.target.value })}
+                        style={{ width: '100%', padding: '9px 36px 9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      />
+                      <i
+                        className={`fas ${showSmtpPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#6b7280' }}
+                        onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                      ></i>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                        SMTP Port
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="465"
+                        value={smtpSettings.port}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, port: parseInt(e.target.value) || 465 })}
+                        style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                        Encryption
+                      </label>
+                      <select
+                        value={smtpSettings.encryption}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, encryption: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      >
+                        <option value="ssl">SSL (port 465)</option>
+                        <option value="tls">TLS (port 587)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      From Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="TradeCall India"
+                      value={smtpSettings.from_name}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, from_name: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{ flex: 1, padding: '11px', fontSize: '13px' }}
+                      disabled={smtpSaving}
+                    >
+                      {smtpSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Mail Settings'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '11px 16px', fontSize: '13px' }}
+                      onClick={handleSendTestMail}
+                    >
+                      <i className="fas fa-paper-plane" style={{ marginRight: '6px' }}></i> Send Test Email
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Add/Edit Field Associate */}
+        {employeeModalOpen && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}>
+            <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '480px', width: '100%', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  {employeeForm.id ? 'Edit Field Associate' : 'Add New Field Associate'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setEmployeeModalOpen(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEmployee}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Reference Code
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={employeeForm.reference_code}
+                      readOnly
+                      style={{ flex: 1, padding: '10px 12px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: 700, letterSpacing: '1px' }}
+                      required
+                    />
+                    {!employeeForm.id && (
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        style={{ padding: '10px 14px', fontSize: '12px' }}
+                        onClick={generateRefCode}
+                      >
+                        <i className="fas fa-sync-alt"></i> Auto
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Associate Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter associate name"
+                    value={employeeForm.name}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Status
+                  </label>
+                  <select
+                    value={employeeForm.status}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, status: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ flex: 1, padding: '12px' }}
+                    onClick={() => setEmployeeModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '12px' }}
+                    disabled={employeeSaving}
+                  >
+                    {employeeSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : (employeeForm.id ? 'Update Associate' : 'Add Associate')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Write / Edit Blog */}
+        {blogModalOpen && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}>
+            <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  {blogForm.id ? 'Edit Blog' : 'Write New Blog'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setBlogModalOpen(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveBlog}>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    Blog Title
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter blog title"
+                    value={blogForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                      setBlogForm({ ...blogForm, title, permalink: blogForm.permalink || slug });
+                    }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      Category
+                    </label>
+                    <select
+                      value={blogForm.category}
+                      onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      required
+                    >
+                      <option value="Buy">Buy</option>
+                      <option value="Rent">Rent</option>
+                      <option value="Invest">Invest</option>
+                      <option value="Real Estate">Real Estate</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      Status
+                    </label>
+                    <select
+                      value={blogForm.status}
+                      onChange={(e) => setBlogForm({ ...blogForm, status: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      required
+                    >
+                      <option value="publish">Published</option>
+                      <option value="draft">Draft</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    Permalink (Slug)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. my-first-blog"
+                    value={blogForm.permalink}
+                    onChange={(e) => setBlogForm({ ...blogForm, permalink: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    Tags / Labels (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. real estate, palwal, investment"
+                    value={blogForm.tags}
+                    onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    Featured Image
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setBlogForm({ ...blogForm, featured_image: e.target.files[0] });
+                      }
+                    }}
+                    style={{ width: '100%', padding: '8px 0', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    Blog Content
+                  </label>
+                  <textarea
+                    rows="8"
+                    placeholder="Write your article content here..."
+                    value={blogForm.content}
+                    onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
+                    required
+                  ></textarea>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ flex: 1, padding: '12px' }}
+                    onClick={() => setBlogModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '12px' }}
+                    disabled={blogSaving}
+                  >
+                    {blogSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : (blogForm.id ? 'Update Blog' : 'Publish Blog')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

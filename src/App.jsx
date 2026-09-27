@@ -7,6 +7,13 @@ import ListingDetailPage from './pages/ListingDetailPage';
 import PostListingPage from './pages/PostListingPage';
 import AccountPage from './pages/AccountPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import AdvertisePage from './pages/AdvertisePage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import BlogPage from './pages/BlogPage';
+import BlogDetailPage from './pages/BlogDetailPage';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
@@ -14,6 +21,7 @@ export default function App() {
 
   const [activePage, setActivePage] = useState('home');
   const [selectedListingId, setSelectedListingId] = useState(null);
+  const [selectedBlogId, setSelectedBlogId] = useState(null);
   const [activeCity, setActiveCity] = useState('');
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
@@ -25,7 +33,22 @@ export default function App() {
         const id = hash.replace('listing/', '');
         setSelectedListingId(id);
         setActivePage('listing-detail');
-      } else if (['home', 'post-listing', 'account', 'admin'].includes(hash)) {
+      } else if (hash.startsWith('blog/')) {
+        const blogSlug = hash.replace('blog/', '');
+        setSelectedBlogId(blogSlug);
+        setActivePage('blog-detail');
+      } else if ([
+        'home',
+        'post-listing',
+        'account',
+        'admin',
+        'about',
+        'contact',
+        'advertise',
+        'terms',
+        'privacy',
+        'blog'
+      ].includes(hash)) {
         setActivePage(hash);
       } else {
         setActivePage('home');
@@ -42,6 +65,10 @@ export default function App() {
       setSelectedListingId(param);
       setActivePage('listing-detail');
       window.location.hash = `listing/${param}`;
+    } else if (page === 'blog-detail' && param) {
+      setSelectedBlogId(param);
+      setActivePage('blog-detail');
+      window.location.hash = `blog/${param}`;
     } else {
       setActivePage(page);
       window.location.hash = page;
@@ -96,14 +123,75 @@ export default function App() {
             onNavigate={navigateTo}
           />
         )}
+
+        {activePage === 'about' && (
+          <AboutPage
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {activePage === 'contact' && (
+          <ContactPage
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {activePage === 'advertise' && (
+          <AdvertisePage
+            onNavigate={navigateTo}
+            onOpenAuth={() => setAuthModalOpen(true)}
+          />
+        )}
+
+        {activePage === 'terms' && (
+          <TermsPage
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {activePage === 'privacy' && (
+          <PrivacyPage
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {activePage === 'blog' && (
+          <BlogPage
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {activePage === 'blog-detail' && (
+          <BlogDetailPage
+            blogIdentifier={selectedBlogId}
+            onNavigate={navigateTo}
+          />
+        )}
       </main>
 
-      <Footer />
+      <Footer
+        onCitySelect={(city) => {
+          setActiveCity(city);
+          navigateTo('home');
+        }}
+        onNavigate={navigateTo}
+      />
 
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
       />
+
+      {/* Floating WhatsApp CTA */}
+      <a
+        href="https://wa.me/919992292828"
+        className="floating-whatsapp"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Chat with us on WhatsApp"
+      >
+        <i className="fab fa-whatsapp"></i>
+      </a>
     </div>
   );
 }

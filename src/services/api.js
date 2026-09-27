@@ -94,5 +94,60 @@ export const getRazorpaySettings = () =>
 export const saveRazorpaySettings = (payload) =>
   api.post('/api/v1/payments/admin/settings', payload);
 
-export default api;
+// --- Phase 3 API Endpoints ---
 
+// Role Limits
+export const getRoleLimits = () =>
+  api.get('/api/v1/admin/role-limits');
+
+export const saveRoleLimits = (limits) =>
+  api.post('/api/v1/admin/role-limits', limits);
+
+// Field Associates / Employees
+export const getEmployees = () =>
+  api.get('/api/v1/employees');
+
+export const getEmployee = (id) =>
+  api.get(`/api/v1/employees/${id}`);
+
+export const saveEmployee = (empData) =>
+  api.post('/api/v1/employees', empData);
+
+export const deleteEmployee = (id) =>
+  api.delete(`/api/v1/employees/${id}`);
+
+export const getRefCodes = () =>
+  api.get('/api/v1/employees/ref-codes');
+
+// Blogs
+export const getBlogs = () =>
+  api.get('/api/v1/blogs');
+
+export const getBlogDetail = (slugOrId) =>
+  api.get(`/api/v1/blogs/detail/${slugOrId}`);
+
+export const getAdminBlogs = () =>
+  api.get('/api/v1/admin/blogs/all');
+
+export const getAdminBlog = (id) =>
+  api.get(`/api/v1/admin/blogs/${id}`);
+
+export const saveAdminBlog = (formData) =>
+  api.post('/api/v1/admin/blogs', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+
+export const deleteAdminBlog = (id) =>
+  api.delete(`/api/v1/admin/blogs/${id}`);
+
+// Mail Configuration (SMTP)
+export const getMailSettings = () =>
+  api.get('/api/v1/admin/settings/mail');
+
+export const saveMailSettings = (settings) =>
+  api.post('/api/v1/admin/settings/mail', settings);
+
+export const sendTestMail = (testEmail) =>
+  api.post('/api/v1/admin/settings/mail/test', { test_email: testEmail });
+
+export default api;

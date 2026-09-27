@@ -34,6 +34,34 @@ export default function Header({ onNavigate, activePage, onOpenAuth }) {
             >
               Home
             </a>
+            <a
+              href="#advertise"
+              className={`nav-item ${activePage === 'advertise' ? 'active' : ''}`}
+              onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}
+            >
+              Advertise
+            </a>
+            <a
+              href="#blog"
+              className={`nav-item ${activePage === 'blog' || activePage === 'blog-detail' ? 'active' : ''}`}
+              onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}
+            >
+              Blog
+            </a>
+            <a
+              href="#about"
+              className={`nav-item ${activePage === 'about' ? 'active' : ''}`}
+              onClick={(e) => { e.preventDefault(); onNavigate('about'); }}
+            >
+              About Us
+            </a>
+            <a
+              href="#contact"
+              className={`nav-item ${activePage === 'contact' ? 'active' : ''}`}
+              onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}
+            >
+              Contact Us
+            </a>
             {user?.role?.toLowerCase() === 'admin' && (
               <a
                 href="#admin"
@@ -114,7 +142,11 @@ export default function Header({ onNavigate, activePage, onOpenAuth }) {
               </button>
             </div>
             <nav className="drawer-nav">
-              <a href="#home" className="drawer-nav-item" onClick={() => { onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+              <a href="#home" className={`drawer-nav-item ${activePage === 'home' ? 'active' : ''}`} onClick={() => { onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+              <a href="#advertise" className={`drawer-nav-item ${activePage === 'advertise' ? 'active' : ''}`} onClick={() => { onNavigate('advertise'); setDrawerOpen(false); }}>Advertise</a>
+              <a href="#blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={() => { onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
+              <a href="#about" className={`drawer-nav-item ${activePage === 'about' ? 'active' : ''}`} onClick={() => { onNavigate('about'); setDrawerOpen(false); }}>About Us</a>
+              <a href="#contact" className={`drawer-nav-item ${activePage === 'contact' ? 'active' : ''}`} onClick={() => { onNavigate('contact'); setDrawerOpen(false); }}>Contact Us</a>
               <a href="#post" className="drawer-nav-item" onClick={() => { onNavigate('post-listing'); setDrawerOpen(false); }}>Post Free Listing</a>
               {user && (
                 <a href="#account" className="drawer-nav-item" onClick={() => { onNavigate('account'); setDrawerOpen(false); }}>My Account ({user.name})</a>
