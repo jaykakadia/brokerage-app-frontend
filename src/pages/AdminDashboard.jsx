@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { getPlans, createPlan, updatePlan, deletePlan, getRazorpaySettings, saveRazorpaySettings } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from './HomePage';
 
 export default function AdminDashboard({ onNavigate }) {
   const { user } = useAuth();
 
-  const [activeModule, setActiveModule] = useState('listings'); // 'listings' | 'locations' | 'categories' | 'users'
+  const [activeModule, setActiveModule] = useState('listings'); // 'listings' | 'locations' | 'categories' | 'users' | 'plans' | 'razorpay'
   const [toast, setToast] = useState(null);
 
   // === LISTINGS MODULE STATE ===
@@ -42,6 +42,33 @@ export default function AdminDashboard({ onNavigate }) {
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
+
+  // === PLANS MODULE STATE ===
+  const [plans, setPlans] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [planForm, setPlanForm] = useState({
+    name: '',
+    price: '',
+    listing_limit: 10,
+    leads_count: 10,
+    duration_days: 90,
+    description: '',
+    status: 'active'
+  });
+  const [planSaving, setPlanSaving] = useState(false);
+
+  // === RAZORPAY SETTINGS STATE ===
+  const [rzpSettings, setRzpSettings] = useState({
+    key_id: '',
+    key_secret: '',
+    webhook_secret: '',
+    test_mode: true,
+    has_secret: false,
+    has_webhook_secret: false
+  });
+  const [rzpLoading, setRzpLoading] = useState(false);
+  const [rzpSaving, setRzpSaving] = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -244,6 +271,125 @@ export default function AdminDashboard({ onNavigate }) {
     }
   };
 
+  // --- PLANS HANDLERS ---
+  const fetchPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const res = await getPlans(true);
+      setPlans(res.data?.data || []);
+    } catch (err) {
+      showToast('Failed to fetch plans', 'error');
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  const handleSavePlan = async (e) => {
+    e.preventDefault();
+    setPlanSaving(true);
+    try {
+      const payload = {
+        name: planForm.name.trim(),
+        price: parseFloat(planForm.price) || 0,
+        listing_limit: parseInt(planForm.listing_limit, 10) || 1,
+        leads_count: parseInt(planForm.leads_count, 10) || 0,
+        duration_days: parseInt(planForm.duration_days, 10) || 30,
+        description: planForm.description.trim() || undefined,
+        status: planForm.status
+      };
+
+      if (editingPlanId) {
+        await updatePlan(editingPlanId, payload);
+        showToast('Plan updated successfully!');
+      } else {
+        await createPlan(payload);
+        showToast('New plan created successfully!');
+      }
+
+      setEditingPlanId(null);
+      setPlanForm({
+        name: '',
+        price: '',
+        listing_limit: 10,
+        leads_count: 10,
+        duration_days: 90,
+        description: '',
+        status: 'active'
+      });
+      fetchPlans();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to save plan', 'error');
+    } finally {
+      setPlanSaving(false);
+    }
+  };
+
+  const handleEditPlan = (plan) => {
+    setEditingPlanId(plan.id);
+    setPlanForm({
+      name: plan.name,
+      price: plan.price,
+      listing_limit: plan.listing_limit,
+      leads_count: plan.leads_count,
+      duration_days: plan.duration_days,
+      description: plan.description || '',
+      status: plan.status
+    });
+  };
+
+  const handleDeletePlan = async (id) => {
+    if (!window.confirm(`Are you sure you want to delete plan #${id}?`)) return;
+    try {
+      await deletePlan(id);
+      showToast(`Plan #${id} deleted.`);
+      fetchPlans();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to delete plan', 'error');
+    }
+  };
+
+  // --- RAZORPAY SETTINGS HANDLERS ---
+  const fetchRazorpaySettings = async () => {
+    setRzpLoading(true);
+    try {
+      const res = await getRazorpaySettings();
+      if (res.data?.data) {
+        setRzpSettings({
+          key_id: res.data.data.key_id || '',
+          key_secret: '',
+          webhook_secret: '',
+          test_mode: res.data.data.test_mode !== false,
+          has_secret: res.data.data.has_secret || false,
+          has_webhook_secret: res.data.data.has_webhook_secret || false
+        });
+      }
+    } catch (err) {
+      showToast('Failed to fetch Razorpay settings', 'error');
+    } finally {
+      setRzpLoading(false);
+    }
+  };
+
+  const handleSaveRazorpaySettings = async (e) => {
+    e.preventDefault();
+    setRzpSaving(true);
+    try {
+      const payload = {
+        key_id: rzpSettings.key_id.trim() || undefined,
+        key_secret: rzpSettings.key_secret.trim() || undefined,
+        webhook_secret: rzpSettings.webhook_secret.trim() || undefined,
+        test_mode: rzpSettings.test_mode
+      };
+      await saveRazorpaySettings(payload);
+      showToast('Razorpay settings saved successfully!');
+      fetchRazorpaySettings();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Failed to save settings', 'error');
+    } finally {
+      setRzpSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (activeModule === 'listings') {
       fetchListingCounts();
@@ -254,6 +400,10 @@ export default function AdminDashboard({ onNavigate }) {
       fetchCategories();
     } else if (activeModule === 'users') {
       fetchUsers();
+    } else if (activeModule === 'plans') {
+      fetchPlans();
+    } else if (activeModule === 'razorpay') {
+      fetchRazorpaySettings();
     }
   }, [activeModule, listingTab]);
 
@@ -374,6 +524,32 @@ export default function AdminDashboard({ onNavigate }) {
             }}
           >
             <i className="fas fa-users"></i> User Management
+          </button>
+
+          <button
+            type="button"
+            className={`btn-outline ${activeModule === 'plans' ? 'active' : ''}`}
+            onClick={() => setActiveModule('plans')}
+            style={{
+              background: activeModule === 'plans' ? '#0c6253' : '#fff',
+              color: activeModule === 'plans' ? '#fff' : '#374151',
+              borderColor: activeModule === 'plans' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-gem"></i> Plans & Pricing
+          </button>
+
+          <button
+            type="button"
+            className={`btn-outline ${activeModule === 'razorpay' ? 'active' : ''}`}
+            onClick={() => setActiveModule('razorpay')}
+            style={{
+              background: activeModule === 'razorpay' ? '#0c6253' : '#fff',
+              color: activeModule === 'razorpay' ? '#fff' : '#374151',
+              borderColor: activeModule === 'razorpay' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-credit-card"></i> Razorpay Settings
           </button>
         </div>
 
@@ -930,6 +1106,315 @@ export default function AdminDashboard({ onNavigate }) {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODULE 5: PLANS & PRICING MANAGEMENT */}
+        {/* ======================================================== */}
+        {activeModule === 'plans' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '24px', alignItems: 'start' }}>
+            {/* Create / Edit Plan Form */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  {editingPlanId ? `Edit Plan #${editingPlanId}` : 'Add New Membership Plan'}
+                </h2>
+                {editingPlanId && (
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ fontSize: '11px', padding: '2px 8px' }}
+                    onClick={() => {
+                      setEditingPlanId(null);
+                      setPlanForm({
+                        name: '',
+                        price: '',
+                        listing_limit: 10,
+                        leads_count: 10,
+                        duration_days: 90,
+                        description: '',
+                        status: 'active'
+                      });
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={handleSavePlan}>
+                <div className="form-group full" style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Plan Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Gold Unlimited"
+                    value={planForm.name}
+                    onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group full" style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Price (₹ INR) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g. 1999"
+                    value={planForm.price}
+                    onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Owner Leads *</label>
+                    <input
+                      type="number"
+                      placeholder="10"
+                      value={planForm.leads_count}
+                      onChange={(e) => setPlanForm({ ...planForm, leads_count: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Listing Limit *</label>
+                    <input
+                      type="number"
+                      placeholder="5"
+                      value={planForm.listing_limit}
+                      onChange={(e) => setPlanForm({ ...planForm, listing_limit: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Validity (Days) *</label>
+                    <input
+                      type="number"
+                      placeholder="90"
+                      value={planForm.duration_days}
+                      onChange={(e) => setPlanForm({ ...planForm, duration_days: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Status</label>
+                    <select
+                      value={planForm.status}
+                      onChange={(e) => setPlanForm({ ...planForm, status: e.target.value })}
+                      style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%', fontSize: '13px' }}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group full" style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Description</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Short description of plan features..."
+                    value={planForm.description}
+                    onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px' }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ width: '100%' }}
+                  disabled={planSaving}
+                >
+                  {planSaving ? 'Saving...' : editingPlanId ? 'Update Plan' : 'Create Plan'}
+                </button>
+              </form>
+            </div>
+
+            {/* Plans List Table */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#111827' }}>
+                Existing Plans ({plans.length})
+              </h2>
+
+              {plansLoading ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
+                  <i className="fas fa-spinner fa-spin"></i> Loading plans...
+                </div>
+              ) : plans.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
+                  No plans configured. Create your first plan on the left!
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                      <th style={{ padding: '10px' }}>ID</th>
+                      <th style={{ padding: '10px' }}>Plan Name</th>
+                      <th style={{ padding: '10px' }}>Price</th>
+                      <th style={{ padding: '10px' }}>Leads</th>
+                      <th style={{ padding: '10px' }}>Post Limit</th>
+                      <th style={{ padding: '10px' }}>Duration</th>
+                      <th style={{ padding: '10px' }}>Status</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plans.map((p) => (
+                      <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '10px', color: '#64748b' }}>#{p.id}</td>
+                        <td style={{ padding: '10px', fontWeight: 700, color: '#111827' }}>{p.name}</td>
+                        <td style={{ padding: '10px', fontWeight: 700, color: '#0c6253' }}>
+                          ₹{Number(p.price).toLocaleString('en-IN')}
+                        </td>
+                        <td style={{ padding: '10px' }}>{p.leads_count}</td>
+                        <td style={{ padding: '10px' }}>{p.listing_limit}</td>
+                        <td style={{ padding: '10px' }}>{p.duration_days} days</td>
+                        <td style={{ padding: '10px' }}>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              background: p.status === 'active' ? '#dcfce7' : '#fee2e2',
+                              color: p.status === 'active' ? '#166534' : '#b91c1c'
+                            }}
+                          >
+                            {p.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ padding: '4px 8px', fontSize: '11px', marginRight: '6px' }}
+                            onClick={() => handleEditPlan(p)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
+                            onClick={() => handleDeletePlan(p.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODULE 6: RAZORPAY GATEWAY CONFIGURATION */}
+        {/* ======================================================== */}
+        {activeModule === 'razorpay' && (
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', maxWidth: '640px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <i className="fas fa-credit-card" style={{ color: '#0c6253', fontSize: '24px' }}></i>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                Razorpay Payment Gateway Settings
+              </h2>
+            </div>
+            <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '24px' }}>
+              Configure your API keys for payment processing and automated lead credit. Settings saved here dynamically override environment defaults with zero downtime.
+            </p>
+
+            {rzpLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
+                <div>Loading Razorpay settings...</div>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveRazorpaySettings}>
+                <div className="form-group full" style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600 }}>Razorpay Key ID</label>
+                  <input
+                    type="text"
+                    placeholder="rzp_test_... or rzp_live_..."
+                    value={rzpSettings.key_id}
+                    onChange={(e) => setRzpSettings({ ...rzpSettings, key_id: e.target.value })}
+                  />
+                  <small style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Publishable Key ID provided in your Razorpay Dashboard.
+                  </small>
+                </div>
+
+                <div className="form-group full" style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600 }}>
+                    Razorpay Key Secret {rzpSettings.has_secret && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={rzpSettings.has_secret ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Razorpay Key Secret'}
+                    value={rzpSettings.key_secret}
+                    onChange={(e) => setRzpSettings({ ...rzpSettings, key_secret: e.target.value })}
+                  />
+                  <small style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Used for HMAC-SHA256 server-side signature verification. Never revealed in the browser.
+                  </small>
+                </div>
+
+                <div className="form-group full" style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600 }}>
+                    Razorpay Webhook Secret {rzpSettings.has_webhook_secret && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={rzpSettings.has_webhook_secret ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Webhook Secret'}
+                    value={rzpSettings.webhook_secret}
+                    onChange={(e) => setRzpSettings({ ...rzpSettings, webhook_secret: e.target.value })}
+                  />
+                  <small style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Used for verifying asynchronous payment webhook events from Razorpay.
+                  </small>
+                </div>
+
+                <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    type="checkbox"
+                    id="rzpTestMode"
+                    checked={rzpSettings.test_mode}
+                    onChange={(e) => setRzpSettings({ ...rzpSettings, test_mode: e.target.checked })}
+                    style={{ width: '18px', height: '18px', accentColor: '#0c6253' }}
+                  />
+                  <label htmlFor="rzpTestMode" style={{ fontSize: '14px', fontWeight: 600, color: '#111827', cursor: 'pointer' }}>
+                    Enable Sandbox / Test Mode
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ width: '100%', padding: '12px' }}
+                  disabled={rzpSaving}
+                >
+                  {rzpSaving ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> Saving Settings...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-save" style={{ marginRight: '6px' }}></i> Save Razorpay Settings
+                    </>
+                  )}
+                </button>
+              </form>
             )}
           </div>
         )}

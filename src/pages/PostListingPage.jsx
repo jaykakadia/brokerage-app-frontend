@@ -460,8 +460,8 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
                 <label>Your Role <span className="req">*</span></label>
                 <select value={ownerRole} onChange={(e) => setOwnerRole(e.target.value)}>
                   <option value="Owner">Owner</option>
-                  <option value="Agent">Agent / Broker</option>
-                  <option value="Builder">Builder / Developer</option>
+                  <option value="Agent">Agent</option>
+                  <option value="Builder">Builder</option>
                 </select>
               </div>
             </div>

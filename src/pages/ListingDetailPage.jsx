@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import api, { getImageUrl } from '../services/api';
+import api, { getImageUrl, getWishlist, toggleWishlist, revealContact } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from './HomePage';
+import PlansModal from '../components/PlansModal';
+import ContactRevealModal from '../components/ContactRevealModal';
 
-export default function ListingDetailPage({ listingId, onNavigate }) {
-  const { user } = useAuth();
+export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }) {
+  const { user, refreshUser } = useAuth();
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Phase 2 state
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [contactData, setContactData] = useState(null);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [plansModalOpen, setPlansModalOpen] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
 
   const fetchListing = async () => {
     setLoading(true);
@@ -36,9 +45,86 @@ export default function ListingDetailPage({ listingId, onNavigate }) {
     }
   }, [listingId]);
 
+  // Sync wishlist status
+  useEffect(() => {
+    if (user && listingId) {
+      getWishlist(true)
+        .then((res) => {
+          if (Array.isArray(res.data?.data)) {
+            setIsWishlisted(res.data.data.includes(Number(listingId)));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setIsWishlisted(false);
+    }
+  }, [user, listingId]);
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      if (onOpenAuth) onOpenAuth();
+      else alert('Please sign in to save this property.');
+      return;
+    }
+    try {
+      const res = await toggleWishlist(listingId);
+      const action = res.data?.data?.action;
+      setIsWishlisted(action === 'added');
+      showToast(action === 'added' ? 'Added to your wishlist!' : 'Removed from your wishlist.');
+    } catch (err) {
+      showToast('Failed to update wishlist.', 'error');
+    }
+  };
+
+  const handleContactOwner = async () => {
+    if (!user) {
+      if (onOpenAuth) onOpenAuth();
+      else alert('Please sign in to view owner contact details.');
+      return;
+    }
+
+    if (user.id === listing.user_id) {
+      showToast('This is your own listing.');
+      return;
+    }
+
+    setContactLoading(true);
+    try {
+      const res = await revealContact(listingId);
+      if (res.data?.status === 'success') {
+        const contact = res.data.contact || res.data.data || {};
+        const plan = res.data.plan || {};
+        setContactData({
+          owner_name: contact.name || contact.person || listing.owner_name,
+          owner_phone: contact.mobile || contact.phone || contact.owner_phone,
+          owner_email: contact.email || contact.owner_email,
+          leads_balance: plan.leads_remaining ?? plan.leads_balance ?? res.data.data?.leads_balance ?? user.leads_balance,
+          already_revealed: res.data.already_revealed ?? res.data.data?.already_revealed ?? false,
+          message: res.data.message
+        });
+        setContactModalOpen(true);
+        await refreshUser();
+      } else if (res.data?.status === 'error' && (res.data?.code === 'no_leads' || res.data?.message?.toLowerCase().includes('lead'))) {
+        setPlansModalOpen(true);
+      } else if (res.data?.message) {
+        showToast(res.data.message, 'error');
+      }
+    } catch (err) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      if (status === 402 || (typeof detail === 'string' && detail.toLowerCase().includes('lead'))) {
+        setPlansModalOpen(true);
+      } else {
+        showToast(typeof detail === 'string' ? detail : 'Unable to unlock contact details.', 'error');
+      }
+    } finally {
+      setContactLoading(false);
+    }
   };
 
   const handleStatusChange = async (action) => {
@@ -223,13 +309,31 @@ export default function ListingDetailPage({ listingId, onNavigate }) {
               </div>
             </div>
 
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
               <div style={{ fontSize: '28px', fontWeight: 800, color: '#0c6253' }}>
                 {priceFormatted}
               </div>
               {formData.priceNegotiable && (
                 <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Price Negotiable</span>
               )}
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={handleToggleWishlist}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  color: isWishlisted ? '#dc2626' : '#4b5563',
+                  borderColor: isWishlisted ? '#fca5a5' : '#d1d5db',
+                  background: isWishlisted ? '#fef2f2' : '#fff'
+                }}
+              >
+                <i className={isWishlisted ? 'fas fa-heart' : 'far fa-heart'} style={{ color: isWishlisted ? '#dc2626' : '#9ca3af' }}></i>
+                {isWishlisted ? 'Saved in Wishlist' : 'Save to Wishlist'}
+              </button>
             </div>
           </div>
         </div>
@@ -390,26 +494,90 @@ export default function ListingDetailPage({ listingId, onNavigate }) {
                 </div>
               )}
 
-              <a
-                href={`https://wa.me/919992292828?text=Hello%20TradeCall,%20I%20am%20interested%20in%20Property%20ID%20${listing.id}%20(${encodeURIComponent(listing.title)})`}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-primary"
-                style={{
-                  width: '100%',
-                  background: '#25d366',
-                  borderColor: '#25d366',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '10px',
-                  padding: '12px'
-                }}
-              >
-                <i className="fab fa-whatsapp" style={{ fontSize: '18px' }}></i> Contact on WhatsApp
-              </a>
+              {/* Phase 2: Contact Owner / Reveal Lead Action */}
+              {user && user.id === listing.user_id ? (
+                <div style={{ background: '#f0faf6', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#065f46', marginBottom: '14px', textAlign: 'center' }}>
+                  <i className="fas fa-user-check" style={{ marginRight: '6px' }}></i> You are the owner of this property.
+                </div>
+              ) : contactData ? (
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, marginBottom: '6px' }}>
+                    <i className="fas fa-check-circle" style={{ color: '#0c6253', marginRight: '4px' }}></i> Verified Owner Contact
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginBottom: '12px' }}>
+                    {contactData.owner_phone}
+                  </div>
+                  {contactData.owner_phone && (
+                    <a
+                      href={`https://wa.me/${contactData.owner_phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${listing.owner_name}, I am interested in your property "${listing.title}" on TradeCall.`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-primary"
+                      style={{
+                        width: '100%',
+                        background: '#25d366',
+                        borderColor: '#25d366',
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        padding: '10px'
+                      }}
+                    >
+                      <i className="fab fa-whatsapp" style={{ fontSize: '18px' }}></i> Chat on WhatsApp
+                    </a>
+                  )}
+                  <a
+                    href={`tel:${contactData.owner_phone}`}
+                    className="btn-outline"
+                    style={{
+                      width: '100%',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '10px'
+                    }}
+                  >
+                    <i className="fas fa-phone-alt"></i> Call Now
+                  </a>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleContactOwner}
+                  disabled={contactLoading}
+                  style={{
+                    width: '100%',
+                    background: '#0c6253',
+                    borderColor: '#0c6253',
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginBottom: '12px',
+                    padding: '14px',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 12px rgba(12, 98, 83, 0.25)'
+                  }}
+                >
+                  {contactLoading ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i> Checking Balance...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-phone-alt"></i> Contact Owner / View Phone
+                    </>
+                  )}
+                </button>
+              )}
 
               <a
                 href="tel:9992292828"
@@ -421,10 +589,11 @@ export default function ListingDetailPage({ listingId, onNavigate }) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  padding: '12px'
+                  padding: '10px',
+                  fontSize: '13px'
                 }}
               >
-                <i className="fas fa-phone-alt"></i> Call TradeCall Desk
+                <i className="fas fa-headset"></i> Call TradeCall Desk
               </a>
 
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', fontSize: '12px', color: '#94a3b8', textAlign: 'center' }}>
@@ -447,6 +616,22 @@ export default function ListingDetailPage({ listingId, onNavigate }) {
           </div>
         </div>
       </div>
+
+      {/* Phase 2 Modals */}
+      <ContactRevealModal
+        isOpen={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+        contactData={contactData}
+        listingTitle={listing?.title}
+      />
+
+      <PlansModal
+        isOpen={plansModalOpen}
+        onClose={() => setPlansModalOpen(false)}
+        onSuccess={() => {
+          handleContactOwner();
+        }}
+      />
     </div>
   );
 }

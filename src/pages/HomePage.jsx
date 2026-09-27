@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import api, { getImageUrl } from '../services/api';
+import api, { getImageUrl, getWishlist, toggleWishlist } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const ALL_CITIES = [
   'Ahmedabad', 'Agra', 'Ajmer', 'Aligarh', 'Ambala', 'Amritsar', 'Aurangabad',
@@ -61,10 +62,50 @@ export const getFirstImageUrl = (listing) => {
   return '/placeholder-property.svg';
 };
 
-export default function HomePage({ activeCity, onCitySelect, onNavigate }) {
+export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }) {
+  const { user } = useAuth();
   const [listings, setListings] = useState([]);
+  const [wishlistIds, setWishlistIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Load wishlist IDs when authenticated
+  useEffect(() => {
+    if (user) {
+      getWishlist(true)
+        .then((res) => {
+          if (Array.isArray(res.data?.data)) {
+            setWishlistIds(new Set(res.data.data));
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load wishlist IDs', err);
+        });
+    } else {
+      setWishlistIds(new Set());
+    }
+  }, [user]);
+
+  const handleToggleWishlist = async (e, listingId) => {
+    e.stopPropagation();
+    if (!user) {
+      if (onOpenAuth) onOpenAuth();
+      else alert('Please sign in to save properties to your wishlist.');
+      return;
+    }
+    try {
+      const res = await toggleWishlist(listingId);
+      const action = res.data?.data?.action;
+      setWishlistIds((prev) => {
+        const next = new Set(prev);
+        if (action === 'added') next.add(listingId);
+        else next.delete(listingId);
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to toggle wishlist:', err);
+    }
+  };
 
   // Search & filter state
   const [heroCity, setHeroCity] = useState(activeCity || '');
@@ -851,6 +892,33 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate }) {
                         >
                           {propType}
                         </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleWishlist(e, listing.id)}
+                          title={wishlistIds.has(listing.id) ? 'Remove from Wishlist' : 'Save to Wishlist'}
+                          style={{
+                            position: 'absolute',
+                            top: '12px',
+                            right: '12px',
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '50%',
+                            background: '#fff',
+                            border: 'none',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: wishlistIds.has(listing.id) ? '#dc2626' : '#9ca3af',
+                            fontSize: '15px',
+                            zIndex: 2,
+                            transition: 'transform 0.15s ease'
+                          }}
+                        >
+                          <i className={wishlistIds.has(listing.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+                        </button>
                       </div>
 
                       <div className="card-body" style={{ flex: 1 }}>

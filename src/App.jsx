@@ -65,6 +65,7 @@ export default function App() {
             activeCity={activeCity}
             onCitySelect={setActiveCity}
             onNavigate={navigateTo}
+            onOpenAuth={() => setAuthModalOpen(true)}
           />
         )}
 
@@ -72,6 +73,7 @@ export default function App() {
           <ListingDetailPage
             listingId={selectedListingId}
             onNavigate={navigateTo}
+            onOpenAuth={() => setAuthModalOpen(true)}
           />
         )}
 

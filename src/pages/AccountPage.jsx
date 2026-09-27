@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from './HomePage';
+import PlansModal from '../components/PlansModal';
 
 export default function AccountPage({ onNavigate, onOpenAuth }) {
   const { user, refreshUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'my-listings' | 'password'
+  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'my-listings' | 'wishlist' | 'password'
+  const [plansModalOpen, setPlansModalOpen] = useState(false);
 
   // Profile Edit State
   const [name, setName] = useState('');
@@ -24,6 +26,10 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
   // My Listings State
   const [myListings, setMyListings] = useState([]);
   const [listingsLoading, setListingsLoading] = useState(false);
+
+  // Wishlist State
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -49,9 +55,35 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
     }
   };
 
+  const fetchWishlist = async () => {
+    if (!user) return;
+    setWishlistLoading(true);
+    try {
+      const res = await getWishlist(false);
+      if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
+        setWishlistItems(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching wishlist:', err);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleRemoveWishlist = async (listingId) => {
+    try {
+      await toggleWishlist(listingId);
+      setWishlistItems((prev) => prev.filter((item) => item.id !== listingId));
+    } catch (err) {
+      console.error('Failed to remove item from wishlist:', err);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'my-listings') {
       fetchMyListings();
+    } else if (activeTab === 'wishlist') {
+      fetchWishlist();
     }
   }, [activeTab, user]);
 
@@ -158,28 +190,41 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
               <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#111827', margin: '0 0 6px 0' }}>
                 {user.name}
               </h1>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '13px', color: '#6b7280' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '13px', color: '#6b7280', alignItems: 'center' }}>
                 <span><i className="fas fa-envelope"></i> {user.email}</span>
                 {user.phone && <span><i className="fas fa-phone"></i> {user.phone}</span>}
                 <span style={{ background: '#f0faf6', color: '#0c6253', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
                   {user.role}
                 </span>
+                <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                  <i className="fas fa-bolt" style={{ marginRight: '4px' }}></i> Leads Remaining: {user.leads_balance ?? 0}
+                </span>
               </div>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => onNavigate('post-listing')}
-            style={{ padding: '10px 20px', fontSize: '14px' }}
-          >
-            <i className="fas fa-plus"></i> Post New Property
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => setPlansModalOpen(true)}
+              style={{ padding: '10px 18px', fontSize: '14px', borderColor: '#0c6253', color: '#0c6253', fontWeight: 700 }}
+            >
+              <i className="fas fa-sparkles" style={{ marginRight: '6px' }}></i> Buy Leads / Plans
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => onNavigate('post-listing')}
+              style={{ padding: '10px 20px', fontSize: '14px' }}
+            >
+              <i className="fas fa-plus"></i> Post New Property
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className={`btn-outline ${activeTab === 'profile' ? 'active' : ''}`}
@@ -203,6 +248,18 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
             }}
           >
             <i className="fas fa-list"></i> My Listings ({myListings.length})
+          </button>
+          <button
+            type="button"
+            className={`btn-outline ${activeTab === 'wishlist' ? 'active' : ''}`}
+            onClick={() => setActiveTab('wishlist')}
+            style={{
+              background: activeTab === 'wishlist' ? '#0c6253' : '#fff',
+              color: activeTab === 'wishlist' ? '#fff' : '#374151',
+              borderColor: activeTab === 'wishlist' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-heart" style={{ color: activeTab === 'wishlist' ? '#fff' : '#dc2626' }}></i> Wishlist ({wishlistItems.length})
           </button>
           <button
             type="button"
@@ -408,6 +465,107 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
           </div>
         )}
 
+        {/* TAB: My Wishlist */}
+        {activeTab === 'wishlist' && (
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', color: '#111827' }}>
+              My Saved Properties ({wishlistItems.length})
+            </h2>
+
+            {wishlistLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
+                <div>Loading your saved properties...</div>
+              </div>
+            ) : wishlistItems.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
+                <i className="fas fa-heart-broken fa-3x" style={{ color: '#cbd5e1', marginBottom: '14px' }}></i>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                  No properties saved to your wishlist yet.
+                </div>
+                <p style={{ margin: '0 0 16px', fontSize: '14px' }}>
+                  Explore verified listings and click the heart icon to save properties you like.
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => onNavigate('home')}
+                >
+                  Browse Properties
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {wishlistItems.map((item) => {
+                  const imgSrc = getFirstImageUrl(item);
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '16px',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        flexWrap: 'wrap',
+                        gap: '16px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <img
+                          src={imgSrc}
+                          alt={item.title}
+                          style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/placeholder-property.svg';
+                          }}
+                        />
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                            <span style={{ fontWeight: 800, color: '#0c6253', fontSize: '16px' }}>
+                              {formatListingPrice(item.price)}
+                            </span>
+                            <span style={{ fontSize: '11px', background: '#f0faf6', color: '#0c6253', padding: '2px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
+                              {item.form_data?.propType || 'Property'}
+                            </span>
+                          </div>
+                          <div style={{ fontWeight: 700, color: '#111827', fontSize: '15px' }}>
+                            {item.title}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            <i className="fas fa-map-marker-alt"></i> {item.location}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          style={{ padding: '8px 16px', fontSize: '13px' }}
+                          onClick={() => onNavigate('listing-detail', item.id)}
+                        >
+                          <i className="fas fa-eye"></i> View Details
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-outline"
+                          style={{ padding: '8px 14px', fontSize: '13px', color: '#dc2626', borderColor: '#fca5a5' }}
+                          onClick={() => handleRemoveWishlist(item.id)}
+                        >
+                          <i className="fas fa-heart-broken"></i> Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 3: Change Password */}
         {activeTab === 'password' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', maxWidth: '560px' }}>
@@ -477,6 +635,12 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
           </div>
         )}
       </div>
+
+      <PlansModal
+        isOpen={plansModalOpen}
+        onClose={() => setPlansModalOpen(false)}
+        onSuccess={() => refreshUser()}
+      />
     </div>
   );
 }

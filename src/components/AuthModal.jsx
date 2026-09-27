@@ -159,9 +159,9 @@ export default function AuthModal({ isOpen, onClose }) {
                 onChange={(e) => setRegRole(e.target.value)}
                 style={{ width: '100%', padding: '9px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
               >
-                <option value="Owner">Property Owner</option>
-                <option value="Agent">Real Estate Agent</option>
-                <option value="Builder">Builder / Developer</option>
+                <option value="Owner">Owner</option>
+                <option value="Agent">Agent</option>
+                <option value="Builder">Builder</option>
               </select>
             </div>
 
