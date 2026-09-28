@@ -14,6 +14,7 @@ import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import BlogPage from './pages/BlogPage';
 import BlogDetailPage from './pages/BlogDetailPage';
+import LoginPage from './pages/LoginPage';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
@@ -47,7 +48,8 @@ export default function App() {
         'advertise',
         'terms',
         'privacy',
-        'blog'
+        'blog',
+        'login'
       ].includes(hash)) {
         setActivePage(hash);
       } else {
@@ -76,6 +78,16 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Render login page completely standalone (no header/footer)
+  if (activePage === 'login') {
+    return (
+      <LoginPage
+        onNavigate={navigateTo}
+        onLoginSuccess={() => navigateTo('home')}
+      />
+    );
+  }
+
   return (
     <div className="tradecall-app" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header
@@ -83,7 +95,7 @@ export default function App() {
         onCitySelect={setActiveCity}
         onNavigate={navigateTo}
         activePage={activePage}
-        onOpenAuth={() => setAuthModalOpen(true)}
+        onOpenAuth={() => navigateTo('login')}
       />
 
       <main style={{ flex: 1 }}>
@@ -92,7 +104,7 @@ export default function App() {
             activeCity={activeCity}
             onCitySelect={setActiveCity}
             onNavigate={navigateTo}
-            onOpenAuth={() => setAuthModalOpen(true)}
+            onOpenAuth={() => navigateTo('login')}
           />
         )}
 
@@ -100,21 +112,21 @@ export default function App() {
           <ListingDetailPage
             listingId={selectedListingId}
             onNavigate={navigateTo}
-            onOpenAuth={() => setAuthModalOpen(true)}
+            onOpenAuth={() => navigateTo('login')}
           />
         )}
 
         {activePage === 'post-listing' && (
           <PostListingPage
             onNavigate={navigateTo}
-            onOpenAuth={() => setAuthModalOpen(true)}
+            onOpenAuth={() => navigateTo('login')}
           />
         )}
 
         {activePage === 'account' && (
           <AccountPage
             onNavigate={navigateTo}
-            onOpenAuth={() => setAuthModalOpen(true)}
+            onOpenAuth={() => navigateTo('login')}
           />
         )}
 
@@ -139,7 +151,7 @@ export default function App() {
         {activePage === 'advertise' && (
           <AdvertisePage
             onNavigate={navigateTo}
-            onOpenAuth={() => setAuthModalOpen(true)}
+            onOpenAuth={() => navigateTo('login')}
           />
         )}
 
@@ -167,6 +179,7 @@ export default function App() {
             onNavigate={navigateTo}
           />
         )}
+
       </main>
 
       <Footer
