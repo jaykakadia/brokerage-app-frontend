@@ -27,8 +27,8 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
   }, []);
 
-  const login = async (email, password) => {
-    const res = await api.post('/api/v1/auth/login', { email, password });
+  const login = async (email, password, remember_me = false) => {
+    const res = await api.post('/api/v1/auth/login', { email, password, remember_me });
     if (res.data?.csrf_token) {
       setCsrfToken(res.data.csrf_token);
     }

@@ -214,7 +214,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     if (!siEmail || !siPass) return showError('Enter email and password.');
     setLoading(true); setError('');
     try {
-      await login(siEmail, siPass);
+      await login(siEmail, siPass, remember);
       onLoginSuccess?.();
       onNavigate?.('home');
     } catch (err) {
