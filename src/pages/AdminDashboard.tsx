@@ -764,18 +764,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     e.preventDefault();
     setBlogSaving(true);
     try {
-      const fd = new FormData();
-      if (blogForm.id) fd.append('id', String(blogForm.id));
-      fd.append('title', blogForm.title);
-      fd.append('category', blogForm.category);
-      fd.append('content', blogForm.content);
-      if (blogForm.permalink) fd.append('permalink', blogForm.permalink);
-      if (blogForm.tags) fd.append('tags', blogForm.tags);
-      fd.append('status', blogForm.status);
-      if (blogForm.featured_image) {
-        fd.append('featured_image', blogForm.featured_image);
-      }
-      await saveAdminBlog(fd);
+      await saveAdminBlog({
+        id: blogForm.id || undefined,
+        title: blogForm.title,
+        category: blogForm.category,
+        content: blogForm.content,
+        permalink: blogForm.permalink || undefined,
+        tags: blogForm.tags || undefined,
+        status: blogForm.status
+      });
       showToast(blogForm.id ? 'Blog updated successfully!' : 'Blog created successfully!');
       setBlogModalOpen(false);
       fetchBlogs();

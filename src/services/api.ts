@@ -188,18 +188,20 @@ export const getBlogDetail = (slugOrId: string | number): Promise<AxiosResponse<
   api.get(`/api/v1/blogs/detail/${slugOrId}`);
 
 export const getAdminBlogs = (): Promise<AxiosResponse<ApiResponse<Blog[]>>> =>
-  api.get('/api/v1/admin/blogs/all');
+  api.get('/api/v1/blogs/admin/all');
 
 export const getAdminBlog = (id: number | string): Promise<AxiosResponse<ApiResponse<Blog>>> =>
-  api.get(`/api/v1/admin/blogs/${id}`);
+  api.get(`/api/v1/blogs/admin/${id}`);
 
-export const saveAdminBlog = (formData: FormData): Promise<AxiosResponse<ApiResponse<Blog>>> =>
-  api.post('/api/v1/admin/blogs', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+export const saveAdminBlog = (
+  payload: Pick<Blog, 'title' | 'category' | 'content'> & Partial<Pick<Blog, 'permalink' | 'tags' | 'status' | 'author' | 'image_url'>> & { id?: number }
+): Promise<AxiosResponse<ApiResponse<Blog>>> =>
+  api.post('/api/v1/blogs/admin', payload, {
+    params: payload.id ? { blog_id: payload.id } : undefined
   });
 
 export const deleteAdminBlog = (id: number | string): Promise<AxiosResponse<MessageResponse>> =>
-  api.delete(`/api/v1/admin/blogs/${id}`);
+  api.delete(`/api/v1/blogs/admin/${id}`);
 
 // Mail Configuration (SMTP)
 export const getMailSettings = (): Promise<AxiosResponse<ApiResponse<MailSettings>>> =>

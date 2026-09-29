@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { isCanonicalRole, type CanonicalRole, type Listing, type ApiResponse, type NavigateFunction } from '../types';
+import { isCanonicalRole, type CanonicalRole, type Category, type Listing, type ApiResponse, type NavigateFunction } from '../types';
 
 export interface PostListingPageProps {
   onNavigate: NavigateFunction;
@@ -18,6 +18,8 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
   // Form Fields
   const [title, setTitle] = useState('');
   const [propType, setPropType] = useState('flat');
+  const [listingCategory, setListingCategory] = useState('');
+  const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
   const [listingType, setListingType] = useState('sale');
   const [price, setPrice] = useState('');
   const [priceNegotiable, setPriceNegotiable] = useState(false);
@@ -55,6 +57,19 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
         }
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    api.get<ApiResponse<Category[]>>('/api/v1/categories')
+      .then((res) => {
+        const rows = res.data?.data;
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        setCategoryOptions(rows);
+        setListingCategory((current) => current || rows[0].name);
+      })
+      .catch(() => {
+        setCategoryOptions([]);
+      });
   }, []);
 
   // Prefill user name & role
@@ -125,6 +140,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
       const fullLocation = locality ? `${locality}, ${city}` : city;
       const formDataObj = {
         propType,
+        category: listingCategory,
         listingType,
         priceNegotiable,
         bhk,
@@ -295,7 +311,21 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
               </div>
 
               <div className="form-group">
-                <label>Property Category <span className="req">*</span></label>
+                <label>Category <span className="req">*</span></label>
+                <select
+                  value={listingCategory}
+                  onChange={(e) => setListingCategory(e.target.value)}
+                  required
+                >
+                  {categoryOptions.length === 0 && <option value="">No categories yet</option>}
+                  {categoryOptions.map((item) => (
+                    <option key={item.id} value={item.name}>{item.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Property Type <span className="req">*</span></label>
                 <select value={propType} onChange={(e) => setPropType(e.target.value)}>
                   <option value="flat">Flat / Apartment</option>
                   <option value="house">House / Villa / Kothi</option>
