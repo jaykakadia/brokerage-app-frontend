@@ -55,9 +55,10 @@ export interface BusinessListingFormProps {
   cities: CityOption[];
   refCodes: RefCodeItem[];
   onSuccess: (listing: Listing) => void;
+  onStepChange?: (step: number) => void;
 }
 
-export default function BusinessListingForm({ cities, refCodes, onSuccess }: BusinessListingFormProps) {
+export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange }: BusinessListingFormProps) {
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<BusinessFormState>(EMPTY_BUSINESS);
@@ -72,6 +73,10 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess }: Bus
   useEffect(() => {
     setCodes(refCodes);
   }, [refCodes]);
+
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
 
   useEffect(() => {
     if (!user) return;

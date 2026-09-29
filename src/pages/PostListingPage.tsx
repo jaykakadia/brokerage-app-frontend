@@ -27,6 +27,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
   const { user } = useAuth();
   const [role, setRole] = useState<ListingRole | ''>('');
   const [step, setStep] = useState<1 | 2>(1);
+  const [businessStep, setBusinessStep] = useState(1);
   const [form, setForm] = useState<PropertyFormState>(EMPTY_PROPERTY_FORM);
   const [cities, setCities] = useState<CityOption[]>(FALLBACK_CITIES);
   const [refCodes, setRefCodes] = useState<RefCodeItem[]>([]);
@@ -221,11 +222,14 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
             <label>Select Role</label>
             <select
               required
+              disabled={(role === 'business' ? businessStep : step) > 1}
+              title={(role === 'business' ? businessStep : step) > 1 ? 'Role can only be changed on the first step' : undefined}
               value={role}
               onChange={(e) => {
                 const next = e.target.value as ListingRole;
                 setRole(next);
                 setStep(1);
+                setBusinessStep(1);
                 setError(null);
                 if (next === 'buyer') {
                   setForm((current) => ({
@@ -241,7 +245,16 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
                   }));
                 }
               }}
-              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #d1d5db', fontFamily: 'inherit', background: '#fff' }}
+              style={{
+                width: '100%',
+                padding: 10,
+                borderRadius: 8,
+                border: '1px solid #d1d5db',
+                fontFamily: 'inherit',
+                background: '#fff',
+                opacity: (role === 'business' ? businessStep : step) > 1 ? 0.7 : 1,
+                cursor: (role === 'business' ? businessStep : step) > 1 ? 'not-allowed' : 'pointer'
+              }}
             >
               <option value="" disabled>Select Role</option>
               <option value="business">Business Owner</option>
@@ -276,6 +289,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
               cities={cities}
               refCodes={refCodes}
               onSuccess={setSuccessListing}
+              onStepChange={setBusinessStep}
             />
           )}
         </div>
