@@ -60,6 +60,9 @@
 
 .listing-form { }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.coord-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.coord-row .form-group { min-width: 0; margin-bottom: 0; }
+.coord-row input { width: 100%; min-width: 0; box-sizing: border-box; }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .form-group.full { margin-bottom: 16px; }
 .form-group label { font-size: 13px; font-weight: 600; color: #374151; }

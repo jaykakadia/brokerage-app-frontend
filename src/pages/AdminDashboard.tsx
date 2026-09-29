@@ -20,6 +20,7 @@ import api, {
   getApiErrorMessage
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import { formatListingPrice } from './HomePage';
 import {
   Listing,
@@ -142,10 +143,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [newCatName, setNewCatName] = useState<string>('');
-  const [newCatSlug, setNewCatSlug] = useState<string>('');
   const [newCatDesc, setNewCatDesc] = useState<string>('');
-  const [newCatIcon, setNewCatIcon] = useState<string>('fas fa-building');
   const [catSaving, setCatSaving] = useState<boolean>(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState<boolean>(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editingCategoryListings, setEditingCategoryListings] = useState<number>(0);
 
   // === USERS MODULE STATE ===
   const [usersList, setUsersList] = useState<User[]>([]);
@@ -332,6 +334,36 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const handleAddFromMap = async (place: MapPlace): Promise<void> => {
+    const alreadyListed = locations.some(
+      (item) => item.city_name.trim().toLowerCase() === place.cityName.trim().toLowerCase()
+    );
+    setNewCityName(place.cityName);
+    setNewState(place.stateName || newState);
+    setNewLat(String(place.latitude));
+    setNewLng(String(place.longitude));
+    if (alreadyListed) {
+      showToast(`${place.cityName} is already in the city list`, 'error');
+      return;
+    }
+    setLocSaving(true);
+    try {
+      await api.post('/api/v1/locations', {
+        city_name: place.cityName,
+        state: place.stateName || newState.trim(),
+        category: newLocCategory,
+        latitude: place.latitude,
+        longitude: place.longitude
+      });
+      showToast(`${place.cityName} added to the city list`);
+      fetchLocations();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to add location', 'error');
+    } finally {
+      setLocSaving(false);
+    }
+  };
+
   const handleDeleteLocation = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this location?')) return;
     try {
@@ -358,24 +390,48 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const openCategoryModal = (category?: Category): void => {
+    if (category) {
+      setEditingCategoryId(category.id);
+      setNewCatName(category.name);
+      setNewCatDesc(category.description || '');
+      setEditingCategoryListings(category.total_listings ?? 0);
+    } else {
+      setEditingCategoryId(null);
+      setNewCatName('');
+      setNewCatDesc('');
+      setEditingCategoryListings(0);
+    }
+    setCategoryModalOpen(true);
+  };
+
+  const closeCategoryModal = (): void => {
+    setCategoryModalOpen(false);
+    setEditingCategoryId(null);
+  };
+
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName.trim() || !newCatSlug.trim()) return;
+    if (!newCatName.trim()) return;
     setCatSaving(true);
     try {
-      await api.post('/api/v1/categories', {
+      const payload = {
         name: newCatName.trim(),
-        slug: newCatSlug.trim(),
-        description: newCatDesc.trim() || null,
-        icon_class: newCatIcon.trim() || null
-      });
-      showToast(`Category '${newCatName}' created successfully!`);
+        description: newCatDesc.trim() || null
+      };
+      if (editingCategoryId) {
+        await api.put(`/api/v1/categories/${editingCategoryId}`, payload);
+        showToast(`Category '${newCatName}' updated`);
+      } else {
+        await api.post('/api/v1/categories', payload);
+        showToast(`Category '${newCatName}' created successfully!`);
+      }
+      closeCategoryModal();
       setNewCatName('');
-      setNewCatSlug('');
       setNewCatDesc('');
       fetchCategories();
     } catch (err: unknown) {
-      showToast(getApiErrorMessage(err) || 'Failed to add category', 'error');
+      showToast(getApiErrorMessage(err) || 'Failed to save category', 'error');
     } finally {
       setCatSaving(false);
     }
@@ -1269,7 +1325,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </select>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row coord-row">
                   <div className="form-group">
                     <label>Latitude</label>
                     <input
@@ -1303,6 +1359,16 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </form>
             </div>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 }}>
+              <LocationMapPreview
+                cityName={newCityName}
+                stateName={newState}
+                latitude={newLat}
+                longitude={newLng}
+                adding={locSaving}
+                onAddPlace={(place) => void handleAddFromMap(place)}
+              />
+
             {/* Locations List */}
             <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#111827' }}>
@@ -1324,7 +1390,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       <th style={{ padding: '10px' }}>City Name</th>
                       <th style={{ padding: '10px' }}>State</th>
                       <th style={{ padding: '10px' }}>Category</th>
-                      <th style={{ padding: '10px', textAlign: 'right' }}>Action</th>
+                      <th style={{ padding: '10px', width: '88px', textAlign: 'center' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1333,11 +1399,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <td style={{ padding: '10px', fontWeight: 700 }}>{loc.city_name}</td>
                         <td style={{ padding: '10px', color: '#6b7280' }}>{loc.state || 'Haryana'}</td>
                         <td style={{ padding: '10px', textTransform: 'capitalize' }}>{loc.category || 'city'}</td>
-                        <td style={{ padding: '10px', textAlign: 'right' }}>
+                        <td style={{ padding: '10px', width: '88px', textAlign: 'center', verticalAlign: 'middle' }}>
                           <button
                             type="button"
                             className="btn-outline"
-                            style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
+                            style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5', display: 'inline-flex' }}
                             onClick={() => handleDeleteLocation(loc.id)}
                           >
                             <i className="fas fa-trash"></i>
@@ -1349,6 +1415,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </table>
               )}
             </div>
+            </div>
           </div>
         )}
 
@@ -1356,118 +1423,196 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {/* MODULE 3: CATEGORY MANAGEMENT */}
         {/* ======================================================== */}
         {activeModule === 'categories' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '24px', alignItems: 'start' }}>
-            {/* Add Category Form */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#111827' }}>
-                Add New Category
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '18px' }}>
+              <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                Category Management
               </h2>
-
-              <form onSubmit={handleAddCategory}>
-                <div className="form-group full">
-                  <label>Category Name <span className="req">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Warehouse / Godown"
-                    value={newCatName}
-                    onChange={(e) => {
-                      setNewCatName(e.target.value);
-                      setNewCatSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-                    }}
-                    required
-                  />
-                </div>
-
-                <div className="form-group full">
-                  <label>Slug <span className="req">*</span></label>
-                  <input
-                    type="text"
-                    placeholder="e.g. warehouse-godown"
-                    value={newCatSlug}
-                    onChange={(e) => setNewCatSlug(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group full">
-                  <label>FontAwesome Icon Class</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. fas fa-warehouse"
-                    value={newCatIcon}
-                    onChange={(e) => setNewCatIcon(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group full">
-                  <label>Description</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Brief description of properties in this category"
-                    value={newCatDesc}
-                    onChange={(e) => setNewCatDesc(e.target.value)}
-                  ></textarea>
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ width: '100%', marginTop: '16px' }}
-                  disabled={catSaving}
-                >
-                  {catSaving ? 'Saving Category...' : 'Create Category'}
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={() => openCategoryModal()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#16a34a',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 16px',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                <i className="fas fa-plus"></i> Add New Category
+              </button>
             </div>
 
-            {/* Categories List */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#111827' }}>
-                Existing Categories ({categories.length})
-              </h2>
-
-              {categoriesLoading ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  <i className="fas fa-spinner fa-spin"></i> Loading categories...
-                </div>
-              ) : categories.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  No categories found. Add your first category!
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '10px' }}>Icon</th>
-                      <th style={{ padding: '10px' }}>Category Name</th>
-                      <th style={{ padding: '10px' }}>Slug</th>
-                      <th style={{ padding: '10px', textAlign: 'right' }}>Action</th>
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '8px 8px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left', color: '#6b7280', letterSpacing: '0.04em' }}>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>CATEGORY ID</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>CATEGORY NAME</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>DESCRIPTION</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700, textAlign: 'center' }}>TOTAL LISTINGS</th>
+                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categoriesLoading ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>
+                        <i className="fas fa-spinner fa-spin"></i> Loading categories...
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {categories.map((cat) => (
+                  ) : categories.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>
+                        No categories found. Add your first category.
+                      </td>
+                    </tr>
+                  ) : (
+                    categories.map((cat) => (
                       <tr key={cat.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '10px', color: '#0c6253' }}>
-                          <i className={cat.icon_class || 'fas fa-tag'}></i>
+                        <td style={{ padding: '16px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                          #CAT-{String(cat.id).padStart(2, '0')}
                         </td>
-                        <td style={{ padding: '10px', fontWeight: 700 }}>{cat.name}</td>
-                        <td style={{ padding: '10px', color: '#6b7280' }}>{cat.slug}</td>
-                        <td style={{ padding: '10px', textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            className="btn-outline"
-                            style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
-                            onClick={() => handleDeleteCategory(cat.id)}
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
+                        <td style={{ padding: '16px', fontWeight: 700, color: '#0c6253', maxWidth: '220px' }}>{cat.name}</td>
+                        <td style={{ padding: '16px', color: '#4b5563', maxWidth: '360px' }}>{cat.description || '-'}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', color: '#111827' }}>{cat.total_listings ?? 0}</td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                            <button
+                              type="button"
+                              onClick={() => openCategoryModal(cat)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid #e5e7eb',
+                                background: '#fff',
+                                color: '#374151',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <i className="fas fa-pen"></i> Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCategory(cat.id)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid #fecaca',
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <i className="fas fa-trash"></i> Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {categoryModalOpen && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(17, 24, 39, 0.45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 80,
+                  padding: '20px'
+                }}
+                onClick={closeCategoryModal}
+              >
+                <div
+                  style={{
+                    background: '#fff',
+                    width: '100%',
+                    maxWidth: '460px',
+                    borderRadius: '16px',
+                    padding: '28px 24px 24px',
+                    position: 'relative',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.18)'
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={closeCategoryModal}
+                    aria-label="Close"
+                    style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '16px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#6b7280',
+                      fontSize: '18px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                  <h2 style={{ margin: '0 0 18px', fontSize: '22px', fontWeight: 800, color: '#111827' }}>
+                    {editingCategoryId ? 'Edit Category' : 'Add Category'}
+                  </h2>
+                  <form onSubmit={handleAddCategory}>
+                    <div className="form-group full">
+                      <label>Category Name <span className="req">*</span></label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Interior Designer"
+                        value={newCatName}
+                        onChange={(e) => setNewCatName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group full">
+                      <label>Description</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Category description..."
+                        value={newCatDesc}
+                        onChange={(e) => setNewCatDesc(e.target.value)}
+                      ></textarea>
+                    </div>
+                    <div className="form-group full">
+                      <label>Total Listings</label>
+                      <input type="number" value={editingCategoryListings} readOnly style={{ background: '#f3f4f6' }} />
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{ width: '100%', marginTop: '8px' }}
+                      disabled={catSaving}
+                    >
+                      {catSaving ? 'Saving Category...' : 'Save Category'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
