@@ -76,9 +76,9 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
                 href="/admin"
                 className={`nav-item ${activePage === 'admin' ? 'active' : ''}`}
                 onClick={(e) => { e.preventDefault(); onNavigate('admin'); }}
-                style={{ color: '#0c6253', fontWeight: 'bold' }}
               >
-                <i className="fas fa-shield-alt"></i> Admin Panel
+                <i className="fas fa-shield-alt" aria-hidden="true"></i>
+                Admin Panel
               </a>
             )}
           </nav>

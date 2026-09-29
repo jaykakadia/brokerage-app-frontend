@@ -166,8 +166,8 @@ const ROLES: { value: CanonicalRole; icon: string; title: string; sub: string }[
 ];
 
 export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSuccess }: LoginPageProps) {
-  const { login, register } = useAuth();
-  const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>(initialTab);
+  const { login, register, bootstrapAdmin } = useAuth();
+  const [tab, setTab] = useState<'signin' | 'register' | 'forgot' | 'setup'>(initialTab);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -230,7 +230,20 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
 
   const showError   = (msg: string): void => { setError(msg); setSuccess(''); };
   const showSuccess = (msg: string): void => { setSuccess(msg); setError(''); };
-  const switchTab   = (t: 'signin' | 'register' | 'forgot'): void => { setTab(t); setError(''); setSuccess(''); };
+  const switchTab   = (t: 'signin' | 'register' | 'forgot' | 'setup'): void => { setTab(t); setError(''); setSuccess(''); };
+
+  const [needsAdmin, setNeedsAdmin] = useState(false);
+  const [admName, setAdmName] = useState('');
+  const [admPhone, setAdmPhone] = useState('');
+  const [admEmail, setAdmEmail] = useState('');
+  const [admPass, setAdmPass] = useState('');
+  const [admConfirm, setAdmConfirm] = useState('');
+
+  useEffect(() => {
+    api.get<{ needs_admin?: boolean }>('/api/v1/auth/admin-setup')
+      .then((res) => setNeedsAdmin(Boolean(res.data?.needs_admin)))
+      .catch(() => setNeedsAdmin(false));
+  }, []);
 
   // ── Sign In ──
   const handleSignIn = async (e: React.FormEvent): Promise<void> => {
@@ -241,8 +254,12 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     }
     setLoading(true); setError('');
     try {
-      await login(siEmail, siPass, remember);
+      const session = await login(siEmail, siPass, remember);
       showToast('Login successful', 'success', 'Welcome');
+      if (session.user?.role?.toLowerCase() === 'admin') {
+        onNavigate?.('admin');
+        return;
+      }
       onLoginSuccess?.();
       onNavigate?.('home');
     } catch (err: unknown) {
@@ -338,6 +355,38 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     } finally { setLoading(false); }
   };
 
+  const handleBootstrapAdmin = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!admName || !admPhone || !admEmail || !admPass) {
+      return showError('Fill in name, mobile, email, and password.');
+    }
+    if (admPass.length < 8) {
+      return showError('Admin password must be at least 8 characters.');
+    }
+    if (admPass !== admConfirm) {
+      return showError('Passwords do not match.');
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await bootstrapAdmin({
+        name: admName,
+        phone: admPhone,
+        email: admEmail,
+        password: admPass,
+        confirm_password: admConfirm,
+        role: 'Admin'
+      });
+      setNeedsAdmin(false);
+      showToast('Admin account created', 'success', 'Welcome');
+      onNavigate?.('admin');
+    } catch (err: unknown) {
+      showError(getApiErrorMessage(err, 'Could not create the admin account.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="tc-login-root">
       <style>{CSS}</style>
@@ -401,7 +450,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
           <div className="login-form-box">
 
             {/* Tabs (hidden on forgot) */}
-            {tab !== 'forgot' && (
+            {tab !== 'forgot' && tab !== 'setup' && (
               <div className="auth-tabs" id="authTabs">
                 <button className={`auth-tab${tab === 'signin' ? ' active' : ''}`} onClick={() => switchTab('signin')}>Sign In</button>
                 <button className={`auth-tab${tab === 'register' ? ' active' : ''}`} onClick={() => switchTab('register')}>Create Account</button>
@@ -446,6 +495,57 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                 </form>
                 <div className="create-acc">
                   Don't have an account? <button onClick={() => switchTab('register')}>Create one free</button>
+                </div>
+                {needsAdmin && (
+                  <div className="create-acc">
+                    Need the admin panel? <button type="button" onClick={() => switchTab('setup')}>Create the first admin</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tab === 'setup' && (
+              <div id="adminSetupPanel">
+                <div className="lf-heading">Create the first admin</div>
+                <div className="lf-sub">This form closes once an admin account exists. Later admins are added from User Management.</div>
+                <form onSubmit={(e) => void handleBootstrapAdmin(e)}>
+                  <div className="form-group">
+                    <label>Name</label>
+                    <input type="text" placeholder="Enter your full name" required
+                      value={admName} onChange={(e) => setAdmName(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Mobile No</label>
+                    <input
+                      type="tel"
+                      placeholder="10 digit mobile number"
+                      required
+                      maxLength={10}
+                      value={admPhone}
+                      onChange={(e) => setAdmPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="admin@tradecall.in" required
+                      value={admEmail} onChange={(e) => setAdmEmail(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Password</label>
+                    <input type="password" placeholder="At least 8 characters" required minLength={8}
+                      value={admPass} onChange={(e) => setAdmPass(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" placeholder="Re-enter password" required
+                      value={admConfirm} onChange={(e) => setAdmConfirm(e.target.value)} />
+                  </div>
+                  <button type="submit" className="btn-signin" disabled={loading}>
+                    {loading ? 'Creating admin…' : 'Create admin and sign in'}
+                  </button>
+                </form>
+                <div className="create-acc">
+                  <button type="button" onClick={() => switchTab('signin')}>Back to Sign In</button>
                 </div>
               </div>
             )}

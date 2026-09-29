@@ -109,7 +109,7 @@ type AdminModule =
   | 'razorpay';
 
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [activeModule, setActiveModule] = useState<AdminModule>('listings');
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -844,8 +844,17 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   }, [activeModule, listingTab]);
 
-  // Auth gate: Admin only
-  if (!user || user.role?.toLowerCase() !== 'admin') {
+  useEffect(() => {
+    if (!authLoading && !user) {
+      onNavigate('admin-login');
+    }
+  }, [authLoading, user, onNavigate]);
+
+  if (authLoading || !user) {
+    return null;
+  }
+
+  if (user.role?.toLowerCase() !== 'admin') {
     return (
       <div style={{ background: '#f4f6f9', minHeight: '65vh', padding: '60px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ background: '#fff', borderRadius: '20px', padding: '48px 40px', maxWidth: '440px', width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.08)' }}>

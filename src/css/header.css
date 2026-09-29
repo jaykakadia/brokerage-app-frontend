@@ -113,6 +113,7 @@
   background: none;
   border: none;
   letter-spacing: -0.1px;
+  gap: 6px;
 }
 .nav-item:hover { background: #f1f5f9; color: #0c6253; }
 .nav-item.active {

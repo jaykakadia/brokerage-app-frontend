@@ -15,6 +15,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import BlogPage from './pages/BlogPage';
 import BlogDetailPage from './pages/BlogDetailPage';
 import LoginPage from './pages/LoginPage';
+import AdminLoginPage from './pages/AdminLoginPage';
 import { parseAppRoute, getListingUrl } from './utils/url';
 import type { NavigateFunction } from './types';
 
@@ -139,6 +140,10 @@ export default function App() {
         onLoginSuccess={() => navigateTo('home')}
       />
     );
+  }
+
+  if (activePage === 'admin-login') {
+    return <AdminLoginPage onNavigate={navigateTo} />;
   }
 
   return (

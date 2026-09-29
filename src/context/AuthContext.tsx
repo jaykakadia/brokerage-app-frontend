@@ -7,6 +7,7 @@ export interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string, remember_me?: boolean) => Promise<AuthResponse>;
   register: (userData: RegisterRequest) => Promise<AuthResponse>;
+  bootstrapAdmin: (userData: RegisterRequest) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -67,6 +68,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return res.data;
   };
 
+  const bootstrapAdmin = async (userData: RegisterRequest): Promise<AuthResponse> => {
+    const res = await api.post<AuthResponse>('/api/v1/auth/bootstrap-admin', userData);
+    if (res.data?.csrf_token) {
+      setCsrfToken(res.data.csrf_token);
+    }
+    if (res.data?.user) {
+      setUser(res.data.user);
+    } else {
+      await fetchCurrentUser();
+    }
+    return res.data;
+  };
+
   const logout = async (): Promise<void> => {
     try {
       await api.post('/api/v1/auth/logout');
@@ -77,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser: fetchCurrentUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, bootstrapAdmin, logout, refreshUser: fetchCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );
