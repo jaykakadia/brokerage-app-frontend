@@ -1,83 +1,120 @@
 # TradeCall India — Frontend Application
 
-Modern React + Vite frontend application re-engineering the **TradeCall India** real estate and property directory portal with full visual and workflow fidelity to the original platform.
+# TradeCall India | Frontend
 
-## Technology Stack
+<div align="center">
 
-- **Framework**: React 18
-- **Build Tool**: Vite
-- **HTTP Client**: Axios with automatic CSRF token interception and `withCredentials: true` for secure cookie-based sessions
-- **Styling**: Modular CSS preserving original color tokens, gradients, cards, and responsive layouts
-- **Typography & Icons**: `Plus Jakarta Sans` Google Font and `FontAwesome 6.5.0`
+### Find a place. Make your next move.
 
----
+React application for browsing, publishing, and managing property listings on TradeCall India.
 
-## Features & Modules
+![React 18](https://img.shields.io/badge/React-18-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white)
+![License](https://img.shields.io/badge/license-proprietary-lightgrey)
 
-### 1. Public Portal & Property Search
-- **Home Page (`#home`)**: Hero search bar (city, category, keyword), quick city chips (Palwal, Faridabad, Gurugram, Sonipat, Hodal, Delhi), budget range filtering, and responsive listing card grid.
-- **Listing Details (`#listing/:id`)**: High-resolution image gallery, property specifications (BHK, carpet area, facing, floor, furnishings, amenities), owner contact card with Lead Reveal integration, and direct WhatsApp enquiry CTA.
-- **Post Free Listing (`#post-listing`)**: Step-by-step submission wizard, photo uploader with drag-and-drop client thumbnails and instant removal, dynamic amenities checklist, and Field Associate reference code lookup.
+</div>
 
-### 2. Buyer Engagement & Monetization
-- **Wishlist / Shortlist**: Interactive bookmarking with optimistic button updates, accessible from listing cards, detail pages, and the user Account dashboard.
-- **Lead Reveal Engine**: Blurred seller contact information unlocked via paid lead credits with real-time balance updates.
-- **Plans & Pricing (`#advertise`)**: Pricing tiers (Free, Boosted, Premium, Enterprise) with feature checklists, "Most Popular" highlight ribbon, and custom enterprise plan WhatsApp CTA.
-- **Razorpay Checkout**: Integrated payment flow with server-side order generation and signature verification.
+## Contents
 
-### 3. User Account Dashboard (`#account`)
-- **Profile Overview**: In-place name, email, and phone number updates with OTP verification.
-- **Password Security**: Current password validation and new password assignment.
-- **My Listings**: Table of user-posted properties with live moderation status badges, edit listing modal, and delete actions.
-- **Leads & Subscription**: Real-time display of remaining lead credits, consumed leads, and active plan expiry date.
-- **Shortlisted Properties**: Fast grid view of all bookmarked listings.
+- [Overview](#overview)
+- [Features](#features)
+- [Technology](#technology)
+- [Requirements](#requirements)
+- [Run Locally](#run-locally)
+- [Configuration](#configuration)
+- [Routes](#routes)
+- [Validation](#validation)
+- [Production](#production)
+- [Related Project](#related-project)
 
-### 4. Admin Management Center (`#admin`)
-- **Listings Moderation**: Tabbed moderation queue (`Pending`, `Approved`, `Sold`, `Rented`, `Suspended`, `Deleted`) with instant status transitions.
-- **Location & Category Controls**: Add and manage supported cities, localities, and property categories.
-- **User Accounts & Role Limits**: Manage registered users and configure max listing allowances per role (`Owner`, `Agent`, `Builder`).
-- **Plan Management**: Create, edit, and activate lead packages and membership durations.
-- **Field Associates (`tracker`)**: Associate roster, real-time tracked listing counts, and Add/Edit Associate modal with automated 6-character reference code generator.
-- **Blog Management (`blogs`)**: Article authoring with image uploads, draft/published status toggling, and slug permalinks.
-- **System Settings (`settings`)**: Administrative credentials update, dynamic SMTP configuration (host, port, user, password, SSL/TLS) with password visibility toggle, Send Test Email trigger, and Razorpay API key management.
+## Overview
 
-### 5. Content & Legal Pages
-- **About Us (`#about`)**: Company background, impact statistics counters (500+ listings, 16 cities, 100% direct owners), and regional coverage cards.
-- **Contact Us (`#contact`)**: Office location, direct contact emails, interactive enquiry form, and WhatsApp chat launcher.
-- **Blog Feed & Reader (`#blog`, `#blog/:slug`)**: Multi-category article feed (All, Buy, Rent, Invest) with read-time indicators, tags, and full article view.
-- **Terms of Use (`#terms`)**: Six-section legal agreement governing platform use.
-- **Privacy Policy (`#privacy`)**: Data collection, cookie disclosures, and privacy policies.
-- **Persistent WhatsApp CTA**: Floating button (`wa.me/919992292828`) available across all public views.
+TradeCall India is a responsive real-estate directory experience backed by the TradeCall API. The frontend supports public property discovery, authenticated customer workflows, and administrative tools. It uses clean path-based URLs and retains compatibility with selected legacy hash routes.
 
----
+## Features
 
-## Getting Started
+- Browse and filter approved listings by location, category, keyword, and budget; view listing photos and property details.
+- Submit property or business listings through a multi-step form with photo selection and Field Associate reference-code lookup.
+- Register and sign in, manage account details and listings, save properties to a wishlist, and review plan and lead balances.
+- Reveal seller contact details using lead credits and purchase plans through the Razorpay checkout integration.
+- Administer listing moderation, users, categories, locations, role limits, plans, Field Associates, and blog content.
+- Configure SMTP and Razorpay settings in the admin interface and send a test email.
+- Read public blogs and company/legal pages, contact TradeCall, or open the WhatsApp contact link.
 
-### 1. Install Dependencies
+## Technology
+
+| Area    | Tools                                               |
+| ------- | --------------------------------------------------- |
+| UI      | React 18, TypeScript, Vite 6                        |
+| HTTP    | Axios; cookie credentials and CSRF header handling  |
+| Styling | Project CSS in `src/css/`                           |
+| Routing | History API and route helpers in `src/utils/url.ts` |
+
+## Requirements
+
+- Node.js and npm (a current Node.js LTS release is recommended)
+- A running TradeCall backend (see the [backend README](../brokerage-app-backend/README.md))
+
+## Run Locally
+
+From this directory:
+
 ```bash
 npm install
 ```
 
-### 2. Environment Configuration
-Create a `.env` file in the root of `brokerage-app-frontend`:
-```ini
+Create a local `.env` file and set the backend URL:
+
+```dotenv
 VITE_API_URL=http://localhost:8000
 ```
-*(In development, requests to `/api` and `/uploads` are automatically proxied to `http://localhost:8000` via Vite configuration).*
 
-### 3. Run Development Server
+Start the development server:
+
 ```bash
 npm run dev
 ```
-The application will launch at `http://localhost:5173`.
 
-### 4. Production Build
+Open [http://localhost:5173](http://localhost:5173). Configure the backend's `ALLOWED_ORIGINS` to include `http://localhost:5173`; the API client sends requests directly to `VITE_API_URL` and uses credentialed cookies.
+
+## Configuration
+
+| Variable        | Purpose                                     | Default                 |
+| --------------- | ------------------------------------------- | ----------------------- |
+| `VITE_API_URL`  | Base URL for API calls and uploaded media   | `http://localhost:8000` |
+| `VITE_APP_NAME` | Application name for frontend configuration | `TradeCall India`       |
+
+Vite environment variables are embedded into the client bundle at build time. Do not put secrets in `VITE_*` variables. For production, set `VITE_API_URL` to the reachable HTTPS API origin and configure backend CORS and cookie settings for the deployed site.
+
+## Routes
+
+| Path                             | View                                |
+| -------------------------------- | ----------------------------------- |
+| `/home`                          | Property search and listings        |
+| `/listing/:id`                   | Listing details                     |
+| `/post-listing`                  | Listing submission                  |
+| `/login`, `/register`            | Sign in and registration            |
+| `/account`                       | Customer account                    |
+| `/admin-login`, `/admin`         | Admin sign-in and dashboard         |
+| `/advertise`                     | Plans and pricing                   |
+| `/blog`, `/blog/:slug`           | Blog feed and article               |
+| `/about`, `/contact`, `/privacy` | Company, contact, and privacy pages |
+| `/Terms-of-use-tradecall-India`  | Terms of use                        |
+
+## Validation
+
 ```bash
+npm run typecheck
 npm run build
 ```
-Generates an optimized production bundle in the `dist/` directory.
 
-### 5. Preview Production Build
-```bash
-npm run preview
-```
+The build script type-checks the application and creates the optimized static bundle in `dist/`. There is currently no frontend test or lint script in `package.json`.
+
+## Production
+
+Build with `npm run build` and deploy the `dist/` directory to a static host. The included Vercel rewrite sends application paths to `index.html`, which is required for direct visits to client-side routes. Set `VITE_API_URL` at build time and ensure the backend allows the deployed origin.
+
+## Related Project
+
+- [TradeCall Backend API](../brokerage-app-backend/README.md)
