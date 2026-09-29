@@ -3,7 +3,22 @@ import api, { getWishlist, toggleWishlist, getApiErrorMessage } from '../service
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
-import type { Listing, MessageResponse, NavigateFunction } from '../types';
+import EditProfileModal from '../components/EditProfileModal';
+import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
+
+function formatPlanExpiry(value?: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function isPlanExpired(value?: string | null): boolean {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() <= Date.now();
+}
 
 export interface AccountPageProps {
   onNavigate: NavigateFunction;
@@ -15,12 +30,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
 
   const [activeTab, setActiveTab] = useState<'profile' | 'my-listings' | 'wishlist' | 'password'>('profile');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
-
-  // Profile Edit State
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Password Change State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -36,13 +46,35 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
   // Wishlist State
   const [wishlistItems, setWishlistItems] = useState<Listing[]>([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [planName, setPlanName] = useState<string | null>(null);
+  const [planNameReady, setPlanNameReady] = useState(false);
+
+  const openEdit = (): void => {
+    setEditModalOpen(true);
+  };
 
   useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setPhone(user.phone || '');
+    if (!user?.plan_id) {
+      setPlanName(null);
+      setPlanNameReady(true);
+      return;
     }
-  }, [user]);
+    setPlanNameReady(false);
+    let cancelled = false;
+    api.get<{ status: string; data: Plan }>(`/api/v1/plans/${user.plan_id}`)
+      .then((res) => {
+        if (!cancelled) setPlanName(res.data?.data?.name || null);
+      })
+      .catch(() => {
+        if (!cancelled) setPlanName(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPlanNameReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.plan_id]);
 
   const fetchMyListings = async (): Promise<void> => {
     if (!user) return;
@@ -93,24 +125,6 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
       void fetchWishlist();
     }
   }, [activeTab, user]);
-
-  const handleUpdateProfile = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setProfileMsg(null);
-    setProfileLoading(true);
-    try {
-      const res = await api.put<MessageResponse>('/api/v1/users/profile', {
-        name: name.trim(),
-        phone: phone.trim()
-      });
-      setProfileMsg({ type: 'success', text: res.data?.message || 'Profile updated successfully.' });
-      await refreshUser();
-    } catch (err: unknown) {
-      setProfileMsg({ type: 'error', text: getApiErrorMessage(err, 'Failed to update profile.') });
-    } finally {
-      setProfileLoading(false);
-    }
-  };
 
   const handleChangePassword = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -173,7 +187,8 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
     <div style={{ background: '#f4f6f9', minHeight: '80vh', padding: '40px 15px' }}>
       <div className="container" style={{ maxWidth: '960px', margin: '0 auto' }}>
         {/* Account Header Card */}
-        <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
             <div
               style={{
@@ -201,14 +216,20 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                 <span style={{ background: '#f0faf6', color: '#0c6253', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
                   {user.role}
                 </span>
-                <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                  <i className="fas fa-bolt" style={{ marginRight: '4px' }}></i> Leads Remaining: {user.leads_balance ?? 0}
-                </span>
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={openEdit}
+              style={{ padding: '10px 18px', fontSize: '14px', fontWeight: 700 }}
+            >
+              <i className="fas fa-pen" style={{ marginRight: '6px' }}></i>
+              Edit
+            </button>
             <button
               type="button"
               className="btn-outline"
@@ -226,6 +247,45 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
               <i className="fas fa-plus"></i> Post New Property
             </button>
           </div>
+          </div>
+
+          <div style={{ marginTop: '22px', borderTop: '1px solid #eef2f6' }}>
+            {([
+              {
+                label: 'Current Plan',
+                value: !user.plan_id
+                  ? 'No Plan'
+                  : `${planName || (planNameReady ? 'Plan' : '…')}${isPlanExpired(user.plan_expires_at) ? ' (Expired)' : ''}`,
+                tone: user.plan_id && !isPlanExpired(user.plan_expires_at) ? '#0c6253' : '#111827'
+              },
+              {
+                label: 'Leads',
+                value: `${user.leads_balance ?? 0} remaining${(user.leads_balance ?? 0) === 0 ? ' — purchase a plan' : ''}`,
+                tone: (user.leads_balance ?? 0) > 0 ? '#047857' : '#6b7280'
+              },
+              {
+                label: 'Plan Expiry',
+                value: user.plan_id ? formatPlanExpiry(user.plan_expires_at) : '—',
+                tone: user.plan_id && isPlanExpired(user.plan_expires_at) ? '#b91c1c' : '#111827'
+              }
+            ] as const).map((row) => (
+              <div
+                key={row.label}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '14px 4px',
+                  borderBottom: '1px solid #f3f4f6',
+                  fontSize: '14px'
+                }}
+              >
+                <span style={{ color: '#6b7280', fontWeight: 600 }}>{row.label}</span>
+                <span style={{ color: row.tone, fontWeight: 700, textAlign: 'right' }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Navigation Tabs */}
@@ -233,7 +293,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
           <button
             type="button"
             className={`btn-outline ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => setActiveTab('profile')}
+            onClick={() => { setActiveTab('profile'); openEdit(); }}
             style={{
               background: activeTab === 'profile' ? '#0c6253' : '#fff',
               color: activeTab === 'profile' ? '#fff' : '#374151',
@@ -283,67 +343,26 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
         {/* TAB 1: Profile Edit */}
         {activeTab === 'profile' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', color: '#111827' }}>
-              Profile Details
-            </h2>
-
-            {profileMsg && (
-              <div
-                style={{
-                  background: profileMsg.type === 'success' ? '#f0faf6' : '#fef2f2',
-                  border: `1px solid ${profileMsg.type === 'success' ? '#c6f2e2' : '#fecaca'}`,
-                  color: profileMsg.type === 'success' ? '#0c6253' : '#b91c1c',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  marginBottom: '20px',
-                  fontSize: '14px'
-                }}
-              >
-                {profileMsg.text}
-              </div>
-            )}
-
-            <form onSubmit={handleUpdateProfile}>
-              <div className="form-group full">
-                <label>Full Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group full">
-                <label>Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="10-digit mobile number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group full">
-                <label>Email Address (read-only)</label>
-                <input
-                  type="email"
-                  value={user.email}
-                  disabled
-                  style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn-primary"
-                style={{ marginTop: '16px' }}
-                disabled={profileLoading}
-              >
-                {profileLoading ? 'Saving...' : 'Save Profile Changes'}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12 }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#111827' }}>
+                Profile Details
+              </h2>
+              <button type="button" className="btn-outline" onClick={openEdit}>
+                <i className="fas fa-pen"></i> Edit
               </button>
-            </form>
+            </div>
+            <div className="form-group full">
+              <label>Client Name</label>
+              <input type="text" value={user.name} readOnly style={{ background: '#f8fafc' }} />
+            </div>
+            <div className="form-group full">
+              <label>Mobile No</label>
+              <input type="text" value={user.phone || ''} readOnly style={{ background: '#f8fafc' }} />
+            </div>
+            <div className="form-group full">
+              <label>Email ID</label>
+              <input type="email" value={user.email} readOnly style={{ background: '#f8fafc' }} />
+            </div>
           </div>
         )}
 
@@ -646,6 +665,12 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
         isOpen={plansModalOpen}
         onClose={() => setPlansModalOpen(false)}
         onSuccess={() => void refreshUser()}
+      />
+      <EditProfileModal
+        isOpen={editModalOpen}
+        user={user}
+        onClose={() => setEditModalOpen(false)}
+        onSaved={refreshUser}
       />
     </div>
   );
