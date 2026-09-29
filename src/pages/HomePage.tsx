@@ -485,8 +485,23 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     const marked = listings.filter((l) => l.is_featured || l.form_data?.featured || l.form_data?.is_featured);
     if (marked.length > 0) return marked;
     if (listings.length > 0) return listings.slice(0, 8);
-    return DEFAULT_FEATURED_LISTINGS;
+    return [];
   }, [listings]);
+
+  const citiesFromListings = useMemo(() => {
+    const cities = new Set<string>();
+    listings.forEach((item) => {
+      const raw = item.form_data?.city ? String(item.form_data.city) : item.location;
+      if (!raw) return;
+      const city = raw.split(',')[0].trim();
+      if (city) cities.add(city.toLowerCase());
+    });
+    return cities.size;
+  }, [listings]);
+
+  const activeListingsCount = stats?.active_listings ?? listings.length;
+  const featuredCount = stats?.featured_listings ?? featuredListings.length;
+  const citiesCoveredCount = stats?.cities_covered ?? citiesFromListings;
 
   // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
   const circularListings = useMemo(() => {
@@ -852,29 +867,28 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             <div className="metric-item">
               <span className="metric-icon"><i className="fas fa-list-ul"></i></span>
               <div>
-                <span className="metric-num">{stats?.active_listings || listings.length || 61}</span>
-                <span className="metric-plus">+</span>
+                <span className="metric-num">{activeListingsCount}</span>
                 <div className="metric-label">Active Listings</div>
               </div>
             </div>
             <div className="metric-item">
               <span className="metric-icon"><i className="fas fa-star" style={{ color: 'rgb(245, 158, 11)' }}></i></span>
               <div>
-                <span className="metric-num">{stats?.featured_listings || featuredListings.length || 4}</span>
+                <span className="metric-num">{featuredCount}</span>
                 <div className="metric-label">Featured Listings</div>
               </div>
             </div>
             <div className="metric-item">
               <span className="metric-icon"><i className="fas fa-map-marker-alt"></i></span>
               <div>
-                <span className="metric-num">{stats?.cities_covered || 16}</span>
+                <span className="metric-num">{citiesCoveredCount}</span>
                 <div className="metric-label">Cities Covered</div>
               </div>
             </div>
             <div className="metric-item">
               <span className="metric-icon"><i className="fas fa-chart-line"></i></span>
               <div>
-                <span className="metric-num">{newTodayCount || 0}</span>
+                <span className="metric-num">{newTodayCount}</span>
                 <div className="metric-label">New Today</div>
               </div>
             </div>
@@ -913,6 +927,11 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </button>
             )}
 
+            {featuredListings.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', width: '100%' }}>
+                No featured listings yet
+              </div>
+            ) : (
             <div
               className="carousel-track"
               id="carouselTrack"
@@ -997,6 +1016,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 );
               })}
             </div>
+            )}
 
             {featuredListings.length > 1 && (
               <button
