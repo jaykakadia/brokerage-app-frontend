@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
@@ -15,16 +15,14 @@ import PrivacyPage from './pages/PrivacyPage';
 import BlogPage from './pages/BlogPage';
 import BlogDetailPage from './pages/BlogDetailPage';
 import LoginPage from './pages/LoginPage';
-import { useAuth } from './context/AuthContext';
+import type { NavigateFunction } from './types';
 
 export default function App() {
-  const { user } = useAuth();
-
-  const [activePage, setActivePage] = useState('home');
-  const [selectedListingId, setSelectedListingId] = useState(null);
-  const [selectedBlogId, setSelectedBlogId] = useState(null);
-  const [activeCity, setActiveCity] = useState('');
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [activePage, setActivePage] = useState<string>('home');
+  const [selectedListingId, setSelectedListingId] = useState<string | number | null>(null);
+  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
+  const [activeCity, setActiveCity] = useState<string>('');
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
 
   // Sync hash routing
   useEffect(() => {
@@ -62,15 +60,21 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const navigateTo = (page, param = null) => {
+  const navigateTo: NavigateFunction = (page, param = null) => {
     if (page === 'listing-detail' && param) {
-      setSelectedListingId(param);
+      const id = typeof param === 'object' ? null : param;
+      setSelectedListingId(id);
       setActivePage('listing-detail');
-      window.location.hash = `listing/${param}`;
+      if (id !== null) {
+        window.location.hash = `listing/${id}`;
+      }
     } else if (page === 'blog-detail' && param) {
-      setSelectedBlogId(param);
+      const slug = typeof param === 'object' ? null : String(param);
+      setSelectedBlogId(slug);
       setActivePage('blog-detail');
-      window.location.hash = `blog/${param}`;
+      if (slug !== null) {
+        window.location.hash = `blog/${slug}`;
+      }
     } else {
       setActivePage(page);
       window.location.hash = page;
@@ -183,7 +187,7 @@ export default function App() {
       </main>
 
       <Footer
-        onCitySelect={(city) => {
+        onCitySelect={(city: string) => {
           setActiveCity(city);
           navigateTo('home');
         }}
