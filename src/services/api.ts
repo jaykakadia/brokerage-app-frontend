@@ -165,7 +165,7 @@ export const saveRoleLimits = (limits: RoleLimitsMap | { limits: RoleLimitsMap }
   return api.post('/api/v1/admin/role-limits', payload);
 };
 
-// Field Associates / Employees
+// Business Associates / Employees
 export const getEmployees = (): Promise<AxiosResponse<ApiResponse<Employee[]>>> =>
   api.get('/api/v1/employees');
 

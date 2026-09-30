@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { FloatField, FloatSelect } from './fields';
+import { FloatField, FloatSelect, RefCodeSearch } from './fields';
 import { digitsOnly, stateForCity, type CityOption } from './propertyForm';
 import type { ApiResponse, Category, Listing, RefCodeItem } from '../../types';
+
+interface SelectedCategory {
+  id: string;
+  name: string;
+}
 
 interface BusinessFormState {
   name: string;
@@ -22,8 +27,7 @@ interface BusinessFormState {
   whatsapp: string;
   sameAsMobile: boolean;
   email: string;
-  categoryId: string;
-  categoryName: string;
+  selectedCategories: SelectedCategory[];
   categorySearch: string;
   description: string;
 }
@@ -45,11 +49,16 @@ const EMPTY_BUSINESS: BusinessFormState = {
   whatsapp: '',
   sameAsMobile: true,
   email: '',
-  categoryId: '',
-  categoryName: '',
+  selectedCategories: [],
   categorySearch: '',
   description: ''
 };
+
+// Fields reused from the user's last business listing (not description, photos or ref code)
+const REUSABLE_FIELDS = [
+  'name', 'pincode', 'plot', 'building', 'street', 'landmark', 'area', 'city', 'state',
+  'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email'
+] as const satisfies ReadonlyArray<keyof BusinessFormState>;
 
 export interface BusinessListingFormProps {
   cities: CityOption[];
@@ -69,6 +78,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [prefilledFromLast, setPrefilledFromLast] = useState(false);
 
   useEffect(() => {
     setCodes(refCodes);
@@ -83,12 +93,58 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
     const mobile = digitsOnly(user.phone || '', 10);
     setForm((current) => ({
       ...current,
+      name: current.name || user.name || '',
       person: current.person || user.name || '',
       mobile: current.mobile || mobile,
       whatsapp: current.whatsapp || (current.sameAsMobile ? (current.mobile || mobile) : ''),
       email: current.email || user.email || ''
     }));
   }, [user]);
+
+  // Pre-fill business name, address, category and contact from the user's most recent business listing
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    api.get<ApiResponse<Listing[]>>('/api/v1/listings', { params: { user_id: user.id, status: 'all' } })
+      .then((res) => {
+        const last = (res.data?.data || []).find((item) => (item.form_data as { kind?: string } | null)?.kind === 'business');
+        const saved = last?.form_data as Partial<BusinessFormState> | undefined;
+        if (cancelled || !saved) return;
+        setForm((current) => {
+          const next = { ...current };
+          for (const key of REUSABLE_FIELDS) {
+            const value = saved[key];
+            if (value === undefined || value === null || value === '') continue;
+            // Only fill fields the user hasn't typed into yet (business name may still hold the profile name)
+            const untouched = current[key] === '' || current[key] === EMPTY_BUSINESS[key] || (key === 'name' && current.name === user.name);
+            if (key === 'sameAsMobile' || untouched) {
+              (next as Record<string, unknown>)[key] = value;
+            }
+          }
+          if (next.city && !next.state) next.state = stateForCity(next.city, cities);
+          if (current.selectedCategories.length === 0) {
+            // Older listings saved a single categoryId / categoryName
+            const legacy = saved as { categoryId?: string; categoryName?: string };
+            const savedCats = Array.isArray(saved.selectedCategories) && saved.selectedCategories.length > 0
+              ? saved.selectedCategories
+              : legacy.categoryName ? [{ id: legacy.categoryId || '', name: legacy.categoryName }] : [];
+            next.selectedCategories = savedCats;
+          }
+          return next;
+        });
+        setPrefilledFromLast(true);
+      })
+      .catch(() => {/* no previous listing -> keep profile defaults */});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const clearPrefill = () => {
+    const mobile = digitsOnly(user?.phone || '', 10);
+    setForm({ ...EMPTY_BUSINESS, name: user?.name || '', person: user?.name || '', mobile, whatsapp: mobile, email: user?.email || '' });
+    setPrefilledFromLast(false);
+    setError(null);
+  };
 
   useEffect(() => {
     api.get<ApiResponse<Category[]>>('/api/v1/categories')
@@ -111,9 +167,24 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
   const suggestions = useMemo(() => {
     const query = form.categorySearch.trim().toLowerCase();
-    if (!query) return categories.slice(0, 8);
-    return categories.filter((item) => item.name.toLowerCase().includes(query)).slice(0, 8);
-  }, [categories, form.categorySearch]);
+    const chosen = new Set(form.selectedCategories.map((c) => c.name.toLowerCase()));
+    const available = categories.filter((item) => !chosen.has(item.name.toLowerCase()));
+    if (!query) return available.slice(0, 8);
+    return available.filter((item) => item.name.toLowerCase().includes(query)).slice(0, 8);
+  }, [categories, form.categorySearch, form.selectedCategories]);
+
+  const addCategory = (item: Category) => {
+    patch({
+      selectedCategories: [...form.selectedCategories, { id: String(item.id), name: item.name }],
+      categorySearch: ''
+    });
+  };
+
+  const removeCategory = (name: string) => {
+    patch({ selectedCategories: form.selectedCategories.filter((c) => c.name !== name) });
+  };
+
+  const categoryNames = form.selectedCategories.map((c) => c.name).join(', ');
 
   const continueFrom = (next: 2 | 3 | 4) => {
     if (step === 1) {
@@ -127,7 +198,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       if (!/^\d{10}$/.test(form.mobile)) return setError('Enter a valid 10-digit Mobile Number');
       if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Enter a valid Email Address');
     }
-    if (step === 3 && !form.categoryName.trim()) return setError('Search and select a Business Category');
+    if (step === 3 && form.selectedCategories.length === 0) return setError('Search and select at least one Business Category');
     setError(null);
     setStep(next);
   };
@@ -175,7 +246,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       .join(', ');
     const description = [
       'Business listing',
-      `Category: ${form.categoryName || '-'}`,
+      `${form.selectedCategories.length > 1 ? 'Categories' : 'Category'}: ${categoryNames || '-'}`,
       `Address: ${address}`,
       `Contact: ${form.person || '-'} / ${form.mobile || '-'} / ${form.email || '-'}`,
       `WhatsApp: ${form.whatsapp || form.mobile || '-'}`,
@@ -193,7 +264,13 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       fd.append('owner_name', form.person.trim() || form.name.trim());
       fd.append('owner_role', 'Owner');
       if (form.refCode.trim()) fd.append('reference_code', form.refCode.trim());
-      fd.append('form_data', JSON.stringify({ kind: 'business', ...form }));
+      fd.append('form_data', JSON.stringify({
+        kind: 'business',
+        ...form,
+        // Kept for older readers that expect a single category
+        categoryId: form.selectedCategories.map((c) => c.id).join(','),
+        categoryName: categoryNames
+      }));
       photos.forEach((photo) => fd.append('photos', photo));
       const res = await api.post<ApiResponse<Listing>>('/api/v1/listings', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -221,6 +298,14 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       {step === 1 && (
         <>
           <div className="bf-heading"><i className="fas fa-store"></i> Enter Your Business Details</div>
+          {prefilledFromLast && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: '#f0faf7', border: '1px solid #bbe5d8', color: '#0c6253', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
+              <span><i className="fas fa-magic" style={{ marginRight: 6 }}></i>Filled from your last business listing. Edit anything that's different.</span>
+              <button type="button" onClick={clearPrefill} style={{ background: 'none', border: 'none', color: '#0c6253', fontWeight: 700, cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+                Start fresh
+              </button>
+            </div>
+          )}
           <FloatField label="Business Name" icon="fas fa-building" required value={form.name} onChange={(name) => patch({ name })} />
           <div style={{ marginTop: 16 }}>
             <FloatField label="Pincode" icon="fas fa-map-pin" required inputMode="numeric" maxLength={6} value={form.pincode} onChange={(value) => patch({ pincode: digitsOnly(value, 6) })} />
@@ -255,7 +340,14 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
                 </select>
               </div>
               <div style={{ flex: 2 }}>
-                <FloatField label="Search Ref Code" value={form.refSearch} onChange={(refSearch) => patch({ refSearch })} />
+                <RefCodeSearch
+                  value={form.refSearch}
+                  onChange={(refSearch) => patch({ refSearch })}
+                  onSelect={(item) => {
+                    setCodes((current) => current.some((c) => c.reference_code === item.reference_code) ? current : [item, ...current]);
+                    patch({ refCode: item.reference_code, refSearch: item.name });
+                  }}
+                />
               </div>
               <button type="button" className="btn-outline" style={{ flex: 1, marginTop: 0, padding: 12 }} onClick={() => { void searchRef(); }}>
                 <i className="fas fa-search"></i> Search
@@ -293,19 +385,42 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
       {step === 3 && (
         <>
-          <div className="bf-heading"><i className="fas fa-tags"></i> Add Business Category</div>
+          <div className="bf-heading"><i className="fas fa-tags"></i> Add Business Categories</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: -4, marginBottom: 10 }}>
+            You can select more than one category.
+          </div>
+          {form.selectedCategories.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {form.selectedCategories.map((cat) => (
+                <span key={cat.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f0faf7', border: '1px solid #0c6253', color: '#0c6253', borderRadius: 999, padding: '6px 8px 6px 14px', fontSize: 13, fontWeight: 600 }}>
+                  {cat.name}
+                  <button type="button" aria-label={`Remove ${cat.name}`} onClick={() => removeCategory(cat.name)}
+                    style={{ background: '#0c6253', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 10 }}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="premium-float cat-search-wrap" style={{ marginTop: 10 }}>
             <input
               type="text"
               placeholder=" "
               value={form.categorySearch}
               onChange={(e) => {
-                patch({ categorySearch: e.target.value, categoryId: '', categoryName: '' });
+                patch({ categorySearch: e.target.value });
                 setShowCategories(true);
               }}
               onFocus={() => setShowCategories(true)}
+              onBlur={() => setTimeout(() => setShowCategories(false), 150)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && suggestions.length > 0) { e.preventDefault(); addCategory(suggestions[0]); }
+                if (e.key === 'Backspace' && !form.categorySearch && form.selectedCategories.length > 0) {
+                  removeCategory(form.selectedCategories[form.selectedCategories.length - 1].name);
+                }
+              }}
             />
-            <label>Search / Select Category <span style={{ color: '#dc2626' }}> *</span></label>
+            <label>{form.selectedCategories.length > 0 ? 'Add another category' : 'Search / Select Category'} <span style={{ color: '#dc2626' }}> *</span></label>
             <i className="fas fa-search field-icon"></i>
             {showCategories ? (
               <div className="cat-suggestions">
@@ -316,12 +431,10 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
                     type="button"
                     key={item.id}
                     className="cat-suggestion-item"
-                    onClick={() => {
-                      patch({ categoryId: String(item.id), categoryName: item.name, categorySearch: item.name });
-                      setShowCategories(false);
-                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addCategory(item)}
                   >
-                    {item.name}
+                    <i className="fas fa-plus" style={{ fontSize: 11, color: '#94a3b8', marginRight: 8 }}></i>{item.name}
                   </button>
                 ))}
               </div>

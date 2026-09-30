@@ -276,6 +276,8 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
               onContinue={continueStep}
               onBack={() => { setStep(1); setError(null); }}
               onSearchRef={() => { void searchRef(); }}
+              onSelectRef={(item) => setRefCodes((current) =>
+                current.some((c) => c.reference_code === item.reference_code) ? current : [item, ...current])}
               onSubmit={() => { void submit(); }}
               photos={photos}
               previews={previews}

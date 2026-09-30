@@ -1,4 +1,4 @@
-import { FloatField, FloatSelect, Pills } from './fields';
+import { FloatField, FloatSelect, Pills, RefCodeSearch } from './fields';
 import {
   digitsOnly,
   formatInr,
@@ -21,6 +21,7 @@ export interface PropertyListingFormProps {
   onContinue: () => void;
   onBack: () => void;
   onSearchRef: () => void;
+  onSelectRef?: (item: RefCodeItem) => void;
   onSubmit: () => void;
   photos: File[];
   previews: string[];
@@ -40,6 +41,7 @@ export default function PropertyListingForm({
   onContinue,
   onBack,
   onSearchRef,
+  onSelectRef,
   onSubmit,
   photos,
   previews,
@@ -152,7 +154,11 @@ export default function PropertyListingForm({
                 </select>
               </div>
               <div style={{ flex: 2 }}>
-                <FloatField label="Search Ref Code" value={form.refSearch} onChange={(refSearch) => onChange({ refSearch })} />
+                <RefCodeSearch
+                  value={form.refSearch}
+                  onChange={(refSearch) => onChange({ refSearch })}
+                  onSelect={(item) => { onSelectRef?.(item); onChange({ refCode: item.reference_code, refSearch: item.name }); }}
+                />
               </div>
               <button type="button" className="btn-outline" style={{ flex: 1, marginTop: 0, padding: 12 }} onClick={onSearchRef}>
                 <i className="fas fa-search"></i> Search

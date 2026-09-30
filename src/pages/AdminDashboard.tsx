@@ -176,7 +176,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   });
   const [planSaving, setPlanSaving] = useState<boolean>(false);
 
-  // === TRACKER / FIELD ASSOCIATES STATE ===
+  // === TRACKER / BUSINESS ASSOCIATES STATE ===
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [employeesLoading, setEmployeesLoading] = useState<boolean>(false);
   const [employeeModalOpen, setEmployeeModalOpen] = useState<boolean>(false);
@@ -650,7 +650,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  // --- FIELD ASSOCIATES (TRACKER) HANDLERS ---
+  // --- BUSINESS ASSOCIATES (TRACKER) HANDLERS ---
   const fetchEmployees = async () => {
     setEmployeesLoading(true);
     try {
@@ -659,7 +659,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         setEmployees(res.data.data);
       }
     } catch {
-      showToast('Failed to load field associates', 'error');
+      showToast('Failed to load business associates', 'error');
     } finally {
       setEmployeesLoading(false);
     }
@@ -701,24 +701,24 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     setEmployeeSaving(true);
     try {
       await saveEmployee(employeeForm);
-      showToast(employeeForm.id ? 'Field associate updated!' : 'Field associate created!');
+      showToast(employeeForm.id ? 'Business associate updated!' : 'Business associate created!');
       setEmployeeModalOpen(false);
       fetchEmployees();
     } catch (err: unknown) {
-      showToast(getApiErrorMessage(err) || 'Failed to save field associate', 'error');
+      showToast(getApiErrorMessage(err) || 'Failed to save business associate', 'error');
     } finally {
       setEmployeeSaving(false);
     }
   };
 
   const handleDeleteEmployee = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this field associate?')) return;
+    if (!window.confirm('Are you sure you want to delete this business associate?')) return;
     try {
       await deleteEmployee(id);
-      showToast('Field associate deleted');
+      showToast('Business associate deleted');
       fetchEmployees();
     } catch (err: unknown) {
-      showToast(getApiErrorMessage(err) || 'Failed to delete field associate', 'error');
+      showToast(getApiErrorMessage(err) || 'Failed to delete business associate', 'error');
     }
   };
 
@@ -1078,7 +1078,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               borderColor: activeModule === 'tracker' ? '#0c6253' : '#d1d5db'
             }}
           >
-            <i className="fas fa-chart-line"></i> Field Associates
+            <i className="fas fa-chart-line"></i> Business Associates
           </button>
 
           <button
@@ -2141,14 +2141,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         )}
 
         {/* ======================================================== */}
-        {/* MODULE 7: FIELD ASSOCIATES (TRACKER) */}
+        {/* MODULE 7: BUSINESS ASSOCIATES (TRACKER) */}
         {/* ======================================================== */}
         {activeModule === 'tracker' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#111827', margin: 0 }}>
-                  Field Associates
+                  Business Associates
                 </h1>
                 <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0 0' }}>
                   Track field agent performance and listings attributed to unique reference codes.
@@ -2160,7 +2160,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 style={{ padding: '10px 20px' }}
                 onClick={() => handleOpenEmployeeModal()}
               >
-                <i className="fas fa-plus"></i> Add Field Associate
+                <i className="fas fa-plus"></i> Add Business Associate
               </button>
             </div>
 
@@ -2194,11 +2194,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               {employeesLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
                   <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
-                  <div>Loading field associates...</div>
+                  <div>Loading business associates...</div>
                 </div>
               ) : employees.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  No field associates found. Click &quot;Add Field Associate&quot; to create one.
+                  No business associates found. Click &quot;Add Business Associate&quot; to create one.
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -2617,7 +2617,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </div>
         )}
 
-        {/* Modal: Add/Edit Field Associate */}
+        {/* Modal: Add/Edit Business Associate */}
         {employeeModalOpen && (
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -2627,7 +2627,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '480px', width: '100%', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  {employeeForm.id ? 'Edit Field Associate' : 'Add New Field Associate'}
+                  {employeeForm.id ? 'Edit Business Associate' : 'Add New Business Associate'}
                 </h3>
                 <button
                   type="button"
