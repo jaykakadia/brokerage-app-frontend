@@ -23,7 +23,8 @@ import type {
   Blog,
   MailSettings,
   MailSettingsUpdate,
-  ToggleWishlistResponse
+  ToggleWishlistResponse,
+  ListingStatsResponse
 } from '../types';
 
 const api: AxiosInstance = axios.create({
@@ -206,5 +207,9 @@ export const saveMailSettings = (settings: MailSettingsUpdate): Promise<AxiosRes
 
 export const sendTestMail = (testEmail: string): Promise<AxiosResponse<MessageResponse>> =>
   api.post('/api/v1/admin/settings/mail/test', { test_email: testEmail });
+
+// Listings Stats
+export const getListingStats = (): Promise<AxiosResponse<ListingStatsResponse>> =>
+  api.get('/api/v1/listings/stats');
 
 export default api;
