@@ -258,8 +258,8 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
             >
               <option value="" disabled>Select Role</option>
               <option value="business">Business Owner</option>
-              <option value="buyer">Buyer / Renter</option>
-              <option value="owner">Property Owner</option>
+              <option value="buyer">Property - Buyer / Renter</option>
+              <option value="owner">Property - Seller / Landlord</option>
             </select>
           </div>
 

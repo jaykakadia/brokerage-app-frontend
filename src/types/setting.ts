@@ -28,3 +28,8 @@ export interface MailSettingsUpdate {
 export interface TestMailRequest {
   test_email: string;
 }
+
+export interface SignupGuideSettings {
+  blog_url: string;
+  video_url: string;
+}

@@ -23,6 +23,7 @@ import type {
   Blog,
   MailSettings,
   MailSettingsUpdate,
+  SignupGuideSettings,
   ToggleWishlistResponse,
   ListingStatsResponse
 } from '../types';
@@ -212,6 +213,16 @@ export const saveMailSettings = (settings: MailSettingsUpdate): Promise<AxiosRes
 
 export const sendTestMail = (testEmail: string): Promise<AxiosResponse<MessageResponse>> =>
   api.post('/api/v1/admin/settings/mail/test', { test_email: testEmail });
+
+// Sign-up guide links (blog + video shown on Create Account)
+export const getSignupGuide = (): Promise<AxiosResponse<ApiResponse<SignupGuideSettings>>> =>
+  api.get('/api/v1/settings/signup-guide');
+
+export const getAdminSignupGuide = (): Promise<AxiosResponse<ApiResponse<SignupGuideSettings>>> =>
+  api.get('/api/v1/admin/settings/signup-guide');
+
+export const saveSignupGuide = (settings: SignupGuideSettings): Promise<AxiosResponse<ApiResponse<SignupGuideSettings>>> =>
+  api.post('/api/v1/admin/settings/signup-guide', settings);
 
 // Listings Stats
 export const getListingStats = (): Promise<AxiosResponse<ListingStatsResponse>> =>

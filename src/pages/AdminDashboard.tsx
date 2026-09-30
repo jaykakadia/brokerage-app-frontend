@@ -17,6 +17,8 @@ import api, {
   getMailSettings,
   saveMailSettings,
   sendTestMail,
+  getAdminSignupGuide,
+  saveSignupGuide,
   getApiErrorMessage
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -215,6 +217,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [smtpLoading, setSmtpLoading] = useState<boolean>(false);
   const [smtpSaving, setSmtpSaving] = useState<boolean>(false);
   const [showSmtpPassword, setShowSmtpPassword] = useState<boolean>(false);
+  const [signupGuide, setSignupGuide] = useState<{ blog_url: string; video_url: string }>({ blog_url: '', video_url: '' });
+  const [signupGuideSaving, setSignupGuideSaving] = useState<boolean>(false);
   const [credForm, setCredForm] = useState<CredFormState>({
     newUsername: '',
     currPassword: '',
@@ -839,6 +843,31 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const fetchSignupGuide = async () => {
+    try {
+      const res = await getAdminSignupGuide();
+      if (res.data?.data) {
+        setSignupGuide({ blog_url: res.data.data.blog_url || '', video_url: res.data.data.video_url || '' });
+      }
+    } catch (err) {
+      console.error('Failed to load sign-up guide links', err);
+    }
+  };
+
+  const handleSaveSignupGuide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupGuideSaving(true);
+    try {
+      await saveSignupGuide({ blog_url: signupGuide.blog_url.trim(), video_url: signupGuide.video_url.trim() });
+      showToast('Sign-up guide links saved!');
+      fetchSignupGuide();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save sign-up guide links', 'error');
+    } finally {
+      setSignupGuideSaving(false);
+    }
+  };
+
   const handleSendTestMail = async () => {
     const testEmail = window.prompt('Where should the test email be sent?', smtpSettings.email || user?.email || '');
     if (!testEmail) return;
@@ -891,6 +920,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       fetchBlogs();
     } else if (activeModule === 'settings') {
       fetchMailSettings();
+      fetchSignupGuide();
       fetchRazorpaySettings();
     } else if (activeModule === 'razorpay') {
       fetchRazorpaySettings();
@@ -2403,6 +2433,53 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   disabled={credSaving}
                 >
                   {credSaving ? <><i className="fas fa-spinner fa-spin"></i> Updating...</> : 'Update Credentials'}
+                </button>
+              </form>
+            </div>
+
+            {/* Sign-up Guide Links Card */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <i className="fas fa-circle-question" style={{ color: '#0c6253', fontSize: '20px' }}></i>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  Sign-up Guide Links
+                </h2>
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
+                Shown on the Create Account screen to help new users sign up. Leave a link blank to hide that button.
+              </p>
+              <form onSubmit={handleSaveSignupGuide}>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    <i className="fas fa-book-open" style={{ marginRight: '6px', color: '#0c6253' }}></i>Blog / Guide Link
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://tradecall.in/blog/how-to-create-account"
+                    value={signupGuide.blog_url}
+                    onChange={(e) => setSignupGuide({ ...signupGuide, blog_url: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                    <i className="fab fa-youtube" style={{ marginRight: '6px', color: '#dc2626' }}></i>Video Link
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://youtu.be/..."
+                    value={signupGuide.video_url}
+                    onChange={(e) => setSignupGuide({ ...signupGuide, video_url: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ width: '100%', padding: '11px', fontSize: '13px' }}
+                  disabled={signupGuideSaving}
+                >
+                  {signupGuideSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Guide Links'}
                 </button>
               </form>
             </div>

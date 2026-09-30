@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api, { getApiErrorMessage } from '../services/api';
+import api, { getApiErrorMessage, getSignupGuide } from '../services/api';
 import type { CanonicalRole, ListingStatsResponse, MessageResponse, NavigateFunction } from '../types';
 
 export interface LoginPageProps {
@@ -109,6 +109,21 @@ const CSS = `
   }
   .btn-send-otp:disabled { opacity:0.6; cursor:not-allowed; }
 
+  /* Sign-up help links */
+  .signup-help { margin-top:18px; padding:14px 16px; border:1.5px dashed #cbd5e1; border-radius:12px; background:#f8fafc; }
+  .signup-help-title { font-size:13px; font-weight:700; color:#1a1a2e; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .signup-help-title i { color:#0c6253; }
+  .signup-help-links { display:flex; gap:10px; flex-wrap:wrap; }
+  .signup-help-link {
+    flex:1; min-width:140px; display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:9px 12px; border-radius:10px; font-size:13px; font-weight:600; font-family:inherit;
+    cursor:pointer; text-decoration:none; transition:all 0.2s;
+  }
+  .signup-help-link.blog { background:#fff; color:#0c6253; border:1px solid #0c6253; }
+  .signup-help-link.blog:hover { background:#f0faf7; }
+  .signup-help-link.video { background:#fff; color:#dc2626; border:1px solid #fca5a5; }
+  .signup-help-link.video:hover { background:#fef2f2; }
+
   /* Role cards */
   .role-selection { margin-bottom:20px; }
   .role-selection-label { display:block; font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:12px; }
@@ -122,9 +137,8 @@ const CSS = `
   .role-card.active { border-color:#0c6253; background:#f0faf7; }
   .role-card i { font-size:18px; color:#374151; margin-bottom:8px; }
   .role-card.active i { color:#0c6253; }
-  .role-card .rc-title { font-size:12px; font-weight:700; color:#111827; margin-bottom:4px; }
+  .role-card .rc-title { font-size:12px; font-weight:700; color:#111827; }
   .role-card.active .rc-title { color:#0c6253; }
-  .role-card .rc-sub { font-size:10px; color:#6b7280; line-height:1.3; }
 
   /* Alerts */
   .tc-alert { padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
@@ -159,10 +173,10 @@ const CSS = `
   @media(max-width:480px) { .role-cards { grid-template-columns:repeat(2,1fr); } }
 `;
 
-const ROLES: { value: CanonicalRole; icon: string; title: string; sub: string }[] = [
-  { value: 'Owner',   icon: 'fa-user',        title: 'Owner',   sub: 'I own the property' },
-  { value: 'Agent',   icon: 'fa-handshake',   title: 'Agent',   sub: 'I represent clients' },
-  { value: 'Builder', icon: 'fa-hard-hat',    title: 'Builder', sub: 'I develop properties' },
+const ROLES: { value: CanonicalRole; icon: string; title: string }[] = [
+  { value: 'Owner',   icon: 'fa-user',        title: 'User' },
+  { value: 'Agent',   icon: 'fa-handshake',   title: 'Agent' },
+  { value: 'Builder', icon: 'fa-hard-hat',    title: 'Builder' },
 ];
 
 export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSuccess }: LoginPageProps) {
@@ -192,11 +206,29 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
       .catch(() => {/* keep static fallback */});
   }, []);
 
+  // Help links for the Create Account tab (set by admin in Settings)
+  const [signupGuide, setSignupGuide] = useState<{ blog_url: string; video_url: string }>({ blog_url: '', video_url: '' });
+
+  useEffect(() => {
+    getSignupGuide()
+      .then(r => { if (r.data?.data) setSignupGuide(r.data.data); })
+      .catch(() => {/* no links -> help box stays hidden */});
+  }, []);
+
   const fmt = (val: number | undefined, fallback: number): number => (val && val >= fallback ? val : fallback);
 
   const [siEmail, setSiEmail] = useState('');
   const [siPass, setSiPass]   = useState('');
   const [siShowPw, setSiShowPw] = useState(false);
+  // Show/hide toggles for the other password fields
+  const [showPw, setShowPw] = useState<Record<string, boolean>>({});
+  const togglePw = (key: string): void => setShowPw(prev => ({ ...prev, [key]: !prev[key] }));
+  const eyeBtn = (key: string) => (
+    <button type="button" className="toggle-eye" onClick={() => togglePw(key)}
+      aria-label={showPw[key] ? 'Hide password' : 'Show password'}>
+      <i className={`fas ${showPw[key] ? 'fa-eye-slash' : 'fa-eye'}`} />
+    </button>
+  );
   const [remember, setRemember] = useState(false);
 
   // Register state
@@ -302,6 +334,14 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     if (!regName) return showError('Enter your full name.');
     if (!regPhone) return showError('Enter your mobile number.');
     if (!regEmail) return showError('Enter your email.');
+    if (!otpSent) {
+      showToast('Send an OTP to your email and enter it to continue', 'error', 'Verify email');
+      return showError('Please verify your email. Click "Send OTP" and enter the code you receive.');
+    }
+    if (!/^\d{6}$/.test(regOtp.trim())) {
+      showToast('Enter the 6-digit OTP sent to your email', 'error', 'OTP required');
+      return showError('Enter the 6-digit OTP sent to your email.');
+    }
     if (regPass.length < 6) {
       showToast('Password must be at least 6 characters', 'error', 'Weak password');
       return showError('Password must be at least 6 characters.');
@@ -316,7 +356,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     }
     setLoading(true); setError('');
     try {
-      await register({ name: regName, phone: regPhone, email: regEmail, password: regPass, role: regRole, otp: regOtp || undefined });
+      await register({ name: regName, phone: regPhone, email: regEmail, password: regPass, role: regRole, otp: regOtp.trim() });
       showToast('Account created successfully!', 'success', 'Welcome');
       onLoginSuccess?.();
       onNavigate?.('home');
@@ -532,13 +572,19 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                   </div>
                   <div className="form-group">
                     <label>Password</label>
-                    <input type="password" placeholder="At least 8 characters" required minLength={8}
-                      value={admPass} onChange={(e) => setAdmPass(e.target.value)} />
+                    <div className="password-wrap">
+                      <input type={showPw.admPass ? 'text' : 'password'} placeholder="At least 8 characters" required minLength={8}
+                        value={admPass} onChange={(e) => setAdmPass(e.target.value)} />
+                      {eyeBtn('admPass')}
+                    </div>
                   </div>
                   <div className="form-group">
                     <label>Confirm Password</label>
-                    <input type="password" placeholder="Re-enter password" required
-                      value={admConfirm} onChange={(e) => setAdmConfirm(e.target.value)} />
+                    <div className="password-wrap">
+                      <input type={showPw.admConfirm ? 'text' : 'password'} placeholder="Re-enter password" required
+                        value={admConfirm} onChange={(e) => setAdmConfirm(e.target.value)} />
+                      {eyeBtn('admConfirm')}
+                    </div>
                   </div>
                   <button type="submit" className="btn-signin" disabled={loading}>
                     {loading ? 'Creating admin…' : 'Create admin and sign in'}
@@ -565,7 +611,6 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                           onClick={() => setRegRole(r.value)}>
                           <i className={`fas ${r.icon}`} />
                           <div className="rc-title">{r.title}</div>
-                          <div className="rc-sub">{r.sub}</div>
                         </div>
                       ))}
                     </div>
@@ -595,7 +640,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     <label>Email ID</label>
                     <div className="send-otp-row">
                       <input type="email" placeholder="yourname@gmail.com" required
-                        value={regEmail} onChange={e => setRegEmail(e.target.value)} />
+                        value={regEmail} onChange={e => { setRegEmail(e.target.value); setOtpSent(false); setRegOtp(''); }} />
                       <button type="button" className="btn-send-otp" id="btnSendRegOtp"
                         onClick={() => void handleSendRegOtp()} disabled={loading}>
                         {otpSent ? 'Resend OTP' : 'Send OTP'}
@@ -605,19 +650,25 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                   {otpSent && (
                     <div className="form-group">
                       <label>Enter OTP</label>
-                      <input className="otp-input" type="text" maxLength={6} placeholder="123456"
-                        value={regOtp} onChange={e => setRegOtp(e.target.value)} />
+                      <input className="otp-input" type="text" inputMode="numeric" maxLength={6} placeholder="123456" required
+                        value={regOtp} onChange={e => setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} />
                     </div>
                   )}
                   <div className="form-group">
                     <label>Password</label>
-                    <input type="password" placeholder="Create password" required minLength={6}
-                      value={regPass} onChange={e => setRegPass(e.target.value)} />
+                    <div className="password-wrap">
+                      <input type={showPw.regPass ? 'text' : 'password'} placeholder="Create password" required minLength={6}
+                        value={regPass} onChange={e => setRegPass(e.target.value)} />
+                      {eyeBtn('regPass')}
+                    </div>
                   </div>
                   <div className="form-group">
                     <label>Confirm Password</label>
-                    <input type="password" placeholder="Re-enter password" required
-                      value={regConfirm} onChange={e => setRegConfirm(e.target.value)} />
+                    <div className="password-wrap">
+                      <input type={showPw.regConfirm ? 'text' : 'password'} placeholder="Re-enter password" required
+                        value={regConfirm} onChange={e => setRegConfirm(e.target.value)} />
+                      {eyeBtn('regConfirm')}
+                    </div>
                   </div>
 
                   {/* Privacy Policy agree — industry standard */}
@@ -650,6 +701,28 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                 <div className="create-acc">
                   Already have an account? <button onClick={() => switchTab('signin')}>Sign In</button>
                 </div>
+
+                {(signupGuide.blog_url || signupGuide.video_url) && (
+                <div className="signup-help">
+                  <div className="signup-help-title">
+                    <i className="fas fa-circle-question" /> Need help creating your account?
+                  </div>
+                  <div className="signup-help-links">
+                    {signupGuide.blog_url && (
+                      <a className="signup-help-link blog" href={signupGuide.blog_url}
+                        target="_blank" rel="noopener noreferrer">
+                        <i className="fas fa-book-open" /> Read the guide
+                      </a>
+                    )}
+                    {signupGuide.video_url && (
+                      <a className="signup-help-link video" href={signupGuide.video_url}
+                        target="_blank" rel="noopener noreferrer">
+                        <i className="fab fa-youtube" /> Watch video
+                      </a>
+                    )}
+                  </div>
+                </div>
+                )}
               </div>
             )}
 
@@ -679,8 +752,9 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     <div className="form-group">
                       <label>New Password</label>
                       <div className="password-wrap">
-                        <input type="password" placeholder="Enter new password" required minLength={6}
+                        <input type={showPw.fgPass ? 'text' : 'password'} placeholder="Enter new password" required minLength={6}
                           value={fgPass} onChange={e => setFgPass(e.target.value)} />
+                        {eyeBtn('fgPass')}
                       </div>
                     </div>
                     <button type="submit" className="btn-signin" disabled={loading}>

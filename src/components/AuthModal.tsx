@@ -45,7 +45,22 @@ export default function AuthModal({
   const [newPassword, setNewPassword] = useState('');
   const [forgotOtpSent, setForgotOtpSent] = useState(false);
 
+  // Show/hide toggles for password fields
+  const [showPw, setShowPw] = useState<Record<string, boolean>>({});
+
   if (!isOpen) return null;
+
+  const togglePw = (key: string): void => setShowPw((prev) => ({ ...prev, [key]: !prev[key] }));
+  const eyeBtn = (key: string) => (
+    <button
+      type="button"
+      onClick={() => togglePw(key)}
+      aria-label={showPw[key] ? 'Hide password' : 'Show password'}
+      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px' }}
+    >
+      <i className={`fas ${showPw[key] ? 'fa-eye-slash' : 'fa-eye'}`} />
+    </button>
+  );
 
   const handleForgotSendOtp = async (): Promise<void> => {
     if (!forgotEmail) {
@@ -133,6 +148,14 @@ export default function AuthModal({
 
   const handleRegister = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
+    if (!otpSent) {
+      setError('Please verify your email. Click "Send OTP" and enter the code you receive.');
+      return;
+    }
+    if (!/^\d{6}$/.test(regOtp.trim())) {
+      setError('Enter the 6-digit OTP sent to your email.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -142,7 +165,7 @@ export default function AuthModal({
         email: regEmail,
         password: regPassword,
         role: regRole,
-        otp: regOtp || undefined
+        otp: regOtp.trim()
       });
       if (onSuccess) onSuccess();
       onClose();
@@ -249,14 +272,17 @@ export default function AuthModal({
                   Forgot Password?
                 </button>
               </div>
-              <input
-                type="password"
-                required
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPw.login ? 'text' : 'password'}
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{ width: '100%', padding: '10px 38px 10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
+                />
+                {eyeBtn('login')}
+              </div>
             </div>
             <button
               type="submit"
@@ -309,15 +335,18 @@ export default function AuthModal({
 
             <div className="form-group" style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>New Password (min 6 chars)</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPw.newPw ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{ width: '100%', padding: '9px 38px 9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
+                />
+                {eyeBtn('newPw')}
+              </div>
             </div>
 
             <button
@@ -347,7 +376,7 @@ export default function AuthModal({
                 }}
                 style={{ width: '100%', padding: '9px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
               >
-                <option value="Owner">Owner</option>
+                <option value="Owner">User</option>
                 <option value="Agent">Agent</option>
                 <option value="Builder">Builder</option>
               </select>
@@ -384,7 +413,7 @@ export default function AuthModal({
                   type="email"
                   required
                   value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
+                  onChange={(e) => { setRegEmail(e.target.value); setOtpSent(false); setRegOtp(''); }}
                   placeholder="name@example.com"
                   style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
                 />
@@ -404,9 +433,11 @@ export default function AuthModal({
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Enter 6-Digit OTP</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   maxLength={6}
+                  required
                   value={regOtp}
-                  onChange={(e) => setRegOtp(e.target.value)}
+                  onChange={(e) => setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="123456"
                   style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px', letterSpacing: '4px', textAlign: 'center', fontWeight: 'bold' }}
                 />
@@ -415,15 +446,18 @@ export default function AuthModal({
 
             <div className="form-group" style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Password (min 6 chars)</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPw.reg ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{ width: '100%', padding: '9px 38px 9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
+                />
+                {eyeBtn('reg')}
+              </div>
             </div>
 
             <button
