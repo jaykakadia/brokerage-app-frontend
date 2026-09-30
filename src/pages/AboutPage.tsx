@@ -1,6 +1,10 @@
-import React from 'react';
+import type { NavigateFunction } from '../types';
 
-export default function AboutPage({ onNavigate }) {
+export interface AboutPageProps {
+  onNavigate?: NavigateFunction;
+}
+
+export default function AboutPage({ onNavigate: _onNavigate }: AboutPageProps) {
   return (
     <div className="about-page">
       <section className="page-hero green-hero" style={{ background: 'linear-gradient(135deg, #0c6253, #14a37a)', color: '#fff', padding: '50px 20px', textAlign: 'center' }}>

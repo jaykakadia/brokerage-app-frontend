@@ -1,6 +1,11 @@
-import React from 'react';
+import type { NavigateFunction } from '../types';
 
-export default function Footer({ onCitySelect, onNavigate }) {
+export interface FooterProps {
+  onCitySelect: (city: string) => void;
+  onNavigate: NavigateFunction;
+}
+
+export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
   return (
     <footer className="footer">
       <div className="container footer-inner">

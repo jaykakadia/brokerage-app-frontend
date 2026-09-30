@@ -1,6 +1,29 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import api, { getImageUrl, getWishlist, toggleWishlist } from '../services/api';
+import api, { getWishlist, toggleWishlist, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
+import type { Listing } from '../types';
+
+export { formatListingPrice, getFirstImageUrl };
+
+export interface HomePageProps {
+  activeCity?: string;
+  onCitySelect?: (city: string) => void;
+  onNavigate: (page: string, params?: Record<string, string> | string | number) => void;
+  onOpenAuth?: () => void;
+}
+
+interface PropertyTypeOption {
+  value: string;
+  label: string;
+  icon: string;
+}
+
+interface BudgetPreset {
+  label: string;
+  min: string;
+  max: string;
+}
 
 const ALL_CITIES = [
   'Ahmedabad', 'Agra', 'Ajmer', 'Aligarh', 'Ambala', 'Amritsar', 'Aurangabad',
@@ -18,7 +41,7 @@ const ALL_CITIES = [
   'Thane', 'Thiruvananthapuram', 'Udaipur', 'Ujjain', 'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam'
 ];
 
-const PROPERTY_TYPES = [
+const PROPERTY_TYPES: PropertyTypeOption[] = [
   { value: '', label: 'All Property Types', icon: 'fa-shapes' },
   { value: 'flat', label: 'Flat / Apartment', icon: 'fa-building' },
   { value: 'house', label: 'House / Villa / Kothi', icon: 'fa-house' },
@@ -29,7 +52,7 @@ const PROPERTY_TYPES = [
   { value: 'pg', label: 'PG / Guest House', icon: 'fa-bed' }
 ];
 
-const BUDGET_PRESETS = [
+const BUDGET_PRESETS: BudgetPreset[] = [
   { label: 'Under ₹20 Lakh', min: '0', max: '2000000' },
   { label: '₹20L - ₹50 Lakh', min: '2000000', max: '5000000' },
   { label: '₹50L - ₹1 Crore', min: '5000000', max: '10000000' },
@@ -37,48 +60,24 @@ const BUDGET_PRESETS = [
   { label: 'Above ₹2 Crore', min: '20000000', max: '' }
 ];
 
-export const formatListingPrice = (raw) => {
-  if (raw == null || raw === '') return 'Price on request';
-  const num = Number(raw);
-  if (!Number.isFinite(num) || num <= 0) return '₹ ' + raw;
-
-  if (num >= 10000000) {
-    const cr = num / 10000000;
-    const crStr = cr.toFixed(2).replace(/\.?0+$/, '');
-    return `₹ ${crStr} Cr`;
-  }
-  if (num >= 100000) {
-    const lac = num / 100000;
-    const lacStr = Number.isInteger(lac) ? String(lac) : lac.toFixed(2).replace(/\.?0+$/, '');
-    return `₹ ${lacStr} Lac`;
-  }
-  return '₹ ' + new Intl.NumberFormat('en-IN').format(Math.round(num));
-};
-
-export const getFirstImageUrl = (listing) => {
-  if (listing?.images && listing.images.length > 0) {
-    return getImageUrl(listing.images[0].file_path);
-  }
-  return '/placeholder-property.svg';
-};
-
-export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }) {
+export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
-  const [listings, setListings] = useState([]);
-  const [wishlistIds, setWishlistIds] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load wishlist IDs when authenticated
   useEffect(() => {
     if (user) {
       getWishlist(true)
         .then((res) => {
-          if (Array.isArray(res.data?.data)) {
-            setWishlistIds(new Set(res.data.data));
+          const arr = res.data?.data;
+          if (Array.isArray(arr)) {
+            setWishlistIds(new Set(arr));
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error('Failed to load wishlist IDs', err);
         });
     } else {
@@ -86,7 +85,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     }
   }, [user]);
 
-  const handleToggleWishlist = async (e, listingId) => {
+  const handleToggleWishlist = async (e: React.MouseEvent, listingId: number): Promise<void> => {
     e.stopPropagation();
     if (!user) {
       if (onOpenAuth) onOpenAuth();
@@ -95,14 +94,14 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     }
     try {
       const res = await toggleWishlist(listingId);
-      const action = res.data?.data?.action;
+      const action = res.data?.action;
       setWishlistIds((prev) => {
         const next = new Set(prev);
         if (action === 'added') next.add(listingId);
         else next.delete(listingId);
         return next;
       });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to toggle wishlist:', err);
     }
   };
@@ -112,28 +111,28 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [cityInput, setCityInput] = useState(activeCity || '');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const cityWrapperRef = useRef(null);
+  const cityWrapperRef = useRef<HTMLDivElement>(null);
 
   const [heroType, setHeroType] = useState('');
   const [typeInput, setTypeInput] = useState('');
   const [showTypeSuggestions, setShowTypeSuggestions] = useState(false);
   const [typeHighlightedIndex, setTypeHighlightedIndex] = useState(-1);
-  const typeWrapperRef = useRef(null);
+  const typeWrapperRef = useRef<HTMLDivElement>(null);
 
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
-  const budgetWrapperRef = useRef(null);
+  const budgetWrapperRef = useRef<HTMLDivElement>(null);
 
   const [heroKeyword, setHeroKeyword] = useState('');
-  const [activeCategoryTab, setActiveCategoryTab] = useState('all');
+  const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'verified'>('all');
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
-  const [selectedCities, setSelectedCities] = useState([]);
-  const [viewType, setViewType] = useState('grid'); // 'grid' | 'list'
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
 
-  const citiesList = [
+  const citiesList = useMemo(() => [
     'Palwal', 'Faridabad', 'Gurugram', 'Sonipat', 'Panipat',
     'Hodal', 'Hathin', 'Delhi', 'Noida'
-  ];
+  ], []);
 
   // Sync cityInput when heroCity changes (from pills or resets)
   useEffect(() => {
@@ -162,14 +161,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   // Click outside listener for suggestions dropdowns
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (cityWrapperRef.current && !cityWrapperRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent): void => {
+      const target = e.target instanceof Node ? e.target : null;
+      if (target && cityWrapperRef.current && !cityWrapperRef.current.contains(target)) {
         setShowCitySuggestions(false);
       }
-      if (typeWrapperRef.current && !typeWrapperRef.current.contains(e.target)) {
+      if (target && typeWrapperRef.current && !typeWrapperRef.current.contains(target)) {
         setShowTypeSuggestions(false);
       }
-      if (budgetWrapperRef.current && !budgetWrapperRef.current.contains(e.target)) {
+      if (target && budgetWrapperRef.current && !budgetWrapperRef.current.contains(target)) {
         setShowBudgetDropdown(false);
       }
     };
@@ -184,7 +184,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       return citiesList;
     }
     // Gather all available cities including any extra locations in current listings
-    const set = new Set(ALL_CITIES);
+    const set = new Set<string>(ALL_CITIES);
     listings.forEach((item) => {
       if (item.location) {
         item.location.split(',').forEach((part) => {
@@ -196,7 +196,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     return Array.from(set).filter((c) => c.toLowerCase().includes(q)).sort((a, b) => a.localeCompare(b));
   }, [cityInput, citiesList, listings]);
 
-  const handleSelectCity = (city) => {
+  const handleSelectCity = (city: string): void => {
     if (city === 'All Cities') {
       setCityInput('');
       setHeroCity('');
@@ -212,7 +212,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setHighlightedIndex(-1);
   };
 
-  const handleCityInputChange = (e) => {
+  const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const val = e.target.value;
     setCityInput(val);
     setHeroCity(val.trim());
@@ -227,7 +227,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setHighlightedIndex(-1);
   };
 
-  const handleCityKeyDown = (e) => {
+  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (!showCitySuggestions) {
       if (e.key === 'ArrowDown') setShowCitySuggestions(true);
       return;
@@ -262,7 +262,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     );
   }, [typeInput, heroType]);
 
-  const handleSelectType = (typeObj) => {
+  const handleSelectType = (typeObj: PropertyTypeOption | null): void => {
     if (!typeObj || !typeObj.value) {
       setHeroType('');
       setTypeInput('');
@@ -274,7 +274,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setTypeHighlightedIndex(-1);
   };
 
-  const handleTypeInputChange = (e) => {
+  const handleTypeInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const val = e.target.value;
     setTypeInput(val);
     if (!val.trim()) {
@@ -284,7 +284,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setTypeHighlightedIndex(-1);
   };
 
-  const handleTypeKeyDown = (e) => {
+  const handleTypeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (!showTypeSuggestions) {
       if (e.key === 'ArrowDown') setShowTypeSuggestions(true);
       return;
@@ -307,12 +307,12 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     }
   };
 
-  const getBudgetLabel = () => {
+  const getBudgetLabel = (): string => {
     if (!budgetMin && !budgetMax) return '';
     const found = BUDGET_PRESETS.find((p) => p.min === budgetMin && p.max === budgetMax);
     if (found) return found.label;
 
-    const fmt = (val) => {
+    const fmt = (val: string): string => {
       const n = Number(val);
       if (isNaN(n) || n <= 0) return '';
       if (n >= 10000000) return `₹${(n / 10000000).toFixed(1).replace(/\.0$/, '')} Cr`;
@@ -329,24 +329,24 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     return '';
   };
 
-  const handleSelectBudgetPreset = (preset) => {
+  const handleSelectBudgetPreset = (preset: BudgetPreset): void => {
     setBudgetMin(preset.min);
     setBudgetMax(preset.max);
     setShowBudgetDropdown(false);
   };
 
-  const handleClearBudget = (e) => {
+  const handleClearBudget = (e: React.MouseEvent): void => {
     e.stopPropagation();
     setBudgetMin('');
     setBudgetMax('');
   };
 
   // Fetch approved listings from backend
-  const fetchListings = async () => {
+  const fetchListings = async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/api/v1/listings', {
+      const res = await api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
         params: { status: 'approved' }
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
@@ -354,19 +354,19 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       } else {
         setListings([]);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching listings:', err);
-      setError('Unable to load listings right now. Please try again.');
+      setError(getApiErrorMessage(err, 'Unable to load listings right now. Please try again.'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchListings();
+    void fetchListings();
   }, []);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = (): void => {
     setSelectedCities([]);
     setBudgetMin('');
     setBudgetMax('');
@@ -444,7 +444,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             <div className="search-form">
               <div className="city-autocomplete-wrap" ref={cityWrapperRef}>
                 <div className="city-autocomplete-box">
-                  <i className="fas fa-location-dot city-autocomplete-icon"></i>
+                  <i className="fas fa-map-marker-alt city-autocomplete-icon"></i>
                   <input
                     type="text"
                     id="heroCityInput"
@@ -556,7 +556,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                   className="budget-box"
                   onClick={() => setShowBudgetDropdown(!showBudgetDropdown)}
                 >
-                  <i className="fas fa-indian-rupee-sign budget-icon"></i>
+                  <i className="fas fa-rupee-sign budget-icon"></i>
                   <input
                     type="text"
                     id="heroBudgetInput"
@@ -744,7 +744,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     style={{ fontSize: '12.5px', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
                     onClick={handleClearFilters}
                   >
-                    <i className="fas fa-rotate-left" style={{ marginRight: '4px' }}></i> Reset Filters
+                    <i className="fas fa-undo" style={{ marginRight: '4px' }}></i> Reset Filters
                   </button>
                 )}
               </div>
@@ -814,7 +814,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                   type="button"
                   className="btn-primary"
                   style={{ marginTop: '14px' }}
-                  onClick={fetchListings}
+                  onClick={() => void fetchListings()}
                 >
                   Retry
                 </button>
@@ -851,7 +851,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 {filteredListings.map((listing) => {
                   const imgSrc = getFirstImageUrl(listing);
                   const priceStr = formatListingPrice(listing.price);
-                  const propType = listing.form_data?.propType || 'Property';
+                  const pType = listing.form_data?.propType || 'Property';
 
                   return (
                     <div
@@ -868,8 +868,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                           alt={listing.title}
                           className="card-img"
                           onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = '/placeholder-property.svg';
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = '/placeholder-property.svg';
                           }}
                         />
                         {listing.verified === 1 && (
@@ -890,12 +891,12 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                             textTransform: 'capitalize'
                           }}
                         >
-                          {propType}
+                          {pType}
                         </span>
 
                         <button
                           type="button"
-                          onClick={(e) => handleToggleWishlist(e, listing.id)}
+                          onClick={(e) => void handleToggleWishlist(e, listing.id)}
                           title={wishlistIds.has(listing.id) ? 'Remove from Wishlist' : 'Save to Wishlist'}
                           style={{
                             position: 'absolute',

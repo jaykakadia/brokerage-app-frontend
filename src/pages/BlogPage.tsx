@@ -1,8 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
+import { getBlogs, getImageUrl } from '../services/api';
+import type { NavigateFunction } from '../types';
 
-export default function BlogPage({ onNavigate }) {
-  const defaultArticles = [
+export interface BlogPageProps {
+  onNavigate: NavigateFunction;
+}
+
+interface BlogArticle {
+  id: number | string;
+  slug?: string;
+  permalink?: string;
+  title: string;
+  category?: string;
+  author?: string;
+  created_at?: string;
+  featured_image?: string;
+  image_url?: string;
+  content: string;
+  views?: number;
+}
+
+export default function BlogPage({ onNavigate }: BlogPageProps) {
+  const defaultArticles: BlogArticle[] = [
     {
       id: 1,
       slug: 'property-prices-in-palwal-2025-complete-guide',
@@ -65,25 +84,37 @@ export default function BlogPage({ onNavigate }) {
     }
   ];
 
-  const [articles, setArticles] = useState(defaultArticles);
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [loading, setLoading] = useState(false);
+  const [articles, setArticles] = useState<BlogArticle[]>(defaultArticles);
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const fetchBlogs = async () => {
+    const fetchBlogs = async (): Promise<void> => {
       setLoading(true);
       try {
-        const res = await axios.get('/api/v1/blogs');
-        if (res.data && res.data.length > 0) {
-          setArticles(res.data);
+        const res = await getBlogs();
+        const data = Array.isArray(res.data?.data) ? res.data.data : [];
+        if (data && data.length > 0) {
+          const mapped: BlogArticle[] = data.map((b) => ({
+            id: b.id,
+            slug: b.permalink || String(b.id),
+            permalink: b.permalink,
+            title: b.title,
+            category: b.category,
+            author: b.author,
+            created_at: b.created_at,
+            featured_image: b.image_url ? getImageUrl(b.image_url) : undefined,
+            content: b.content
+          }));
+          setArticles(mapped);
         }
-      } catch (err) {
+      } catch {
         // Keep default articles
       } finally {
         setLoading(false);
       }
     };
-    fetchBlogs();
+    void fetchBlogs();
   }, []);
 
   const categories = ['All', 'Buy', 'Rent', 'Invest'];
@@ -175,8 +206,9 @@ export default function BlogPage({ onNavigate }) {
                         alt={blog.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=350&fit=crop';
+                          const target = e.currentTarget;
+                          target.onerror = null;
+                          target.src = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=350&fit=crop';
                         }}
                       />
                       {blog.category && (

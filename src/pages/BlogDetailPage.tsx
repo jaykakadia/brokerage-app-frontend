@@ -1,24 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
+import { getBlogDetail, getImageUrl } from '../services/api';
+import type { NavigateFunction } from '../types';
 
-export default function BlogDetailPage({ blogIdentifier, onNavigate }) {
-  const [blog, setBlog] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export interface BlogDetailPageProps {
+  blogIdentifier: string | number | null;
+  onNavigate: NavigateFunction;
+}
+
+interface BlogArticleDetail {
+  id: number | string;
+  title: string;
+  category?: string;
+  author?: string;
+  created_at?: string;
+  featured_image?: string;
+  image_url?: string;
+  content: string;
+  tags?: string;
+  views?: number;
+}
+
+export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetailPageProps) {
+  const [blog, setBlog] = useState<BlogArticleDetail | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBlog = async () => {
+    const fetchBlog = async (): Promise<void> => {
+      if (!blogIdentifier) {
+        setLoading(false);
+        setError('Blog identifier is missing');
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(`/api/v1/blogs/detail/${blogIdentifier}`);
-        if (res.data) {
-          setBlog(res.data);
+        const res = await getBlogDetail(blogIdentifier);
+        const data = res.data?.data;
+        if (data && data.title) {
+          setBlog({
+            id: data.id,
+            title: data.title,
+            category: data.category,
+            author: data.author,
+            created_at: data.created_at,
+            featured_image: data.image_url ? getImageUrl(data.image_url) : undefined,
+            content: data.content,
+            tags: data.tags || undefined,
+            views: data.views
+          });
         } else {
           setError('Article not found');
         }
-      } catch (err) {
-        // Check if there is fallback data for sample blogs
+      } catch {
         setError('Article could not be loaded.');
       } finally {
         setLoading(false);
@@ -26,7 +60,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }) {
     };
 
     if (blogIdentifier) {
-      fetchBlog();
+      void fetchBlog();
     }
   }, [blogIdentifier]);
 
@@ -120,7 +154,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }) {
                   src={blog.featured_image}
                   alt={blog.title}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => { e.target.style.display = 'none'; }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </div>
             )}

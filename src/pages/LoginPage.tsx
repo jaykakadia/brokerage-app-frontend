@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
+import type { CanonicalRole, ListingStatsResponse, MessageResponse, NavigateFunction } from '../types';
+
+export interface LoginPageProps {
+  onNavigate?: NavigateFunction;
+  onLoginSuccess?: () => void;
+}
 
 /* ── Exact CSS copied from tradecall.in/login.php ── */
 const CSS = `
@@ -152,35 +158,34 @@ const CSS = `
   @media(max-width:480px) { .role-cards { grid-template-columns:repeat(2,1fr); } }
 `;
 
-const ROLES = [
+const ROLES: { value: CanonicalRole; icon: string; title: string; sub: string }[] = [
   { value: 'Owner',   icon: 'fa-user',        title: 'Owner',   sub: 'I own the property' },
   { value: 'Agent',   icon: 'fa-handshake',   title: 'Agent',   sub: 'I represent clients' },
   { value: 'Builder', icon: 'fa-hard-hat',    title: 'Builder', sub: 'I develop properties' },
 ];
 
-export default function LoginPage({ onNavigate, onLoginSuccess }) {
+export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps) {
   const { login, register } = useAuth();
-  const [tab, setTab] = useState('signin');   // signin | register | forgot
+  const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>('signin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-
   // Site stats (dynamic)
-  const [siteStats, setSiteStats] = useState({
-    active_listings: null,
-    cities_covered: null,
-    featured_listings: null,
-    registered_users: null,
+  const [siteStats, setSiteStats] = useState<Partial<ListingStatsResponse>>({
+    active_listings: undefined,
+    cities_covered: undefined,
+    featured_listings: undefined,
+    registered_users: undefined,
   });
 
   useEffect(() => {
-    api.get('/api/v1/listings/stats')
+    api.get<ListingStatsResponse>('/api/v1/listings/stats')
       .then(r => setSiteStats(r.data))
       .catch(() => {/* keep static fallback */});
   }, []);
 
-  const fmt = (val, fallback) => val !== null ? val : fallback;
+  const fmt = (val: number | undefined, fallback: number): number => val !== undefined && val !== null ? val : fallback;
 
   const [siEmail, setSiEmail] = useState('');
   const [siPass, setSiPass]   = useState('');
@@ -188,7 +193,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [remember, setRemember] = useState(false);
 
   // Register state
-  const [regRole, setRegRole]   = useState('Owner');
+  const [regRole, setRegRole]   = useState<CanonicalRole>('Owner');
   const [regName, setRegName]   = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -202,14 +207,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [fgEmail, setFgEmail]   = useState('');
   const [fgOtp,   setFgOtp]     = useState('');
   const [fgPass,  setFgPass]    = useState('');
-  const [fgStep,  setFgStep]    = useState(1);  // 1 = enter email, 2 = otp+new pass
+  const [fgStep,  setFgStep]    = useState<1 | 2>(1);  // 1 = enter email, 2 = otp+new pass
 
-  const showError   = (msg) => { setError(msg); setSuccess(''); };
-  const showSuccess = (msg) => { setSuccess(msg); setError(''); };
-  const switchTab   = (t)   => { setTab(t); setError(''); setSuccess(''); };
+  const showError   = (msg: string): void => { setError(msg); setSuccess(''); };
+  const showSuccess = (msg: string): void => { setSuccess(msg); setError(''); };
+  const switchTab   = (t: 'signin' | 'register' | 'forgot'): void => { setTab(t); setError(''); setSuccess(''); };
 
   // ── Sign In ──
-  const handleSignIn = async (e) => {
+  const handleSignIn = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!siEmail || !siPass) return showError('Enter email and password.');
     setLoading(true); setError('');
@@ -217,28 +222,28 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       await login(siEmail, siPass, remember);
       onLoginSuccess?.();
       onNavigate?.('home');
-    } catch (err) {
-      showError(err.response?.data?.detail || 'Sign-in failed. Check your credentials.');
+    } catch (err: unknown) {
+      showError(getApiErrorMessage(err, 'Sign-in failed. Check your credentials.'));
     } finally { setLoading(false); }
   };
 
   // ── Send OTP (register) ──
-  const handleSendRegOtp = async () => {
+  const handleSendRegOtp = async (): Promise<void> => {
     if (!regName)  return showError('Enter your full name.');
     if (!regPhone) return showError('Enter your mobile number.');
     if (!regEmail) return showError('Enter your email.');
     setLoading(true); setError('');
     try {
-      const res = await api.post('/api/v1/auth/send-otp', { email: regEmail, action: 'register', name: regName, phone: regPhone });
+      const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', { email: regEmail, action: 'register', name: regName, phone: regPhone });
       setOtpSent(true);
       showSuccess(res.data.message || 'OTP sent to your email.');
-    } catch (err) {
-      showError(err.response?.data?.detail || 'Failed to send OTP.');
+    } catch (err: unknown) {
+      showError(getApiErrorMessage(err, 'Failed to send OTP.'));
     } finally { setLoading(false); }
   };
 
   // ── Register ──
-  const handleRegister = async (e) => {
+  const handleRegister = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!regName)  return showError('Enter your full name.');
     if (!regPhone) return showError('Enter your mobile number.');
@@ -251,36 +256,36 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       await register({ name: regName, phone: regPhone, email: regEmail, password: regPass, role: regRole, otp: regOtp || undefined });
       onLoginSuccess?.();
       onNavigate?.('home');
-    } catch (err) {
-      showError(err.response?.data?.detail || 'Registration failed.');
+    } catch (err: unknown) {
+      showError(getApiErrorMessage(err, 'Registration failed.'));
     } finally { setLoading(false); }
   };
 
   // ── Forgot: Send OTP ──
-  const handleFgSendOtp = async () => {
+  const handleFgSendOtp = async (): Promise<void> => {
     if (!fgEmail) return showError('Enter your email address.');
     setLoading(true); setError('');
     try {
-      const res = await api.post('/api/v1/auth/send-otp', { email: fgEmail, action: 'forgot' });
+      const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', { email: fgEmail, action: 'forgot' });
       setFgStep(2);
       showSuccess(res.data.message || 'Reset OTP sent to your email.');
-    } catch (err) {
-      showError(err.response?.data?.detail || 'Failed to send OTP.');
+    } catch (err: unknown) {
+      showError(getApiErrorMessage(err, 'Failed to send OTP.'));
     } finally { setLoading(false); }
   };
 
   // ── Forgot: Reset ──
-  const handleFgReset = async (e) => {
+  const handleFgReset = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!fgOtp)  return showError('Enter the OTP.');
     if (!fgPass) return showError('Enter your new password.');
     setLoading(true); setError('');
     try {
-      const res = await api.post('/api/v1/auth/reset-password', { email: fgEmail, otp: fgOtp, new_password: fgPass });
+      const res = await api.post<MessageResponse>('/api/v1/auth/reset-password', { email: fgEmail, otp: fgOtp, new_password: fgPass });
       showSuccess(res.data.message || 'Password reset! Please sign in.');
       setTimeout(() => switchTab('signin'), 1500);
-    } catch (err) {
-      showError(err.response?.data?.detail || 'Reset failed.');
+    } catch (err: unknown) {
+      showError(getApiErrorMessage(err, 'Reset failed.'));
     } finally { setLoading(false); }
   };
 
@@ -320,12 +325,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             ))}
           </div>
           <div className="ll-stats">
-            {[
+            {([
               { key: 'active_listings',   fallback: 61,  suffix: '+', lbl: 'Active Listings' },
               { key: 'cities_covered',    fallback: 16,  suffix: '',  lbl: 'Cities Covered' },
               { key: 'featured_listings', fallback: 8,   suffix: '',  lbl: 'Featured Listings' },
               { key: 'registered_users',  fallback: 12,  suffix: '+', lbl: 'Registered Users' },
-            ].map(s => (
+            ] as const satisfies Array<{ key: keyof ListingStatsResponse; fallback: number; suffix: string; lbl: string }>).map(s => (
               <div key={s.lbl} className="ll-stat">
                 <div className="num">
                   {fmt(siteStats[s.key], s.fallback)}{s.suffix}
@@ -430,7 +435,10 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                       required
                       maxLength={10}
                       value={regPhone}
-                      onInput={e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); }}
+                      onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                        const target = e.currentTarget;
+                        target.value = target.value.replace(/\D/g, '').slice(0, 10);
+                      }}
                       onChange={e => setRegPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     />
                   </div>
@@ -440,7 +448,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                       <input type="email" placeholder="yourname@gmail.com" required
                         value={regEmail} onChange={e => setRegEmail(e.target.value)} />
                       <button type="button" className="btn-send-otp" id="btnSendRegOtp"
-                        onClick={handleSendRegOtp} disabled={loading}>
+                        onClick={() => void handleSendRegOtp()} disabled={loading}>
                         {otpSent ? 'Resend OTP' : 'Send OTP'}
                       </button>
                     </div>
@@ -508,7 +516,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                       <input type="email" placeholder="yourname@gmail.com"
                         value={fgEmail} onChange={e => setFgEmail(e.target.value)} />
                     </div>
-                    <button className="btn-signin" disabled={loading} onClick={handleFgSendOtp}>
+                    <button className="btn-signin" disabled={loading} onClick={() => void handleFgSendOtp()}>
                       {loading ? 'Sending…' : 'Send Reset OTP'}
                     </button>
                   </div>

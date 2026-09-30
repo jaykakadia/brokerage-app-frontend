@@ -1,6 +1,20 @@
-import React from 'react';
+export interface ContactRevealData {
+  owner_name?: string;
+  owner_phone?: string;
+  owner_email?: string;
+  leads_balance?: number;
+  already_revealed?: boolean;
+  message?: string;
+}
 
-export default function ContactRevealModal({ isOpen, onClose, contactData, listingTitle }) {
+export interface ContactRevealModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  contactData: ContactRevealData | null;
+  listingTitle?: string;
+}
+
+export default function ContactRevealModal({ isOpen, onClose, contactData, listingTitle }: ContactRevealModalProps) {
   if (!isOpen || !contactData) return null;
 
   const { owner_name, owner_phone, owner_email, leads_balance, already_revealed, message } = contactData;
@@ -180,7 +194,7 @@ export default function ContactRevealModal({ isOpen, onClose, contactData, listi
             {cleanPhone && (
               <a
                 href={`https://wa.me/${waPhone}?text=${encodeURIComponent(
-                  `Hello ${owner_name}, I saw your property listing "${listingTitle || 'on TradeCall'}" and would like to discuss it.`
+                  `Hello ${owner_name || 'Owner'}, I saw your property listing "${listingTitle || 'on TradeCall'}" and would like to discuss it.`
                 )}`}
                 target="_blank"
                 rel="noreferrer"

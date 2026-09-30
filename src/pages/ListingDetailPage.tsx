@@ -1,37 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import api, { getImageUrl, getWishlist, toggleWishlist, revealContact } from '../services/api';
+import { useState, useEffect } from 'react';
+import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatListingPrice } from './HomePage';
+import { formatListingPrice } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
-import ContactRevealModal from '../components/ContactRevealModal';
+import ContactRevealModal, { ContactRevealData } from '../components/ContactRevealModal';
+import type { Listing, ApiResponse, MessageResponse, NavigateFunction } from '../types';
 
-export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }) {
+export interface ListingDetailPageProps {
+  listingId: number | string | null;
+  onNavigate: NavigateFunction;
+  onOpenAuth?: () => void;
+}
+
+export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }: ListingDetailPageProps) {
   const { user, refreshUser } = useAuth();
-  const [listing, setListing] = useState(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ msg: string; type?: 'success' | 'error' } | null>(null);
 
   // Phase 2 state
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [contactData, setContactData] = useState(null);
+  const [contactData, setContactData] = useState<ContactRevealData | null>(null);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [contactLoading, setContactLoading] = useState(false);
 
-  const fetchListing = async () => {
+  const fetchListing = async (): Promise<void> => {
+    if (!listingId) {
+      setLoading(false);
+      setError('Listing ID not found');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get(`/api/v1/listings/${listingId}`);
+      const res = await api.get<ApiResponse<Listing>>(`/api/v1/listings/${listingId}`);
       if (res.data?.status === 'success' && res.data?.data) {
         setListing(res.data.data);
       } else {
         setError('Listing could not be found.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error loading listing detail:', err);
       setError('Unable to load listing details. It may have been removed.');
     } finally {
@@ -41,7 +53,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
 
   useEffect(() => {
     if (listingId) {
-      fetchListing();
+      void fetchListing();
     }
   }, [listingId]);
 
@@ -50,8 +62,9 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
     if (user && listingId) {
       getWishlist(true)
         .then((res) => {
-          if (Array.isArray(res.data?.data)) {
-            setIsWishlisted(res.data.data.includes(Number(listingId)));
+          const arr = res.data?.data;
+          if (Array.isArray(arr)) {
+            setIsWishlisted(arr.includes(Number(listingId)));
           }
         })
         .catch(() => {});
@@ -60,95 +73,93 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
     }
   }, [user, listingId]);
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success'): void => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
-  const handleToggleWishlist = async () => {
+  const handleToggleWishlist = async (): Promise<void> => {
     if (!user) {
       if (onOpenAuth) onOpenAuth();
       else alert('Please sign in to save this property.');
       return;
     }
     try {
-      const res = await toggleWishlist(listingId);
-      const action = res.data?.data?.action;
+      const res = await toggleWishlist(Number(listingId));
+      const action = res.data?.action;
       setIsWishlisted(action === 'added');
       showToast(action === 'added' ? 'Added to your wishlist!' : 'Removed from your wishlist.');
-    } catch (err) {
+    } catch {
       showToast('Failed to update wishlist.', 'error');
     }
   };
 
-  const handleContactOwner = async () => {
+  const handleContactOwner = async (): Promise<void> => {
     if (!user) {
       if (onOpenAuth) onOpenAuth();
       else alert('Please sign in to view owner contact details.');
       return;
     }
 
-    if (user.id === listing.user_id) {
+    if (listing && user.id === listing.user_id) {
       showToast('This is your own listing.');
       return;
     }
 
     setContactLoading(true);
     try {
-      const res = await revealContact(listingId);
+      const res = await revealContact(Number(listingId));
       if (res.data?.status === 'success') {
-        const contact = res.data.contact || res.data.data || {};
+        const contact = res.data.contact || {};
         const plan = res.data.plan || {};
         setContactData({
-          owner_name: contact.name || contact.person || listing.owner_name,
-          owner_phone: contact.mobile || contact.phone || contact.owner_phone,
-          owner_email: contact.email || contact.owner_email,
-          leads_balance: plan.leads_remaining ?? plan.leads_balance ?? res.data.data?.leads_balance ?? user.leads_balance,
-          already_revealed: res.data.already_revealed ?? res.data.data?.already_revealed ?? false,
+          owner_name: contact.owner_name || contact.person || listing?.owner_name,
+          owner_phone: contact.phone || contact.mobile || listing?.owner_phone || undefined,
+          owner_email: contact.email || listing?.owner_email || undefined,
+          leads_balance: plan.leads_balance ?? plan.leads_remaining ?? user.leads_balance,
+          already_revealed: res.data.already_revealed ?? false,
           message: res.data.message
         });
         setContactModalOpen(true);
         await refreshUser();
-      } else if (res.data?.status === 'error' && (res.data?.code === 'no_leads' || res.data?.message?.toLowerCase().includes('lead'))) {
-        setPlansModalOpen(true);
-      } else if (res.data?.message) {
-        showToast(res.data.message, 'error');
+      } else {
+        const msg = res.data?.message;
+        if (msg) showToast(msg, 'error');
       }
-    } catch (err) {
-      const status = err.response?.status;
-      const detail = err.response?.data?.detail;
-      if (status === 402 || (typeof detail === 'string' && detail.toLowerCase().includes('lead'))) {
+    } catch (err: unknown) {
+      const errMsg = getApiErrorMessage(err, 'Unable to unlock contact details.');
+      if (errMsg.toLowerCase().includes('lead') || errMsg.toLowerCase().includes('plan')) {
         setPlansModalOpen(true);
       } else {
-        showToast(typeof detail === 'string' ? detail : 'Unable to unlock contact details.', 'error');
+        showToast(errMsg, 'error');
       }
     } finally {
       setContactLoading(false);
     }
   };
 
-  const handleStatusChange = async (action) => {
+  const handleStatusChange = async (action: string): Promise<void> => {
     setActionLoading(true);
     try {
-      await api.post(`/api/v1/listings/${listingId}/status`, { action });
+      await api.post<MessageResponse>(`/api/v1/listings/${listingId}/status`, { action });
       showToast(`Listing updated: ${action}`, 'success');
       await fetchListing();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to update status', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, 'Failed to update status'), 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleDeleteListing = async () => {
+  const handleDeleteListing = async (): Promise<void> => {
     if (!window.confirm('Are you sure you want to permanently delete this listing?')) return;
     setActionLoading(true);
     try {
-      await api.delete(`/api/v1/listings/${listingId}`);
+      await api.delete<MessageResponse>(`/api/v1/listings/${listingId}`);
       alert('Listing deleted successfully.');
       onNavigate('home');
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to delete listing', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, 'Failed to delete listing'), 'error');
     } finally {
       setActionLoading(false);
     }
@@ -238,7 +249,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
                       className="btn-primary"
                       style={{ padding: '6px 12px', fontSize: '12px' }}
                       disabled={actionLoading}
-                      onClick={() => handleStatusChange('approve')}
+                      onClick={() => void handleStatusChange('approve')}
                     >
                       <i className="fas fa-check"></i> Approve
                     </button>
@@ -249,7 +260,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
                       className="btn-primary"
                       style={{ padding: '6px 12px', fontSize: '12px', background: '#ea580c' }}
                       disabled={actionLoading}
-                      onClick={() => handleStatusChange('stamp')}
+                      onClick={() => void handleStatusChange('stamp')}
                     >
                       <i className="fas fa-stamp"></i> Verify Stamp
                     </button>
@@ -259,7 +270,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
 
               <select
                 value={listing.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
+                onChange={(e) => void handleStatusChange(e.target.value)}
                 disabled={actionLoading}
                 style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px' }}
               >
@@ -275,7 +286,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
                 className="btn-outline"
                 style={{ padding: '6px 12px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
                 disabled={actionLoading}
-                onClick={handleDeleteListing}
+                onClick={() => void handleDeleteListing()}
               >
                 <i className="fas fa-trash"></i> Delete
               </button>
@@ -289,7 +300,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
             <div style={{ flex: 1, minWidth: '280px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                 <span style={{ background: '#f0faf6', color: '#0c6253', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
-                  {formData.propType ? formData.propType.toUpperCase() : 'PROPERTY'}
+                  {formData.propType ? String(formData.propType).toUpperCase() : 'PROPERTY'}
                 </span>
                 {listing.verified === 1 && (
                   <span style={{ background: '#dcfce7', color: '#166534', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
@@ -313,13 +324,13 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
               <div style={{ fontSize: '28px', fontWeight: 800, color: '#0c6253' }}>
                 {priceFormatted}
               </div>
-              {formData.priceNegotiable && (
+              {Boolean(formData.priceNegotiable) && (
                 <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Price Negotiable</span>
               )}
               <button
                 type="button"
                 className="btn-outline"
-                onClick={handleToggleWishlist}
+                onClick={() => void handleToggleWishlist()}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -350,8 +361,9 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
                   alt="Property"
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = '/placeholder-property.svg';
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = '/placeholder-property.svg';
                   }}
                 />
               </div>
@@ -390,52 +402,52 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
                 <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '12px', color: '#64748b' }}>Listing Type</div>
                   <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
-                    {formData.listingType || 'Sale'}
+                    {String(formData.listingType || 'Sale')}
                   </div>
                 </div>
 
-                {formData.bhk && (
+                {Boolean(formData.bhk) && (
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>Bedrooms / BHK</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{formData.bhk} BHK</div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{String(formData.bhk)} BHK</div>
                   </div>
                 )}
 
-                {formData.bathrooms && (
+                {Boolean(formData.bathrooms) && (
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>Bathrooms</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{formData.bathrooms}</div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{String(formData.bathrooms)}</div>
                   </div>
                 )}
 
-                {formData.area && (
+                {Boolean(formData.area) && (
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>Super Built-up Area</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{formData.area} sq.ft.</div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{String(formData.area)} sq.ft.</div>
                   </div>
                 )}
 
-                {formData.furnishing && (
+                {Boolean(formData.furnishing) && (
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>Furnishing</div>
                     <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
-                      {formData.furnishing}
+                      {String(formData.furnishing)}
                     </div>
                   </div>
                 )}
 
-                {formData.facing && (
+                {Boolean(formData.facing) && (
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>Facing</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{formData.facing}</div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>{String(formData.facing)}</div>
                   </div>
                 )}
 
-                {formData.floor && (
+                {Boolean(formData.floor) && (
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '12px', color: '#64748b' }}>Floor</div>
                     <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
-                      {formData.floor} {formData.totalFloors ? `of ${formData.totalFloors}` : ''}
+                      {String(formData.floor)} {formData.totalFloors ? `of ${String(formData.totalFloors)}` : ''}
                     </div>
                   </div>
                 )}
@@ -549,7 +561,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={handleContactOwner}
+                  onClick={() => void handleContactOwner()}
                   disabled={contactLoading}
                   style={{
                     width: '100%',
@@ -629,7 +641,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth })
         isOpen={plansModalOpen}
         onClose={() => setPlansModalOpen(false)}
         onSuccess={() => {
-          handleContactOwner();
+          void handleContactOwner();
         }}
       />
     </div>

@@ -1,34 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import api, { getWishlist, toggleWishlist } from '../services/api';
+import { useState, useEffect } from 'react';
+import api, { getWishlist, toggleWishlist, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatListingPrice, getFirstImageUrl } from './HomePage';
+import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
+import type { Listing, MessageResponse, NavigateFunction } from '../types';
 
-export default function AccountPage({ onNavigate, onOpenAuth }) {
+export interface AccountPageProps {
+  onNavigate: NavigateFunction;
+  onOpenAuth?: () => void;
+}
+
+export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps) {
   const { user, refreshUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'my-listings' | 'wishlist' | 'password'
+  const [activeTab, setActiveTab] = useState<'profile' | 'my-listings' | 'wishlist' | 'password'>('profile');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
 
   // Profile Edit State
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [profileMsg, setProfileMsg] = useState(null);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Password Change State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passMsg, setPassMsg] = useState(null);
+  const [passMsg, setPassMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [passLoading, setPassLoading] = useState(false);
 
   // My Listings State
-  const [myListings, setMyListings] = useState([]);
+  const [myListings, setMyListings] = useState<Listing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
 
   // Wishlist State
-  const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState<Listing[]>([]);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   useEffect(() => {
@@ -38,75 +44,75 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
     }
   }, [user]);
 
-  const fetchMyListings = async () => {
+  const fetchMyListings = async (): Promise<void> => {
     if (!user) return;
     setListingsLoading(true);
     try {
-      const res = await api.get('/api/v1/listings', {
+      const res = await api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
         params: { user_id: user.id, status: 'all' }
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setMyListings(res.data.data);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching user listings:', err);
     } finally {
       setListingsLoading(false);
     }
   };
 
-  const fetchWishlist = async () => {
+  const fetchWishlist = async (): Promise<void> => {
     if (!user) return;
     setWishlistLoading(true);
     try {
       const res = await getWishlist(false);
-      if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
-        setWishlistItems(res.data.data);
+      const data = res.data?.data;
+      if (res.data?.status === 'success' && Array.isArray(data)) {
+        setWishlistItems(data);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching wishlist:', err);
     } finally {
       setWishlistLoading(false);
     }
   };
 
-  const handleRemoveWishlist = async (listingId) => {
+  const handleRemoveWishlist = async (listingId: number): Promise<void> => {
     try {
       await toggleWishlist(listingId);
       setWishlistItems((prev) => prev.filter((item) => item.id !== listingId));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to remove item from wishlist:', err);
     }
   };
 
   useEffect(() => {
     if (activeTab === 'my-listings') {
-      fetchMyListings();
+      void fetchMyListings();
     } else if (activeTab === 'wishlist') {
-      fetchWishlist();
+      void fetchWishlist();
     }
   }, [activeTab, user]);
 
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateProfile = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setProfileMsg(null);
     setProfileLoading(true);
     try {
-      const res = await api.put('/api/v1/users/profile', {
+      const res = await api.put<MessageResponse>('/api/v1/users/profile', {
         name: name.trim(),
         phone: phone.trim()
       });
       setProfileMsg({ type: 'success', text: res.data?.message || 'Profile updated successfully.' });
       await refreshUser();
-    } catch (err) {
-      const d = err.response?.data?.detail;
-      setProfileMsg({ type: 'error', text: typeof d === 'string' ? d : 'Failed to update profile.' });
+    } catch (err: unknown) {
+      setProfileMsg({ type: 'error', text: getApiErrorMessage(err, 'Failed to update profile.') });
     } finally {
       setProfileLoading(false);
     }
   };
 
-  const handleChangePassword = async (e) => {
+  const handleChangePassword = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setPassMsg(null);
     if (newPassword !== confirmPassword) {
@@ -120,7 +126,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
 
     setPassLoading(true);
     try {
-      const res = await api.post('/api/v1/users/change-password', {
+      const res = await api.post<MessageResponse>('/api/v1/users/change-password', {
         current_password: currentPassword,
         new_password: newPassword,
         confirm_password: confirmPassword
@@ -129,21 +135,20 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err) {
-      const d = err.response?.data?.detail;
-      setPassMsg({ type: 'error', text: typeof d === 'string' ? d : 'Failed to change password.' });
+    } catch (err: unknown) {
+      setPassMsg({ type: 'error', text: getApiErrorMessage(err, 'Failed to change password.') });
     } finally {
       setPassLoading(false);
     }
   };
 
-  const handleDeleteListing = async (listingId) => {
+  const handleDeleteListing = async (listingId: number): Promise<void> => {
     if (!window.confirm('Are you sure you want to delete this listing?')) return;
     try {
-      await api.delete(`/api/v1/listings/${listingId}`);
+      await api.delete<MessageResponse>(`/api/v1/listings/${listingId}`);
       setMyListings(myListings.filter((l) => l.id !== listingId));
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete listing.');
+    } catch (err: unknown) {
+      alert(getApiErrorMessage(err, 'Failed to delete listing.'));
     }
   };
 
@@ -353,7 +358,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
                 type="button"
                 className="btn-outline"
                 style={{ padding: '6px 12px', fontSize: '13px' }}
-                onClick={fetchMyListings}
+                onClick={() => void fetchMyListings()}
               >
                 <i className="fas fa-sync-alt"></i> Refresh
               </button>
@@ -380,7 +385,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {myListings.map((listing) => {
-                  const statusColors = {
+                  const statusColors: Record<string, { bg: string; text: string }> = {
                     approved: { bg: '#dcfce7', text: '#166534' },
                     pending: { bg: '#fef3c7', text: '#92400e' },
                     sold: { bg: '#e0e7ff', text: '#3730a3' },
@@ -452,7 +457,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
                           type="button"
                           className="btn-outline"
                           style={{ padding: '8px 14px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
-                          onClick={() => handleDeleteListing(listing.id)}
+                          onClick={() => void handleDeleteListing(listing.id)}
                         >
                           <i className="fas fa-trash"></i> Delete
                         </button>
@@ -479,7 +484,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
               </div>
             ) : wishlistItems.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
-                <i className="fas fa-heart-broken fa-3x" style={{ color: '#cbd5e1', marginBottom: '14px' }}></i>
+                <i className="fas fa-heart-broken fa-3x" style={{ color: '#cbd5e1', marginBottom: '14px', display: 'block' }}></i>
                 <div style={{ fontSize: '16px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                   No properties saved to your wishlist yet.
                 </div>
@@ -518,8 +523,9 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
                           alt={item.title}
                           style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
                           onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = '/placeholder-property.svg';
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = '/placeholder-property.svg';
                           }}
                         />
                         <div>
@@ -553,7 +559,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
                           type="button"
                           className="btn-outline"
                           style={{ padding: '8px 14px', fontSize: '13px', color: '#dc2626', borderColor: '#fca5a5' }}
-                          onClick={() => handleRemoveWishlist(item.id)}
+                          onClick={() => void handleRemoveWishlist(item.id)}
                         >
                           <i className="fas fa-heart-broken"></i> Remove
                         </button>
@@ -568,7 +574,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
 
         {/* TAB 3: Change Password */}
         {activeTab === 'password' && (
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', maxWidth: '560px' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', color: '#111827' }}>
               Change Account Password
             </h2>
@@ -639,7 +645,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }) {
       <PlansModal
         isOpen={plansModalOpen}
         onClose={() => setPlansModalOpen(false)}
-        onSuccess={() => refreshUser()}
+        onSuccess={() => void refreshUser()}
       />
     </div>
   );

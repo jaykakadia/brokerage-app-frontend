@@ -1,64 +1,167 @@
 import React, { useState, useEffect } from 'react';
 import api, {
-  getPlans, createPlan, updatePlan, deletePlan,
-  getRazorpaySettings, saveRazorpaySettings,
-  getRoleLimits, saveRoleLimits,
-  getEmployees, saveEmployee, deleteEmployee,
-  getAdminBlogs, saveAdminBlog, deleteAdminBlog,
-  getMailSettings, saveMailSettings, sendTestMail
+  getPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  getRazorpaySettings,
+  saveRazorpaySettings,
+  getRoleLimits,
+  saveRoleLimits,
+  getEmployees,
+  saveEmployee,
+  deleteEmployee,
+  getAdminBlogs,
+  saveAdminBlog,
+  deleteAdminBlog,
+  getMailSettings,
+  saveMailSettings,
+  sendTestMail,
+  getApiErrorMessage
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from './HomePage';
+import {
+  Listing,
+  ListingCounts,
+  Location,
+  Category,
+  User,
+  RoleLimitsMap,
+  RoleLimit,
+  Plan,
+  Employee,
+  Blog,
+  NavigateFunction
+} from '../types';
 
-export default function AdminDashboard({ onNavigate }) {
+interface AdminDashboardProps {
+  onNavigate: NavigateFunction;
+}
+
+interface ToastState {
+  msg: string;
+  type: 'success' | 'error';
+}
+
+interface PlanFormState {
+  name: string;
+  price: string | number;
+  listing_limit: number | string;
+  leads_count: number | string;
+  duration_days: number | string;
+  description: string;
+  status: string;
+}
+
+interface EmployeeFormState {
+  id: number;
+  reference_code: string;
+  name: string;
+  status: string;
+}
+
+interface BlogFormState {
+  id: number;
+  title: string;
+  category: string;
+  content: string;
+  permalink: string;
+  tags: string;
+  status: string;
+  featured_image: File | null;
+}
+
+interface SmtpSettingsState {
+  host: string;
+  port: number;
+  email: string;
+  password: string;
+  encryption: string;
+  from_name: string;
+  has_password: boolean;
+}
+
+interface CredFormState {
+  newUsername: string;
+  currPassword: string;
+  newPassword: string;
+}
+
+interface RzpSettingsState {
+  key_id: string;
+  key_secret: string;
+  webhook_secret: string;
+  test_mode: boolean;
+  has_secret: boolean;
+  has_webhook_secret: boolean;
+}
+
+type AdminModule =
+  | 'listings'
+  | 'locations'
+  | 'categories'
+  | 'users'
+  | 'plans'
+  | 'tracker'
+  | 'blogs'
+  | 'settings'
+  | 'razorpay';
+
+export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const { user } = useAuth();
 
-  const [activeModule, setActiveModule] = useState('listings'); // 'listings' | 'locations' | 'categories' | 'users' | 'plans' | 'tracker' | 'blogs' | 'settings' | 'razorpay'
-  const [toast, setToast] = useState(null);
+  const [activeModule, setActiveModule] = useState<AdminModule>('listings');
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   // === LISTINGS MODULE STATE ===
-  const [listings, setListings] = useState([]);
-  const [listingCounts, setListingCounts] = useState({
-    pending: 0, approved: 0, sold: 0, rented: 0, suspended: 0, deleted: 0
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [listingCounts, setListingCounts] = useState<ListingCounts>({
+    pending: 0,
+    approved: 0,
+    sold: 0,
+    rented: 0,
+    suspended: 0,
+    deleted: 0
   });
-  const [listingTab, setListingTab] = useState('pending');
-  const [listingSearch, setListingSearch] = useState('');
-  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingTab, setListingTab] = useState<string>('pending');
+  const [listingSearch, setListingSearch] = useState<string>('');
+  const [listingsLoading, setListingsLoading] = useState<boolean>(false);
 
   // === LOCATIONS MODULE STATE ===
-  const [locations, setLocations] = useState([]);
-  const [locationsLoading, setLocationsLoading] = useState(false);
-  const [newCityName, setNewCityName] = useState('');
-  const [newState, setNewState] = useState('Haryana');
-  const [newLocCategory, setNewLocCategory] = useState('city');
-  const [newLat, setNewLat] = useState('');
-  const [newLng, setNewLng] = useState('');
-  const [locSaving, setLocSaving] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
+  const [newCityName, setNewCityName] = useState<string>('');
+  const [newState, setNewState] = useState<string>('Haryana');
+  const [newLocCategory, setNewLocCategory] = useState<string>('city');
+  const [newLat, setNewLat] = useState<string>('');
+  const [newLng, setNewLng] = useState<string>('');
+  const [locSaving, setLocSaving] = useState<boolean>(false);
 
   // === CATEGORIES MODULE STATE ===
-  const [categories, setCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatSlug, setNewCatSlug] = useState('');
-  const [newCatDesc, setNewCatDesc] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('fas fa-building');
-  const [catSaving, setCatSaving] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
+  const [newCatName, setNewCatName] = useState<string>('');
+  const [newCatSlug, setNewCatSlug] = useState<string>('');
+  const [newCatDesc, setNewCatDesc] = useState<string>('');
+  const [newCatIcon, setNewCatIcon] = useState<string>('fas fa-building');
+  const [catSaving, setCatSaving] = useState<boolean>(false);
 
   // === USERS MODULE STATE ===
-  const [usersList, setUsersList] = useState([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState('');
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState<boolean>(false);
+  const [userSearch, setUserSearch] = useState<string>('');
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('');
 
   // === ROLE LIMITS STATE ===
-  const [roleLimits, setRoleLimits] = useState({ Owner: 0, Agent: 0, Builder: 0 });
-  const [roleLimitsSaving, setRoleLimitsSaving] = useState(false);
+  const [roleLimits, setRoleLimits] = useState<RoleLimitsMap>({ Owner: 0, Agent: 0, Builder: 0 });
+  const [roleLimitsSaving, setRoleLimitsSaving] = useState<boolean>(false);
 
   // === PLANS MODULE STATE ===
-  const [plans, setPlans] = useState([]);
-  const [plansLoading, setPlansLoading] = useState(false);
-  const [editingPlanId, setEditingPlanId] = useState(null);
-  const [planForm, setPlanForm] = useState({
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState<boolean>(false);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [planForm, setPlanForm] = useState<PlanFormState>({
     name: '',
     price: '',
     listing_limit: 10,
@@ -67,36 +170,58 @@ export default function AdminDashboard({ onNavigate }) {
     description: '',
     status: 'active'
   });
-  const [planSaving, setPlanSaving] = useState(false);
+  const [planSaving, setPlanSaving] = useState<boolean>(false);
 
   // === TRACKER / FIELD ASSOCIATES STATE ===
-  const [employees, setEmployees] = useState([]);
-  const [employeesLoading, setEmployeesLoading] = useState(false);
-  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
-  const [employeeForm, setEmployeeForm] = useState({ id: 0, reference_code: '', name: '', status: 'active' });
-  const [employeeSaving, setEmployeeSaving] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState<boolean>(false);
+  const [employeeModalOpen, setEmployeeModalOpen] = useState<boolean>(false);
+  const [employeeForm, setEmployeeForm] = useState<EmployeeFormState>({
+    id: 0,
+    reference_code: '',
+    name: '',
+    status: 'active'
+  });
+  const [employeeSaving, setEmployeeSaving] = useState<boolean>(false);
 
   // === BLOGS MODULE STATE ===
-  const [adminBlogs, setAdminBlogs] = useState([]);
-  const [blogsLoading, setBlogsLoading] = useState(false);
-  const [blogModalOpen, setBlogModalOpen] = useState(false);
-  const [blogForm, setBlogForm] = useState({
-    id: 0, title: '', category: 'Buy', content: '', permalink: '', tags: '', status: 'publish', featured_image: null
+  const [adminBlogs, setAdminBlogs] = useState<Blog[]>([]);
+  const [blogsLoading, setBlogsLoading] = useState<boolean>(false);
+  const [blogModalOpen, setBlogModalOpen] = useState<boolean>(false);
+  const [blogForm, setBlogForm] = useState<BlogFormState>({
+    id: 0,
+    title: '',
+    category: 'Buy',
+    content: '',
+    permalink: '',
+    tags: '',
+    status: 'publish',
+    featured_image: null
   });
-  const [blogSaving, setBlogSaving] = useState(false);
+  const [blogSaving, setBlogSaving] = useState<boolean>(false);
 
   // === SETTINGS (SMTP & CREDENTIALS) STATE ===
-  const [smtpSettings, setSmtpSettings] = useState({
-    host: '', port: 465, email: '', password: '', encryption: 'ssl', from_name: 'TradeCall India', has_password: false
+  const [smtpSettings, setSmtpSettings] = useState<SmtpSettingsState>({
+    host: '',
+    port: 465,
+    email: '',
+    password: '',
+    encryption: 'ssl',
+    from_name: 'TradeCall India',
+    has_password: false
   });
-  const [smtpLoading, setSmtpLoading] = useState(false);
-  const [smtpSaving, setSmtpSaving] = useState(false);
-  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
-  const [credForm, setCredForm] = useState({ newUsername: '', currPassword: '', newPassword: '' });
-  const [credSaving, setCredSaving] = useState(false);
+  const [smtpLoading, setSmtpLoading] = useState<boolean>(false);
+  const [smtpSaving, setSmtpSaving] = useState<boolean>(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState<boolean>(false);
+  const [credForm, setCredForm] = useState<CredFormState>({
+    newUsername: '',
+    currPassword: '',
+    newPassword: ''
+  });
+  const [credSaving, setCredSaving] = useState<boolean>(false);
 
   // === RAZORPAY SETTINGS STATE ===
-  const [rzpSettings, setRzpSettings] = useState({
+  const [rzpSettings, setRzpSettings] = useState<RzpSettingsState>({
     key_id: '',
     key_secret: '',
     webhook_secret: '',
@@ -104,10 +229,10 @@ export default function AdminDashboard({ onNavigate }) {
     has_secret: false,
     has_webhook_secret: false
   });
-  const [rzpLoading, setRzpLoading] = useState(false);
-  const [rzpSaving, setRzpSaving] = useState(false);
+  const [rzpLoading, setRzpLoading] = useState<boolean>(false);
+  const [rzpSaving, setRzpSaving] = useState<boolean>(false);
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -138,33 +263,33 @@ export default function AdminDashboard({ onNavigate }) {
       } else {
         setListings([]);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to fetch listings', 'error');
     } finally {
       setListingsLoading(false);
     }
   };
 
-  const handleUpdateListingStatus = async (id, action) => {
+  const handleUpdateListingStatus = async (id: number, action: string) => {
     try {
       await api.post(`/api/v1/listings/${id}/status`, { action });
       showToast(`Listing #${id} updated: ${action}`);
       fetchAdminListings();
       fetchListingCounts();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Action failed', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Action failed', 'error');
     }
   };
 
-  const handleDeleteListing = async (id) => {
+  const handleDeleteListing = async (id: number) => {
     if (!window.confirm(`Permanently delete listing #${id}?`)) return;
     try {
       await api.delete(`/api/v1/listings/${id}`);
       showToast(`Listing #${id} deleted`);
       fetchAdminListings();
       fetchListingCounts();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to delete listing', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to delete listing', 'error');
     }
   };
 
@@ -176,14 +301,14 @@ export default function AdminDashboard({ onNavigate }) {
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setLocations(res.data.data);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to load locations', 'error');
     } finally {
       setLocationsLoading(false);
     }
   };
 
-  const handleAddLocation = async (e) => {
+  const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
     setLocSaving(true);
@@ -200,21 +325,21 @@ export default function AdminDashboard({ onNavigate }) {
       setNewLat('');
       setNewLng('');
       fetchLocations();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to add location', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to add location', 'error');
     } finally {
       setLocSaving(false);
     }
   };
 
-  const handleDeleteLocation = async (id) => {
+  const handleDeleteLocation = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this location?')) return;
     try {
       await api.delete(`/api/v1/locations/${id}`);
       showToast('Location deleted successfully');
       fetchLocations();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to delete location', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to delete location', 'error');
     }
   };
 
@@ -226,14 +351,14 @@ export default function AdminDashboard({ onNavigate }) {
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setCategories(res.data.data);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to load categories', 'error');
     } finally {
       setCategoriesLoading(false);
     }
   };
 
-  const handleAddCategory = async (e) => {
+  const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim() || !newCatSlug.trim()) return;
     setCatSaving(true);
@@ -249,21 +374,21 @@ export default function AdminDashboard({ onNavigate }) {
       setNewCatSlug('');
       setNewCatDesc('');
       fetchCategories();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to add category', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to add category', 'error');
     } finally {
       setCatSaving(false);
     }
   };
 
-  const handleDeleteCategory = async (id) => {
+  const handleDeleteCategory = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
     try {
       await api.delete(`/api/v1/categories/${id}`);
       showToast('Category deleted successfully');
       fetchCategories();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to delete category', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to delete category', 'error');
     }
   };
 
@@ -280,31 +405,31 @@ export default function AdminDashboard({ onNavigate }) {
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setUsersList(res.data.data);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to load users', 'error');
     } finally {
       setUsersLoading(false);
     }
   };
 
-  const handleUserRoleChange = async (userId, newRole) => {
+  const handleUserRoleChange = async (userId: number, newRole: string) => {
     try {
       await api.post(`/api/v1/admin/users/${userId}/role`, { role: newRole });
       showToast(`User role updated to ${newRole}`);
       fetchUsers();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to update user role', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to update user role', 'error');
     }
   };
 
-  const handleDeactivateUser = async (userId) => {
+  const handleDeactivateUser = async (userId: number) => {
     if (!window.confirm('Deactivate this user account?')) return;
     try {
       await api.post(`/api/v1/admin/users/${userId}/delete`);
       showToast('User deactivated');
       fetchUsers();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to deactivate user', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to deactivate user', 'error');
     }
   };
 
@@ -314,23 +439,23 @@ export default function AdminDashboard({ onNavigate }) {
     try {
       const res = await getPlans(true);
       setPlans(res.data?.data || []);
-    } catch (err) {
+    } catch {
       showToast('Failed to fetch plans', 'error');
     } finally {
       setPlansLoading(false);
     }
   };
 
-  const handleSavePlan = async (e) => {
+  const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     setPlanSaving(true);
     try {
       const payload = {
         name: planForm.name.trim(),
-        price: parseFloat(planForm.price) || 0,
-        listing_limit: parseInt(planForm.listing_limit, 10) || 1,
-        leads_count: parseInt(planForm.leads_count, 10) || 0,
-        duration_days: parseInt(planForm.duration_days, 10) || 30,
+        price: parseFloat(String(planForm.price)) || 0,
+        listing_limit: parseInt(String(planForm.listing_limit), 10) || 1,
+        leads_count: parseInt(String(planForm.leads_count), 10) || 0,
+        duration_days: parseInt(String(planForm.duration_days), 10) || 30,
         description: planForm.description.trim() || undefined,
         status: planForm.status
       };
@@ -354,14 +479,14 @@ export default function AdminDashboard({ onNavigate }) {
         status: 'active'
       });
       fetchPlans();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save plan', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save plan', 'error');
     } finally {
       setPlanSaving(false);
     }
   };
 
-  const handleEditPlan = (plan) => {
+  const handleEditPlan = (plan: Plan) => {
     setEditingPlanId(plan.id);
     setPlanForm({
       name: plan.name,
@@ -370,18 +495,18 @@ export default function AdminDashboard({ onNavigate }) {
       leads_count: plan.leads_count,
       duration_days: plan.duration_days,
       description: plan.description || '',
-      status: plan.status
+      status: plan.status || 'active'
     });
   };
 
-  const handleDeletePlan = async (id) => {
+  const handleDeletePlan = async (id: number) => {
     if (!window.confirm(`Are you sure you want to delete plan #${id}?`)) return;
     try {
       await deletePlan(id);
       showToast(`Plan #${id} deleted.`);
       fetchPlans();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to delete plan', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to delete plan', 'error');
     }
   };
 
@@ -400,14 +525,14 @@ export default function AdminDashboard({ onNavigate }) {
           has_webhook_secret: res.data.data.has_webhook_secret || false
         });
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to fetch Razorpay settings', 'error');
     } finally {
       setRzpLoading(false);
     }
   };
 
-  const handleSaveRazorpaySettings = async (e) => {
+  const handleSaveRazorpaySettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setRzpSaving(true);
     try {
@@ -420,8 +545,8 @@ export default function AdminDashboard({ onNavigate }) {
       await saveRazorpaySettings(payload);
       showToast('Razorpay settings saved successfully!');
       fetchRazorpaySettings();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save settings', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save settings', 'error');
     } finally {
       setRzpSaving(false);
     }
@@ -432,25 +557,34 @@ export default function AdminDashboard({ onNavigate }) {
     try {
       const res = await getRoleLimits();
       if (res.data?.data) {
-        setRoleLimits({
-          Owner: res.data.data.Owner ?? 0,
-          Agent: res.data.data.Agent ?? 0,
-          Builder: res.data.data.Builder ?? 0
-        });
+        const data = res.data.data;
+        if (Array.isArray(data)) {
+          const map: RoleLimitsMap = { Owner: 0, Agent: 0, Builder: 0 };
+          data.forEach((item: RoleLimit) => {
+            if (item.role in map) map[item.role] = item.max_listings;
+          });
+          setRoleLimits(map);
+        } else {
+          setRoleLimits({
+            Owner: data.Owner ?? 0,
+            Agent: data.Agent ?? 0,
+            Builder: data.Builder ?? 0
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to load role limits', err);
     }
   };
 
-  const handleSaveRoleLimits = async (e) => {
+  const handleSaveRoleLimits = async (e: React.FormEvent) => {
     e.preventDefault();
     setRoleLimitsSaving(true);
     try {
       await saveRoleLimits(roleLimits);
       showToast('Role limits saved successfully!');
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save role limits', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save role limits', 'error');
     } finally {
       setRoleLimitsSaving(false);
     }
@@ -464,7 +598,7 @@ export default function AdminDashboard({ onNavigate }) {
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setEmployees(res.data.data);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to load field associates', 'error');
     } finally {
       setEmployeesLoading(false);
@@ -480,7 +614,7 @@ export default function AdminDashboard({ onNavigate }) {
     setEmployeeForm(prev => ({ ...prev, reference_code: code }));
   };
 
-  const handleOpenEmployeeModal = (emp = null) => {
+  const handleOpenEmployeeModal = (emp: Employee | null = null) => {
     if (emp) {
       setEmployeeForm({
         id: emp.id,
@@ -502,7 +636,7 @@ export default function AdminDashboard({ onNavigate }) {
     setEmployeeModalOpen(true);
   };
 
-  const handleSaveEmployee = async (e) => {
+  const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmployeeSaving(true);
     try {
@@ -510,21 +644,21 @@ export default function AdminDashboard({ onNavigate }) {
       showToast(employeeForm.id ? 'Field associate updated!' : 'Field associate created!');
       setEmployeeModalOpen(false);
       fetchEmployees();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save field associate', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save field associate', 'error');
     } finally {
       setEmployeeSaving(false);
     }
   };
 
-  const handleDeleteEmployee = async (id) => {
+  const handleDeleteEmployee = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this field associate?')) return;
     try {
       await deleteEmployee(id);
       showToast('Field associate deleted');
       fetchEmployees();
-    } catch (err) {
-      showToast('Failed to delete field associate', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to delete field associate', 'error');
     }
   };
 
@@ -536,14 +670,14 @@ export default function AdminDashboard({ onNavigate }) {
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setAdminBlogs(res.data.data);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to load blogs', 'error');
     } finally {
       setBlogsLoading(false);
     }
   };
 
-  const handleOpenBlogModal = (blog = null) => {
+  const handleOpenBlogModal = (blog: Blog | null = null) => {
     if (blog) {
       setBlogForm({
         id: blog.id,
@@ -570,12 +704,12 @@ export default function AdminDashboard({ onNavigate }) {
     setBlogModalOpen(true);
   };
 
-  const handleSaveBlog = async (e) => {
+  const handleSaveBlog = async (e: React.FormEvent) => {
     e.preventDefault();
     setBlogSaving(true);
     try {
       const fd = new FormData();
-      if (blogForm.id) fd.append('id', blogForm.id);
+      if (blogForm.id) fd.append('id', String(blogForm.id));
       fd.append('title', blogForm.title);
       fd.append('category', blogForm.category);
       fd.append('content', blogForm.content);
@@ -589,21 +723,21 @@ export default function AdminDashboard({ onNavigate }) {
       showToast(blogForm.id ? 'Blog updated successfully!' : 'Blog created successfully!');
       setBlogModalOpen(false);
       fetchBlogs();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save blog', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save blog', 'error');
     } finally {
       setBlogSaving(false);
     }
   };
 
-  const handleDeleteBlog = async (id) => {
+  const handleDeleteBlog = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this blog?')) return;
     try {
       await deleteAdminBlog(id);
       showToast('Blog deleted successfully');
       fetchBlogs();
-    } catch (err) {
-      showToast('Failed to delete blog', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to delete blog', 'error');
     }
   };
 
@@ -614,11 +748,11 @@ export default function AdminDashboard({ onNavigate }) {
       const res = await getMailSettings();
       if (res.data?.status === 'success' && res.data?.data) {
         setSmtpSettings({
-          host: res.data.data.host || '',
-          port: res.data.data.port || 465,
-          email: res.data.data.email || '',
+          host: res.data.data.smtp_host || res.data.data.host || '',
+          port: res.data.data.smtp_port || res.data.data.port || 465,
+          email: res.data.data.smtp_email || res.data.data.email || '',
           password: '',
-          encryption: res.data.data.encryption || 'ssl',
+          encryption: res.data.data.smtp_encryption || res.data.data.encryption || 'ssl',
           from_name: res.data.data.from_name || 'TradeCall India',
           has_password: res.data.data.has_password || false
         });
@@ -630,16 +764,23 @@ export default function AdminDashboard({ onNavigate }) {
     }
   };
 
-  const handleSaveMailSettings = async (e) => {
+  const handleSaveMailSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSmtpSaving(true);
     try {
-      await saveMailSettings(smtpSettings);
+      await saveMailSettings({
+        smtp_host: smtpSettings.host,
+        smtp_email: smtpSettings.email,
+        smtp_port: smtpSettings.port,
+        smtp_encryption: smtpSettings.encryption,
+        from_name: smtpSettings.from_name,
+        smtp_password: smtpSettings.password || undefined
+      });
       showToast('Mail settings saved successfully!');
       setSmtpSettings(prev => ({ ...prev, password: '' }));
       fetchMailSettings();
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to save mail settings', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save mail settings', 'error');
     } finally {
       setSmtpSaving(false);
     }
@@ -656,12 +797,12 @@ export default function AdminDashboard({ onNavigate }) {
       } else {
         showToast(res.data?.message || 'Failed to send test email', 'error');
       }
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to send test email', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to send test email', 'error');
     }
   };
 
-  const handleUpdateCredentials = async (e) => {
+  const handleUpdateCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setCredSaving(true);
     try {
@@ -671,8 +812,8 @@ export default function AdminDashboard({ onNavigate }) {
       });
       showToast('Credentials updated successfully!');
       setCredForm({ newUsername: '', currPassword: '', newPassword: '' });
-    } catch (err) {
-      showToast(err.response?.data?.detail || 'Failed to update credentials', 'error');
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to update credentials', 'error');
     } finally {
       setCredSaving(false);
     }
@@ -832,7 +973,7 @@ export default function AdminDashboard({ onNavigate }) {
               borderColor: activeModule === 'plans' ? '#0c6253' : '#d1d5db'
             }}
           >
-            <i className="fas fa-gem"></i> Plans & Pricing
+            <i className="fas fa-gem"></i> Plans &amp; Pricing
           </button>
 
           <button
@@ -1252,7 +1393,7 @@ export default function AdminDashboard({ onNavigate }) {
                 <div className="form-group full">
                   <label>Description</label>
                   <textarea
-                    rows="3"
+                    rows={3}
                     placeholder="Brief description of properties in this category"
                     value={newCatDesc}
                     onChange={(e) => setNewCatDesc(e.target.value)}
@@ -1345,7 +1486,7 @@ export default function AdminDashboard({ onNavigate }) {
                       type="number"
                       min="0"
                       value={roleLimits.Owner}
-                      onChange={(e) => setRoleLimits({ ...roleLimits, Owner: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setRoleLimits({ ...roleLimits, Owner: parseInt(e.target.value, 10) || 0 })}
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                       required
                     />
@@ -1358,7 +1499,7 @@ export default function AdminDashboard({ onNavigate }) {
                       type="number"
                       min="0"
                       value={roleLimits.Agent}
-                      onChange={(e) => setRoleLimits({ ...roleLimits, Agent: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setRoleLimits({ ...roleLimits, Agent: parseInt(e.target.value, 10) || 0 })}
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                       required
                     />
@@ -1371,7 +1512,7 @@ export default function AdminDashboard({ onNavigate }) {
                       type="number"
                       min="0"
                       value={roleLimits.Builder}
-                      onChange={(e) => setRoleLimits({ ...roleLimits, Builder: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setRoleLimits({ ...roleLimits, Builder: parseInt(e.target.value, 10) || 0 })}
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                       required
                     />
@@ -1389,122 +1530,122 @@ export default function AdminDashboard({ onNavigate }) {
             </div>
 
             <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                User Accounts &amp; Role Management
-              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  User Accounts &amp; Role Management
+                </h2>
 
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <select
-                  value={userRoleFilter}
-                  onChange={(e) => setUserRoleFilter(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px' }}
-                >
-                  <option value="">All Roles</option>
-                  <option value="Owner">Owner</option>
-                  <option value="Agent">Agent</option>
-                  <option value="Builder">Builder</option>
-                  <option value="Admin">Admin</option>
-                </select>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <select
+                    value={userRoleFilter}
+                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px' }}
+                  >
+                    <option value="">All Roles</option>
+                    <option value="Owner">Owner</option>
+                    <option value="Agent">Agent</option>
+                    <option value="Builder">Builder</option>
+                    <option value="Admin">Admin</option>
+                  </select>
 
-                <input
-                  type="text"
-                  placeholder="Search name, email, phone..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') fetchUsers(); }}
-                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '220px' }}
-                />
+                  <input
+                    type="text"
+                    placeholder="Search name, email, phone..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') fetchUsers(); }}
+                    style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '220px' }}
+                  />
 
-                <button
-                  type="button"
-                  className="btn-primary"
-                  style={{ padding: '8px 14px', fontSize: '13px' }}
-                  onClick={fetchUsers}
-                >
-                  <i className="fas fa-search"></i>
-                </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ padding: '8px 14px', fontSize: '13px' }}
+                    onClick={fetchUsers}
+                  >
+                    <i className="fas fa-search"></i>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {usersLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
-                <div>Loading users...</div>
-              </div>
-            ) : usersList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                No users found.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '12px 14px' }}>ID</th>
-                      <th style={{ padding: '12px 14px' }}>Name</th>
-                      <th style={{ padding: '12px 14px' }}>Email &amp; Phone</th>
-                      <th style={{ padding: '12px 14px' }}>Current Role</th>
-                      <th style={{ padding: '12px 14px' }}>Status</th>
-                      <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usersList.map((u) => (
-                      <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 14px', color: '#64748b' }}>#{u.id}</td>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#111827' }}>
-                          {u.name}
-                        </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div>{u.email}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>{u.phone || 'No phone'}</div>
-                        </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleUserRoleChange(u.id, e.target.value)}
-                            style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px' }}
-                          >
-                            <option value="Owner">Owner</option>
-                            <option value="Agent">Agent</option>
-                            <option value="Builder">Builder</option>
-                            <option value="Admin">Admin</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <span
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              background: u.status === 'active' ? '#dcfce7' : '#fee2e2',
-                              color: u.status === 'active' ? '#166534' : '#b91c1c'
-                            }}
-                          >
-                            {u.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                          {u.id !== user.id && (
-                            <button
-                              type="button"
-                              className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
-                              onClick={() => handleDeactivateUser(u.id)}
-                            >
-                              Deactivate
-                            </button>
-                          )}
-                        </td>
+              {usersLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
+                  <div>Loading users...</div>
+                </div>
+              ) : usersList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                  No users found.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                        <th style={{ padding: '12px 14px' }}>ID</th>
+                        <th style={{ padding: '12px 14px' }}>Name</th>
+                        <th style={{ padding: '12px 14px' }}>Email &amp; Phone</th>
+                        <th style={{ padding: '12px 14px' }}>Current Role</th>
+                        <th style={{ padding: '12px 14px' }}>Status</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {usersList.map((u) => (
+                        <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '12px 14px', color: '#64748b' }}>#{u.id}</td>
+                          <td style={{ padding: '12px 14px', fontWeight: 700, color: '#111827' }}>
+                            {u.name}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div>{u.email}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{u.phone || 'No phone'}</div>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleUserRoleChange(u.id, e.target.value)}
+                              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '12px' }}
+                            >
+                              <option value="Owner">Owner</option>
+                              <option value="Agent">Agent</option>
+                              <option value="Builder">Builder</option>
+                              <option value="Admin">Admin</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                background: u.status === 'active' ? '#dcfce7' : '#fee2e2',
+                                color: u.status === 'active' ? '#166534' : '#b91c1c'
+                              }}
+                            >
+                              {u.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                            {u.id !== user.id && (
+                              <button
+                                type="button"
+                                className="btn-outline"
+                                style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                onClick={() => handleDeactivateUser(u.id)}
+                              >
+                                Deactivate
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1876,7 +2017,7 @@ export default function AdminDashboard({ onNavigate }) {
                 </div>
               ) : employees.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  No field associates found. Click "Add Field Associate" to create one.
+                  No field associates found. Click &quot;Add Field Associate&quot; to create one.
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -1979,7 +2120,7 @@ export default function AdminDashboard({ onNavigate }) {
                 </div>
               ) : adminBlogs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  No blogs published yet. Click "Write New Blog" to post an article.
+                  No blogs published yet. Click &quot;Write New Blog&quot; to post an article.
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -2191,7 +2332,7 @@ export default function AdminDashboard({ onNavigate }) {
                         type="number"
                         placeholder="465"
                         value={smtpSettings.port}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, port: parseInt(e.target.value) || 465 })}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, port: parseInt(e.target.value, 10) || 465 })}
                         style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
                         required
                       />
@@ -2466,7 +2607,7 @@ export default function AdminDashboard({ onNavigate }) {
                     Blog Content
                   </label>
                   <textarea
-                    rows="8"
+                    rows={8}
                     placeholder="Write your article content here..."
                     value={blogForm.content}
                     onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}

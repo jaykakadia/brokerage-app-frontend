@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
+import type { NavigateFunction } from '../types';
 
-export default function ContactPage({ onNavigate }) {
+export interface ContactPageProps {
+  onNavigate?: NavigateFunction;
+}
+
+export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProps) {
   const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setSubmitted(true);
   };

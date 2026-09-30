@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
+import { isCanonicalRole, type CanonicalRole, type MessageResponse } from '../types';
 
-export default function AuthModal({ isOpen, onClose }) {
+export interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { login, register } = useAuth();
-  const [tab, setTab] = useState('signin'); // 'signin' or 'register'
+  const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>('signin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -18,7 +24,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [regRole, setRegRole] = useState('Owner');
+  const [regRole, setRegRole] = useState<CanonicalRole>('Owner');
   const [regOtp, setRegOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
 
@@ -28,7 +34,9 @@ export default function AuthModal({ isOpen, onClose }) {
   const [newPassword, setNewPassword] = useState('');
   const [forgotOtpSent, setForgotOtpSent] = useState(false);
 
-  const handleForgotSendOtp = async () => {
+  if (!isOpen) return null;
+
+  const handleForgotSendOtp = async (): Promise<void> => {
     if (!forgotEmail) {
       setError('Please enter your email address.');
       return;
@@ -36,20 +44,20 @@ export default function AuthModal({ isOpen, onClose }) {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/api/v1/auth/send-otp', {
+      const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', {
         email: forgotEmail,
         action: 'forgot'
       });
       setForgotOtpSent(true);
       setSuccessMsg(res.data.message || 'Reset OTP sent to your email.');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to send reset OTP.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to send reset OTP.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResetPassword = async (e) => {
+  const handleResetPassword = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!forgotOtp) {
       setError('Please enter the OTP received in your email.');
@@ -58,7 +66,7 @@ export default function AuthModal({ isOpen, onClose }) {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/api/v1/auth/reset-password', {
+      const res = await api.post<MessageResponse>('/api/v1/auth/reset-password', {
         email: forgotEmail,
         otp: forgotOtp,
         new_password: newPassword
@@ -67,16 +75,14 @@ export default function AuthModal({ isOpen, onClose }) {
       setTab('signin');
       setLoginEmail(forgotEmail);
       setLoginPassword('');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Password reset failed.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Password reset failed.'));
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (): Promise<void> => {
     if (!regEmail) {
       setError('Please enter your email to receive an OTP.');
       return;
@@ -84,7 +90,7 @@ export default function AuthModal({ isOpen, onClose }) {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/api/v1/auth/send-otp', {
+      const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', {
         email: regEmail,
         action: 'register',
         name: regName,
@@ -92,28 +98,28 @@ export default function AuthModal({ isOpen, onClose }) {
       });
       setOtpSent(true);
       setSuccessMsg(res.data.message || 'OTP dispatched to email.');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to send OTP.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to send OTP.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignIn = async (e) => {
+  const handleSignIn = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
       await login(loginEmail, loginPassword);
       onClose();
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Sign-in failed. Check credentials.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Sign-in failed. Check credentials.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegister = async (e) => {
+  const handleRegister = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -127,8 +133,8 @@ export default function AuthModal({ isOpen, onClose }) {
         otp: regOtp || undefined
       });
       onClose();
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Registration failed.'));
     } finally {
       setLoading(false);
     }
@@ -227,7 +233,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 />
                 <button
                   type="button"
-                  onClick={handleForgotSendOtp}
+                  onClick={() => void handleForgotSendOtp()}
                   disabled={loading}
                   style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >
@@ -285,7 +291,10 @@ export default function AuthModal({ isOpen, onClose }) {
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Your Role</label>
               <select
                 value={regRole}
-                onChange={(e) => setRegRole(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (isCanonicalRole(val)) setRegRole(val);
+                }}
                 style={{ width: '100%', padding: '9px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
               >
                 <option value="Owner">Owner</option>
@@ -331,7 +340,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 />
                 <button
                   type="button"
-                  onClick={handleSendOtp}
+                  onClick={() => void handleSendOtp()}
                   disabled={loading}
                   style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >

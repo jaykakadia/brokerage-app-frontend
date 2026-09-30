@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useState, useEffect } from 'react';
+import api, { getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { isCanonicalRole, type CanonicalRole, type Listing, type ApiResponse, type NavigateFunction } from '../types';
 
-export default function PostListingPage({ onNavigate, onOpenAuth }) {
+export interface PostListingPageProps {
+  onNavigate: NavigateFunction;
+  onOpenAuth?: () => void;
+}
+
+export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingPageProps) {
   const { user } = useAuth();
 
-  const [cities, setCities] = useState([
+  const [cities, setCities] = useState<string[]>([
     'Palwal', 'Faridabad', 'Gurugram', 'Sonipat', 'Panipat', 'Hodal', 'Delhi', 'Noida'
   ]);
 
@@ -28,20 +34,20 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
   const [description, setDescription] = useState('');
   const [referenceCode, setReferenceCode] = useState('');
   const [ownerName, setOwnerName] = useState('');
-  const [ownerRole, setOwnerRole] = useState('Owner');
+  const [ownerRole, setOwnerRole] = useState<CanonicalRole>('Owner');
 
   // Photo state
-  const [photos, setPhotos] = useState([]);
-  const [previews, setPreviews] = useState([]);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   // Submission state
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [successListing, setSuccessListing] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successListing, setSuccessListing] = useState<Listing | null>(null);
 
   // Load cities from backend if available
   useEffect(() => {
-    api.get('/api/v1/locations/cities')
+    api.get<ApiResponse<string[]>>('/api/v1/locations/cities')
       .then((res) => {
         if (res.data?.status === 'success' && Array.isArray(res.data?.data) && res.data.data.length > 0) {
           setCities(res.data.data);
@@ -61,17 +67,18 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
     }
   }, [user]);
 
-  const handlePhotoSelect = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const fileList = e.target.files;
+    if (!fileList || !fileList.length) return;
+    const files = Array.from(fileList);
 
     if (photos.length + files.length > 10) {
       alert('You can upload a maximum of 10 photos per listing.');
       return;
     }
 
-    const validFiles = [];
-    const validPreviews = [];
+    const validFiles: File[] = [];
+    const validPreviews: string[] = [];
 
     for (const f of files) {
       if (f.size > 5 * 1024 * 1024) {
@@ -86,12 +93,12 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
     setPreviews([...previews, ...validPreviews]);
   };
 
-  const removePhoto = (index) => {
+  const removePhoto = (index: number): void => {
     setPhotos(photos.filter((_, i) => i !== index));
     setPreviews(previews.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setError(null);
 
@@ -147,7 +154,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
         fd.append('photos', photo);
       });
 
-      const res = await api.post('/api/v1/listings', fd, {
+      const res = await api.post<ApiResponse<Listing>>('/api/v1/listings', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -156,10 +163,9 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
       } else {
         setError('Listing could not be saved. Please check the form.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Post listing error:', err);
-      const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Failed to post listing. Please try again.');
+      setError(getApiErrorMessage(err, 'Failed to post listing. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -458,7 +464,13 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
 
               <div className="form-group">
                 <label>Your Role <span className="req">*</span></label>
-                <select value={ownerRole} onChange={(e) => setOwnerRole(e.target.value)}>
+                <select
+                  value={ownerRole}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (isCanonicalRole(val)) setOwnerRole(val);
+                  }}
+                >
                   <option value="Owner">Owner</option>
                   <option value="Agent">Agent</option>
                   <option value="Builder">Builder</option>
@@ -482,7 +494,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
             <div className="form-group full">
               <label>Detailed Description</label>
               <textarea
-                rows="4"
+                rows={4}
                 placeholder="Describe key features, nearby landmarks (metro, schools, markets), society amenities, possession status..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -494,7 +506,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }) {
 
             <div
               className="upload-area"
-              onClick={() => document.getElementById('photoInput').click()}
+              onClick={() => document.getElementById('photoInput')?.click()}
             >
               <i className="fas fa-cloud-upload-alt"></i>
               <p>Click to select photos or drag &amp; drop</p>

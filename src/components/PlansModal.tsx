@@ -1,25 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { getPlans, createPaymentOrder, verifyPayment } from '../services/api';
+import { useState, useEffect } from 'react';
+import { getPlans, createPaymentOrder, verifyPayment, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import type { Plan } from '../types';
 
-export default function PlansModal({ isOpen, onClose, onSuccess }) {
+export interface PlansModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalProps) {
   const { user, refreshUser } = useAuth();
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedPlanId, setSelectedPlanId] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [successMsg, setSuccessMsg] = useState(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setErrorMsg(null);
       setSuccessMsg(null);
-      loadPlans();
+      void loadPlans();
     }
   }, [isOpen]);
 
-  const loadPlans = async () => {
+  const loadPlans = async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await getPlans(false);
@@ -28,7 +35,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
       if (list.length > 0) {
         setSelectedPlanId(list[0].id);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to load plans:', err);
       setErrorMsg('Failed to load available plans. Please try again.');
     } finally {
@@ -36,7 +43,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  const handleSelectAndPay = async () => {
+  const handleSelectAndPay = async (): Promise<void> => {
     if (!selectedPlanId) return;
     setErrorMsg(null);
     setProcessing(true);
@@ -49,7 +56,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
       // Check if Razorpay checkout script is loaded and key is valid
       const hasRealRazorpay = typeof window.Razorpay === 'function' && key_id && !key_id.includes('dummy');
 
-      if (hasRealRazorpay) {
+      if (hasRealRazorpay && window.Razorpay) {
         const options = {
           key: key_id,
           amount: amount,
@@ -63,7 +70,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
             contact: prefill?.contact || user?.phone || ''
           },
           theme: { color: '#0c6253' },
-          handler: async (response) => {
+          handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
             try {
               await verifyPayment({
                 razorpay_order_id: response.razorpay_order_id,
@@ -77,8 +84,8 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
               setTimeout(() => {
                 onClose();
               }, 2000);
-            } catch (vErr) {
-              setErrorMsg(vErr.response?.data?.detail || 'Payment verification failed.');
+            } catch (vErr: unknown) {
+              setErrorMsg(getApiErrorMessage(vErr, 'Payment verification failed.'));
             }
           },
           modal: {
@@ -108,9 +115,9 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
           onClose();
         }, 1800);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Order creation error:', err);
-      setErrorMsg(err.response?.data?.detail || 'Unable to initiate payment.');
+      setErrorMsg(getApiErrorMessage(err, 'Unable to initiate payment.'));
       setProcessing(false);
     }
   };
@@ -313,7 +320,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#475569' }}>
-              <i className="fas fa-shield-check" style={{ color: '#0c6253', fontSize: '20px' }}></i>
+              <i className="fas fa-shield-alt" style={{ color: '#0c6253', fontSize: '20px' }}></i>
               <span>100% Secure Payments via Razorpay (UPI, Cards, NetBanking)</span>
             </div>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Zero Brokerage</span>
@@ -333,7 +340,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }) {
             <button
               type="button"
               className="btn-primary"
-              onClick={handleSelectAndPay}
+              onClick={() => void handleSelectAndPay()}
               disabled={processing || !selectedPlanId || plans.length === 0}
               style={{ padding: '10px 24px', fontSize: '14px', minWidth: '150px' }}
             >

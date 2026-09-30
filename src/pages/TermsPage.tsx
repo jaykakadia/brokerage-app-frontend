@@ -1,12 +1,16 @@
-import React from 'react';
+import type { NavigateFunction } from '../types';
 
-export default function PrivacyPage({ onNavigate }) {
+export interface TermsPageProps {
+  onNavigate?: NavigateFunction;
+}
+
+export default function TermsPage({ onNavigate: _onNavigate }: TermsPageProps) {
   return (
-    <div className="privacy-page">
+    <div className="terms-page">
       <section className="page-hero green-hero" style={{ background: 'linear-gradient(135deg, #0c6253, #14a37a)', color: '#fff', padding: '50px 20px', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '10px' }}>
-            <i className="fas fa-shield-alt"></i> Privacy Policy
+            <i className="fas fa-file-contract"></i> Terms of Use
           </h1>
           <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)' }}>
             Last updated: September 2025
@@ -18,45 +22,45 @@ export default function PrivacyPage({ onNavigate }) {
         <div className="container" style={{ maxWidth: '860px', margin: '0 auto' }}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '36px 32px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#0c6253' }}>
-              1. Information We Collect
+              1. Acceptance of Terms
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8, marginBottom: '24px' }}>
-              We collect information you provide directly to us, such as when you create an account, post a listing, or contact us. This includes your name, email address, phone number, and property details.
+              By accessing or using TradeCall India, you agree to be bound by these Terms of Use. If you do not agree to these terms, please do not use our services.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#0c6253' }}>
-              2. How We Use Your Information
+              2. Use of Service
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8, marginBottom: '24px' }}>
-              We use the information we collect to provide, maintain, and improve our services, process transactions, send you technical notices and support messages, and respond to your comments and questions.
+              TradeCall India provides an online platform for property and business listings. You agree to use the service only for lawful purposes. You must not post false, misleading, or fraudulent listings.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#0c6253' }}>
-              3. Information Sharing
+              3. Listing Policy
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8, marginBottom: '24px' }}>
-              We do not share your personal information with third parties except as described in this privacy policy. We may share your information with vendors and service providers that perform services on our behalf.
+              All listings must be genuine. We reserve the right to remove any listing that violates our policies. Listings must include accurate information about the property, price, and contact details.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#0c6253' }}>
-              4. Listing Information
+              4. Prohibited Content
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8, marginBottom: '24px' }}>
-              When you post a listing on TradeCall India, the listing information including your contact details may be visible to registered users. You can control your contact visibility in your account settings.
+              You may not post content that is illegal, defamatory, obscene, or that infringes intellectual property rights. Spam listings, duplicate listings, and misleading content are strictly prohibited.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#0c6253' }}>
-              5. Cookies
+              5. Limitation of Liability
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8, marginBottom: '24px' }}>
-              We use cookies and similar tracking technologies to track activity on our service and hold certain information to improve and analyze our service.
+              TradeCall India acts as an intermediary platform. We are not responsible for the accuracy of listings or the outcome of any transactions between users. Users are advised to verify all information independently.
             </p>
 
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px', color: '#0c6253' }}>
-              6. Contact Us
+              6. Contact
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8 }}>
-              If you have questions about this Privacy Policy, please contact us at{' '}
+              For questions about these terms, contact us at{' '}
               <a href="mailto:tradecall.in@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
                 tradecall.in@gmail.com
               </a>

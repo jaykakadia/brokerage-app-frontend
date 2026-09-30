@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import type { NavigateFunction } from '../types';
 
-export default function Header({ onNavigate, activePage, onOpenAuth }) {
+export interface HeaderProps {
+  onNavigate: NavigateFunction;
+  activePage: string;
+  onOpenAuth: () => void;
+  activeCity?: string;
+  onCitySelect?: (city: string) => void;
+}
+
+export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderProps) {
   const { user, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -97,7 +106,7 @@ export default function Header({ onNavigate, activePage, onOpenAuth }) {
                   type="button"
                   className="btn-outline"
                   style={{ padding: '7px 12px', fontSize: '13px' }}
-                  onClick={logout}
+                  onClick={() => void logout()}
                   title="Sign Out"
                 >
                   <i className="fas fa-sign-out-alt"></i>
@@ -157,7 +166,7 @@ export default function Header({ onNavigate, activePage, onOpenAuth }) {
             </nav>
             <div className="drawer-footer">
               {user ? (
-                <button className="btn-primary" style={{ width: '100%' }} onClick={() => { logout(); setDrawerOpen(false); }}>Sign Out</button>
+                <button className="btn-primary" style={{ width: '100%' }} onClick={() => { void logout(); setDrawerOpen(false); }}>Sign Out</button>
               ) : (
                 <button className="btn-drawer-signin" onClick={() => { onOpenAuth(); setDrawerOpen(false); }}>
                   <i className="fas fa-sign-in-alt"></i> Sign-In / Register

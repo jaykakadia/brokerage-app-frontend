@@ -1,8 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
+import { getPlans } from '../services/api';
+import type { NavigateFunction } from '../types';
 
-export default function AdvertisePage({ onNavigate, onOpenAuth }) {
-  const defaultPlans = [
+export interface AdvertisePageProps {
+  onNavigate: NavigateFunction;
+  onOpenAuth?: () => void;
+}
+
+interface AdvertisePlan {
+  id: string;
+  name: string;
+  price: string;
+  duration: string;
+  features: string[];
+  isPopular: boolean;
+  buttonText: string;
+  colorTheme: string;
+}
+
+export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: AdvertisePageProps) {
+  const defaultPlans: AdvertisePlan[] = [
     {
       id: 'free',
       name: 'FREE',
@@ -45,37 +62,36 @@ export default function AdvertisePage({ onNavigate, onOpenAuth }) {
     }
   ];
 
-  const [plans, setPlans] = useState(defaultPlans);
+  const [plans, setPlans] = useState<AdvertisePlan[]>(defaultPlans);
 
   useEffect(() => {
-    // Optionally fetch dynamic plans from API if available
-    const fetchPlans = async () => {
+    const fetchPlans = async (): Promise<void> => {
       try {
-        const res = await axios.get('/api/v1/plans');
-        if (res.data && res.data.length > 0) {
-          // If server returns plans, map them or merge
-          const serverPlans = res.data.map(p => ({
+        const res = await getPlans(false);
+        const data = res.data?.data || [];
+        if (data.length > 0) {
+          const serverPlans: AdvertisePlan[] = data.map((p) => ({
             id: String(p.id),
             name: p.name.toUpperCase(),
             price: `₹${p.price}`,
-            duration: `${p.lead_count} Leads / 1 Year`,
+            duration: `${p.leads_count} Leads / ${p.duration_days} Days`,
             features: [
-              `+ ${p.lead_count} Direct Contact Reveals`,
-              '+ Active for 365 Days',
+              `+ ${p.leads_count} Direct Contact Reveals`,
+              `+ Active for ${p.duration_days} Days`,
               '+ Verified Seller Support',
               '+ Real-time Analytics'
             ],
-            isPopular: p.lead_count >= 5,
+            isPopular: p.leads_count >= 5,
             buttonText: 'Buy Plan',
-            colorTheme: p.lead_count >= 5 ? 'orange' : 'gray'
+            colorTheme: p.leads_count >= 5 ? 'orange' : 'gray'
           }));
           setPlans(serverPlans);
         }
-      } catch (err) {
+      } catch {
         // Fallback to default plans
       }
     };
-    fetchPlans();
+    void fetchPlans();
   }, []);
 
   return (
@@ -106,7 +122,7 @@ export default function AdvertisePage({ onNavigate, onOpenAuth }) {
             {plans.map((plan) => {
               let themeColor = '#0c6253';
               let bg = '#fff';
-              let borderColor = '#e5e7eb';
+              const borderColor = '#e5e7eb';
               let btnBg = 'transparent';
               let btnColor = themeColor;
               let btnBorder = `1.5px solid ${themeColor}`;
