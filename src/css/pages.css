@@ -410,33 +410,34 @@
 .ld-amenity { display: inline-flex; align-items: center; gap: 6px; background: #f0faf6; border: 1px solid #c6f2e2; color: #0c6253; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; }
 .ld-amenity i { font-size: 12px; }
 
-/* ===== Sign-up help (admin Settings > Sign-up Guide Links) ===== */
-.signup-help { margin-top: 22px; }
-.signup-help-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; color: #64748b; font-size: 12px; font-weight: 600; letter-spacing: 0.2px; }
-.signup-help-divider::before, .signup-help-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
-.signup-help-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.signup-help-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; text-align: left; text-decoration: none; font-family: inherit; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; box-sizing: border-box; }
-.signup-help-option:hover { border-color: #0c6253; box-shadow: 0 4px 14px rgba(12, 98, 83, 0.12); transform: translateY(-1px); }
-.signup-help-option:focus-visible { outline: 2px solid #0c6253; outline-offset: 2px; }
-.signup-help-option.is-disabled { cursor: default; opacity: 0.6; }
-.signup-help-option.is-disabled:hover { border-color: #e5e7eb; box-shadow: none; transform: none; }
-.signup-help-icon { flex: 0 0 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-.signup-help-icon.blog { background: #ecfdf5; color: #0c6253; }
-.signup-help-icon.video { background: #fee2e2; color: #dc2626; }
-.signup-help-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.signup-help-text strong { font-size: 13px; color: #0f172a; font-weight: 700; }
-.signup-help-text small { font-size: 11.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.signup-help-arrow { font-size: 11px; color: #94a3b8; transition: transform 0.15s, color 0.15s; }
-.signup-help-option:hover .signup-help-arrow { color: #0c6253; transform: translateX(2px); }
+/* ===== Sign-up help (admin Settings > Sign-up Guide Links) =====
+   Selectors are scoped under div.signup-help so they beat the login page's `.tc-login-root *` reset. */
+div.signup-help { margin-top: 22px; }
+div.signup-help .signup-help-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; color: #64748b; font-size: 12px; font-weight: 600; letter-spacing: 0.2px; }
+div.signup-help .signup-help-divider::before, div.signup-help .signup-help-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+div.signup-help .signup-help-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+div.signup-help .signup-help-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; text-align: left; text-decoration: none; font-family: inherit; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; box-sizing: border-box; }
+div.signup-help .signup-help-option:hover { border-color: #0c6253; box-shadow: 0 4px 14px rgba(12, 98, 83, 0.12); transform: translateY(-1px); }
+div.signup-help .signup-help-option:focus-visible { outline: 2px solid #0c6253; outline-offset: 2px; }
+div.signup-help .signup-help-option.is-disabled { cursor: default; opacity: 0.6; }
+div.signup-help .signup-help-option.is-disabled:hover { border-color: #e5e7eb; box-shadow: none; transform: none; }
+div.signup-help .signup-help-icon { flex: 0 0 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+div.signup-help .signup-help-icon.blog { background: #ecfdf5; color: #0c6253; }
+div.signup-help .signup-help-icon.video { background: #fee2e2; color: #dc2626; }
+div.signup-help .signup-help-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+div.signup-help .signup-help-text strong { font-size: 13px; color: #0f172a; font-weight: 700; }
+div.signup-help .signup-help-text small { font-size: 11.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+div.signup-help .signup-help-arrow { font-size: 11px; color: #94a3b8; transition: transform 0.15s, color 0.15s; }
+div.signup-help .signup-help-option:hover .signup-help-arrow { color: #0c6253; transform: translateX(2px); }
 @media (max-width: 400px) {
-  .signup-help-options { grid-template-columns: 1fr; }
+  div.signup-help .signup-help-options { grid-template-columns: 1fr; }
 }
 
-.signup-video-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(15, 23, 42, 0.8); display: flex; align-items: center; justify-content: center; padding: 16px; }
+div.signup-video-overlay { position: fixed; inset: 0; z-index: 100000; background: rgba(15, 23, 42, 0.8); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .signup-video-box { position: relative; width: 100%; max-width: 860px; }
 .signup-video-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
 .signup-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.signup-video-close { position: absolute; top: -44px; right: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: #fff; color: #0f172a; font-size: 16px; cursor: pointer; }
+div.signup-video-box .signup-video-close { position: absolute; top: -44px; right: 0; width: 36px; height: 36px; border-radius: 50%; border: none; background: #fff; color: #0f172a; font-size: 16px; cursor: pointer; }
 
 /* ===== Admin: Enquiry Management ===== */
 .admin-nav-badge { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
