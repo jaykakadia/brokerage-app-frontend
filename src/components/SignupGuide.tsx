@@ -13,9 +13,12 @@ const youtubeEmbedUrl = (url: string): string | null => {
   return match ? `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=1&rel=0` : null;
 };
 
+/** Used for "Read Guide" until the admin sets a guide link. */
+const FALLBACK_GUIDE_URL = '/blog';
+
 /**
  * "How to sign up" tutorial links set by the admin (Settings > Sign-up Guide Links).
- * Renders nothing until the admin adds at least one link.
+ * Always shown: "Read Guide" falls back to the site's blog, "Watch Video" appears once a video link is set.
  */
 export default function SignupGuide() {
   const [blogUrl, setBlogUrl] = useState('');
@@ -41,8 +44,7 @@ export default function SignupGuide() {
     return () => window.removeEventListener('keydown', onKey);
   }, [playing]);
 
-  if (!blogUrl && !videoUrl) return null;
-
+  const guideUrl = blogUrl || FALLBACK_GUIDE_URL;
   const embed = videoUrl ? youtubeEmbedUrl(videoUrl) : null;
 
   return (
@@ -67,11 +69,9 @@ export default function SignupGuide() {
               </a>
             )
           ) : null}
-          {blogUrl ? (
-            <a className="signup-guide-btn blog" href={blogUrl} target="_blank" rel="noopener noreferrer">
-              <i className="fas fa-book-open"></i> Read Guide
-            </a>
-          ) : null}
+          <a className="signup-guide-btn blog" href={guideUrl} target="_blank" rel="noopener noreferrer">
+            <i className="fas fa-book-open"></i> Read Guide
+          </a>
         </div>
       </div>
 
