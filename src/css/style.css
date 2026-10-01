@@ -622,6 +622,24 @@ ul { list-style: none; }
   margin-top: 2px;
 }
 
+/* When metrics-inner is placed inside hero-content below search box */
+.hero-content .metrics-inner {
+  margin-top: 32px;
+  padding: 0;
+  gap: 48px;
+}
+.hero-content .metric-icon {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+.hero-content .metric-num,
+.hero-content .metric-plus {
+  color: #ffffff;
+}
+.hero-content .metric-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 /* ===================== FEATURED SECTION ===================== */
 .featured-section {
   padding: 50px 0 30px;

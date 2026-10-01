@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import api, { getWishlist, toggleWishlist, getApiErrorMessage } from '../services/api';
+import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import type { Listing } from '../types';
+import type { Listing, ListingStatsResponse } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
 
@@ -60,12 +60,92 @@ const BUDGET_PRESETS: BudgetPreset[] = [
   { label: 'Above ₹2 Crore', min: '20000000', max: '' }
 ];
 
+const DEFAULT_FEATURED_LISTINGS: Listing[] = [
+  {
+    id: 9001,
+    title: 'Plot for Sale at RPS Society',
+    location: 'RPS Society, Faridabad, Haryana',
+    price: 7080000,
+    owner_name: 'DP',
+    owner_role: 'Owner',
+    user_id: 1,
+    status: 'approved',
+    verified: 1,
+    is_featured: true,
+    created_at: new Date().toISOString(),
+    images: [],
+    form_data: { propType: 'Plot' }
+  },
+  {
+    id: 9002,
+    title: 'Plot for Sale at Tarang Residency – Sohna Road',
+    location: 'Tarang Residency – Sohna Road, Faridabad, Haryana',
+    price: 11000000,
+    owner_name: 'DP',
+    owner_role: 'Owner',
+    user_id: 1,
+    status: 'approved',
+    verified: 1,
+    is_featured: true,
+    created_at: new Date().toISOString(),
+    images: [],
+    form_data: { propType: 'Plot' }
+  },
+  {
+    id: 9003,
+    title: 'Plot for Sale at Omaxe City Phase-I',
+    location: 'Omaxe City Phase-I, Palwal, Haryana',
+    price: 18800000,
+    owner_name: 'Satyavir Singh',
+    owner_role: 'Owner',
+    user_id: 2,
+    status: 'approved',
+    verified: 1,
+    is_featured: true,
+    created_at: new Date().toISOString(),
+    images: [],
+    form_data: { propType: 'Plot' }
+  },
+  {
+    id: 9004,
+    title: 'Plot for Sale at Omaxe City Phase-I',
+    location: 'Omaxe City Phase-I, Palwal, Haryana',
+    price: 9750000,
+    owner_name: 'Satyavir Singh',
+    owner_role: 'Owner',
+    user_id: 2,
+    status: 'approved',
+    verified: 1,
+    is_featured: true,
+    created_at: new Date().toISOString(),
+    images: [],
+    form_data: { propType: 'Plot' }
+  }
+];
+
 export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
+  const [stats, setStats] = useState<ListingStatsResponse | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
+  const [carouselIndex, setCarouselIndex] = useState<number>(0);
+  const [withTransition, setWithTransition] = useState<boolean>(true);
+  const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
+  const touchStartX = useRef<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const newTodayCount = useMemo(() => {
+    const today = new Date().toDateString();
+    return listings.filter((l) => {
+      if (!l.created_at) return false;
+      try {
+        return new Date(l.created_at).toDateString() === today;
+      } catch {
+        return false;
+      }
+    }).length;
+  }, [listings]);
 
   // Load wishlist IDs when authenticated
   useEffect(() => {
@@ -364,7 +444,97 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   useEffect(() => {
     void fetchListings();
+    getListingStats()
+      .then((res) => {
+        if (res.data) setStats(res.data);
+      })
+      .catch((err: unknown) => {
+        console.warn('Failed to load stats', err);
+      });
   }, []);
+
+  const featuredListings = useMemo(() => {
+    const marked = listings.filter((l) => l.is_featured || l.form_data?.featured || l.form_data?.is_featured);
+    if (marked.length > 0) return marked;
+    if (listings.length > 0) return listings.slice(0, 8);
+    return DEFAULT_FEATURED_LISTINGS;
+  }, [listings]);
+
+  // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
+  const circularListings = useMemo(() => {
+    if (featuredListings.length <= 1) return featuredListings;
+    return [...featuredListings, ...featuredListings, ...featuredListings];
+  }, [featuredListings]);
+
+  // Start at the beginning of the middle clone
+  useEffect(() => {
+    if (featuredListings.length > 1) {
+      setCarouselIndex(featuredListings.length);
+      setWithTransition(false);
+    }
+  }, [featuredListings.length]);
+
+  // When transition ends at outer bounds, seamlessly snap back to middle clone without transition
+  const handleTransitionEnd = (): void => {
+    const n = featuredListings.length;
+    if (n <= 1) return;
+    if (carouselIndex >= 2 * n) {
+      setWithTransition(false);
+      setCarouselIndex((prev) => prev - n);
+    } else if (carouselIndex < n) {
+      setWithTransition(false);
+      setCarouselIndex((prev) => prev + n);
+    }
+  };
+
+  // Re-enable CSS transition on the next frame after an instant snap
+  useEffect(() => {
+    if (!withTransition) {
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setWithTransition(true);
+        });
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [withTransition]);
+
+  const slideCarousel = (dir: number): void => {
+    setWithTransition(true);
+    setCarouselIndex((prev) => prev + dir);
+  };
+
+  // Auto slide periodically, pausing when user hovers over the carousel
+  useEffect(() => {
+    if (featuredListings.length <= 1 || isCarouselHovered) return;
+    const interval = setInterval(() => {
+      setWithTransition(true);
+      setCarouselIndex((prev) => prev + 1);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [featuredListings.length, isCarouselHovered]);
+
+  const activeDotIndex = featuredListings.length > 0
+    ? ((carouselIndex % featuredListings.length) + featuredListings.length) % featuredListings.length
+    : 0;
+
+  const handleDotClick = (idx: number): void => {
+    setWithTransition(true);
+    setCarouselIndex(featuredListings.length + idx);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent): void => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent): void => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      slideCarousel(diff > 0 ? 1 : -1);
+    }
+    touchStartX.current = null;
+  };
 
   const handleClearFilters = (): void => {
     setSelectedCities([]);
@@ -657,43 +827,183 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </button>
             </div>
           </div>
+
+          {/* Metrics Container directly below search box */}
+          <div className="container metrics-inner">
+            <div className="metric-item">
+              <span className="metric-icon"><i className="fas fa-list-ul"></i></span>
+              <div>
+                <span className="metric-num">{stats?.active_listings || listings.length || 61}</span>
+                <span className="metric-plus">+</span>
+                <div className="metric-label">Active Listings</div>
+              </div>
+            </div>
+            <div className="metric-item">
+              <span className="metric-icon"><i className="fas fa-star" style={{ color: 'rgb(245, 158, 11)' }}></i></span>
+              <div>
+                <span className="metric-num">{stats?.featured_listings || featuredListings.length || 4}</span>
+                <div className="metric-label">Featured Listings</div>
+              </div>
+            </div>
+            <div className="metric-item">
+              <span className="metric-icon"><i className="fas fa-map-marker-alt"></i></span>
+              <div>
+                <span className="metric-num">{stats?.cities_covered || 16}</span>
+                <div className="metric-label">Cities Covered</div>
+              </div>
+            </div>
+            <div className="metric-item">
+              <span className="metric-icon"><i className="fas fa-chart-line"></i></span>
+              <div>
+                <span className="metric-num">{newTodayCount || 0}</span>
+                <div className="metric-label">New Today</div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Metrics Bar */}
-      <div className="metrics-bar">
-        <div className="container metrics-inner">
-          <div className="metric-item">
-            <span className="metric-icon"><i className="fas fa-list-ul"></i></span>
+      {/* Featured Listings Section */}
+      <section className="featured-section">
+        <div className="container">
+          <div className="section-header">
             <div>
-              <span className="metric-num">{listings.length}</span>
-              <span className="metric-plus">+</span>
-              <div className="metric-label">Active Listings</div>
+              <h2>
+                <i className="fas fa-star" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
+                Featured Listings
+              </h2>
+              <p>Promoted properties across all cities</p>
             </div>
           </div>
-          <div className="metric-item">
-            <span className="metric-icon"><i className="fas fa-check-circle"></i></span>
-            <div>
-              <span className="metric-num">{listings.filter((l) => l.verified === 1).length}</span>
-              <div className="metric-label">Verified Listings</div>
+
+          <div
+            className="carousel-wrapper"
+            onMouseEnter={() => setIsCarouselHovered(true)}
+            onMouseLeave={() => setIsCarouselHovered(false)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {featuredListings.length > 1 && (
+              <button
+                type="button"
+                className="carousel-btn prev"
+                onClick={() => slideCarousel(-1)}
+                aria-label="Previous featured listings"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+            )}
+
+            <div
+              className="carousel-track"
+              id="carouselTrack"
+              onTransitionEnd={handleTransitionEnd}
+              style={{
+                transform: `translateX(-${carouselIndex * 320}px)`,
+                transition: withTransition ? 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+              }}
+            >
+              {circularListings.map((listing, index) => {
+                const imgSrc = getFirstImageUrl(listing);
+                const priceStr = formatListingPrice(listing.price);
+                const pType = listing.form_data?.propType || 'Plot';
+                const isSaved = wishlistIds.has(listing.id);
+
+                return (
+                  <div
+                    key={`featured-${listing.id}-${index}`}
+                    className="listing-card featured-card"
+                  >
+                    <div className="card-img-wrap">
+                      <img
+                        src={imgSrc}
+                        alt={listing.title}
+                        className="card-img"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.onerror = null;
+                          target.src = '/placeholder-property.svg';
+                        }}
+                      />
+                      {listing.verified === 1 && (
+                        <span className="badge-verified">
+                          <i className="fas fa-check-circle"></i> Verified
+                        </span>
+                      )}
+                      <span
+                        className="badge-featured"
+                        style={{
+                          top: '12px',
+                          left: '12px',
+                          background: 'rgba(0,0,0,0.65)',
+                          color: '#fff',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          textTransform: 'capitalize'
+                        }}
+                      >
+                        {pType}
+                      </span>
+                    </div>
+
+                    <div className="card-body">
+                      <div className="card-price">{priceStr}</div>
+                      <h3 className="card-title">{listing.title}</h3>
+                      <div className="card-location">
+                        <i className="fas fa-map-marker-alt"></i> {listing.location}
+                      </div>
+                      <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+                        Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
+                      </div>
+                      <div className="card-footer card-footer-actions">
+                        <button
+                          type="button"
+                          className="btn-view"
+                          onClick={() => onNavigate('listing-detail', listing.id)}
+                        >
+                          <i className="fas fa-info-circle"></i> Details
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn-wishlist ${isSaved ? 'active' : ''}`}
+                          onClick={(e) => void handleToggleWishlist(e, listing.id)}
+                        >
+                          <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
+                          <span>Wishlist</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {featuredListings.length > 1 && (
+              <button
+                type="button"
+                className="carousel-btn next"
+                onClick={() => slideCarousel(1)}
+                aria-label="Next featured listings"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            )}
           </div>
-          <div className="metric-item">
-            <span className="metric-icon"><i className="fas fa-map-marker-alt"></i></span>
-            <div>
-              <span className="metric-num">9</span>
-              <div className="metric-label">Cities Covered</div>
+
+          {featuredListings.length > 1 && (
+            <div className="carousel-dots" id="carouselDots">
+              {featuredListings.map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`dot ${idx === activeDotIndex ? 'active' : ''}`}
+                  onClick={() => handleDotClick(idx)}
+                />
+              ))}
             </div>
-          </div>
-          <div className="metric-item">
-            <span className="metric-icon"><i className="fas fa-bolt"></i></span>
-            <div>
-              <span className="metric-num">100%</span>
-              <div className="metric-label">Direct Connect</div>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
+      </section>
 
       {/* City Quick Pills */}
       <div className="container" style={{ margin: '24px auto', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -936,9 +1246,16 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                             type="button"
                             className="btn-view"
                             onClick={() => onNavigate('listing-detail', listing.id)}
-                            style={{ flex: 1, textAlign: 'center' }}
                           >
                             <i className="fas fa-info-circle"></i> Details
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn-wishlist ${wishlistIds.has(listing.id) ? 'active' : ''}`}
+                            onClick={(e) => void handleToggleWishlist(e, listing.id)}
+                          >
+                            <i className={wishlistIds.has(listing.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+                            <span>Wishlist</span>
                           </button>
                         </div>
                       </div>
