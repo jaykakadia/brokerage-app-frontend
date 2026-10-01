@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api, { getApiErrorMessage, getSignupGuide } from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
+import SignupGuide from '../components/SignupGuide';
 import type { CanonicalRole, ListingStatsResponse, MessageResponse, NavigateFunction } from '../types';
 
 export interface LoginPageProps {
@@ -109,20 +110,6 @@ const CSS = `
   }
   .btn-send-otp:disabled { opacity:0.6; cursor:not-allowed; }
 
-  /* Sign-up help links */
-  .signup-help { margin-top:18px; padding:14px 16px; border:1.5px dashed #cbd5e1; border-radius:12px; background:#f8fafc; }
-  .signup-help-title { font-size:13px; font-weight:700; color:#1a1a2e; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-  .signup-help-title i { color:#0c6253; }
-  .signup-help-links { display:flex; gap:10px; flex-wrap:wrap; }
-  .signup-help-link {
-    flex:1; min-width:140px; display:flex; align-items:center; justify-content:center; gap:8px;
-    padding:9px 12px; border-radius:10px; font-size:13px; font-weight:600; font-family:inherit;
-    cursor:pointer; text-decoration:none; transition:all 0.2s;
-  }
-  .signup-help-link.blog { background:#fff; color:#0c6253; border:1px solid #0c6253; }
-  .signup-help-link.blog:hover { background:#f0faf7; }
-  .signup-help-link.video { background:#fff; color:#dc2626; border:1px solid #fca5a5; }
-  .signup-help-link.video:hover { background:#fef2f2; }
 
   /* Role cards */
   .role-selection { margin-bottom:20px; }
@@ -204,15 +191,6 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     api.get<ListingStatsResponse>('/api/v1/listings/stats')
       .then(r => setSiteStats(r.data))
       .catch(() => {/* keep static fallback */});
-  }, []);
-
-  // Help links for the Create Account tab (set by admin in Settings)
-  const [signupGuide, setSignupGuide] = useState<{ blog_url: string; video_url: string }>({ blog_url: '', video_url: '' });
-
-  useEffect(() => {
-    getSignupGuide()
-      .then(r => { if (r.data?.data) setSignupGuide(r.data.data); })
-      .catch(() => {/* no links -> help box stays hidden */});
   }, []);
 
   const fmt = (val: number | undefined, fallback: number): number => (val && val >= fallback ? val : fallback);
@@ -602,6 +580,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
               <div id="registerPanel">
                 <div className="lf-heading">Create your account</div>
                 <div className="lf-sub">Start posting and managing listings today</div>
+                <SignupGuide />
                 <form onSubmit={handleRegister}>
                   {/* Role cards */}
                   <div className="role-selection">
@@ -707,28 +686,6 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                 <div className="create-acc">
                   Already have an account? <button onClick={() => switchTab('signin')}>Sign In</button>
                 </div>
-
-                {(signupGuide.blog_url || signupGuide.video_url) && (
-                <div className="signup-help">
-                  <div className="signup-help-title">
-                    <i className="fas fa-circle-question" /> Need help creating your account?
-                  </div>
-                  <div className="signup-help-links">
-                    {signupGuide.blog_url && (
-                      <a className="signup-help-link blog" href={signupGuide.blog_url}
-                        target="_blank" rel="noopener noreferrer">
-                        <i className="fas fa-book-open" /> Read the guide
-                      </a>
-                    )}
-                    {signupGuide.video_url && (
-                      <a className="signup-help-link video" href={signupGuide.video_url}
-                        target="_blank" rel="noopener noreferrer">
-                        <i className="fab fa-youtube" /> Watch video
-                      </a>
-                    )}
-                  </div>
-                </div>
-                )}
               </div>
             )}
 

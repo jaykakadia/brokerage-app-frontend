@@ -2358,7 +2358,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </h2>
               </div>
               <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
-                Shown on the Create Account screen to help new users sign up. Leave a link blank to hide that button.
+                Shown as a tutorial at the top of the Create Account screen and the sign-up popup. YouTube links play right on the page. Leave a link blank to hide that button.
               </p>
               <form onSubmit={handleSaveSignupGuide}>
                 <div style={{ marginBottom: '14px' }}>

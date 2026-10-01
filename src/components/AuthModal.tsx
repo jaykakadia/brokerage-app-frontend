@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api, { getApiErrorMessage } from '../services/api';
+import SignupGuide from './SignupGuide';
 import { isCanonicalRole, type CanonicalRole, type MessageResponse } from '../types';
 
 export interface AuthModalProps {
@@ -368,6 +369,7 @@ export default function AuthModal({
           </form>
         ) : (
           <form onSubmit={handleRegister}>
+            <SignupGuide />
             <div className="form-group" style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Your Role</label>
               <select
