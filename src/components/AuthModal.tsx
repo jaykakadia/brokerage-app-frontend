@@ -40,6 +40,7 @@ export default function AuthModal({
   const [regRole, setRegRole] = useState<CanonicalRole>('Owner');
   const [regOtp, setRegOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   // Forgot password fields
   const [forgotEmail, setForgotEmail] = useState('');
@@ -125,9 +126,30 @@ export default function AuthModal({
         phone: regPhone
       });
       setOtpSent(true);
+      setOtpVerified(false);
+      setRegOtp('');
       setSuccessMsg(res.data.message || 'OTP dispatched to email.');
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to send OTP.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // The account can only be created after the email OTP is verified here.
+  const handleVerifyOtp = async (): Promise<void> => {
+    if (!/^\d{6}$/.test(regOtp.trim())) {
+      setError('Enter the 6-digit OTP sent to your email.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await api.post<MessageResponse>('/api/v1/auth/verify-otp', { email: regEmail, otp: regOtp.trim() });
+      setOtpVerified(true);
+      setSuccessMsg('Email verified. You can now create your account.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Invalid or expired OTP.'));
     } finally {
       setLoading(false);
     }
@@ -154,8 +176,8 @@ export default function AuthModal({
       setError('Please verify your email. Click "Send OTP" and enter the code you receive.');
       return;
     }
-    if (!/^\d{6}$/.test(regOtp.trim())) {
-      setError('Enter the 6-digit OTP sent to your email.');
+    if (!otpVerified) {
+      setError('Enter the OTP from your email and click "Verify" before creating your account.');
       return;
     }
     setLoading(true);
@@ -295,6 +317,7 @@ export default function AuthModal({
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </button>
+            <SignupGuide />
           </form>
         ) : tab === 'forgot' ? (
           <form onSubmit={handleResetPassword}>
@@ -430,7 +453,7 @@ export default function AuthModal({
                   type="email"
                   required
                   value={regEmail}
-                  onChange={(e) => { setRegEmail(e.target.value); setOtpSent(false); setRegOtp(''); }}
+                  onChange={(e) => { setRegEmail(e.target.value); setOtpSent(false); setOtpVerified(false); setRegOtp(''); }}
                   placeholder="name@example.com"
                   style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
                 />
@@ -448,16 +471,27 @@ export default function AuthModal({
             {otpSent && (
               <div className="form-group" style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Enter 6-Digit OTP</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  required
-                  value={regOtp}
-                  onChange={(e) => setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="123456"
-                  style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px', letterSpacing: '4px', textAlign: 'center', fontWeight: 'bold' }}
-                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    value={regOtp}
+                    readOnly={otpVerified}
+                    onChange={(e) => { setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpVerified(false); }}
+                    placeholder="123456"
+                    style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px', letterSpacing: '4px', textAlign: 'center', fontWeight: 'bold' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleVerifyOtp()}
+                    disabled={loading || otpVerified || regOtp.length !== 6}
+                    style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {otpVerified ? <><i className="fas fa-check"></i> Verified</> : 'Verify'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -479,9 +513,10 @@ export default function AuthModal({
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !otpVerified}
+              title={!otpVerified ? 'Verify your email with the OTP first' : undefined}
               className="btn-signin"
-              style={{ width: '100%', padding: '12px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+              style={{ width: '100%', padding: '12px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: otpVerified ? 'pointer' : 'not-allowed', opacity: otpVerified ? 1 : 0.6 }}
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>

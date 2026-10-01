@@ -219,6 +219,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
   const [regConfirm, setRegConfirm] = useState('');
   const [regOtp,   setRegOtp]   = useState('');
   const [otpSent,  setOtpSent]  = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
   // Forgot state
@@ -298,10 +299,31 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     try {
       const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', { email: regEmail, action: 'register', name: regName, phone: regPhone });
       setOtpSent(true);
+      setOtpVerified(false);
+      setRegOtp('');
       showToast(res.data.message || 'OTP sent to your email. Valid for 10 minutes.', 'success', 'OTP sent');
       showSuccess(res.data.message || 'OTP sent to your email.');
     } catch (err: unknown) {
       const msg = getApiErrorMessage(err, 'Failed to send OTP.');
+      showToast(msg, 'error', 'OTP failed');
+      showError(msg);
+    } finally { setLoading(false); }
+  };
+
+  // ── Verify OTP (register) — the account can only be created after this succeeds ──
+  const handleVerifyRegOtp = async (): Promise<void> => {
+    if (!/^\d{6}$/.test(regOtp.trim())) {
+      showToast('Enter the 6-digit OTP sent to your email', 'error', 'OTP required');
+      return showError('Enter the 6-digit OTP sent to your email.');
+    }
+    setLoading(true); setError('');
+    try {
+      await api.post<MessageResponse>('/api/v1/auth/verify-otp', { email: regEmail, otp: regOtp.trim() });
+      setOtpVerified(true);
+      showToast('Email verified. You can now create your account.', 'success', 'Verified');
+      showSuccess('Email verified. You can now create your account.');
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err, 'Invalid or expired OTP.');
       showToast(msg, 'error', 'OTP failed');
       showError(msg);
     } finally { setLoading(false); }
@@ -317,9 +339,9 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
       showToast('Send an OTP to your email and enter it to continue', 'error', 'Verify email');
       return showError('Please verify your email. Click "Send OTP" and enter the code you receive.');
     }
-    if (!/^\d{6}$/.test(regOtp.trim())) {
-      showToast('Enter the 6-digit OTP sent to your email', 'error', 'OTP required');
-      return showError('Enter the 6-digit OTP sent to your email.');
+    if (!otpVerified) {
+      showToast('Verify the OTP sent to your email first', 'error', 'Verify email');
+      return showError('Enter the OTP from your email and click "Verify" before creating your account.');
     }
     if (regPass.length < 6) {
       showToast('Password must be at least 6 characters', 'error', 'Weak password');
@@ -515,6 +537,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                 <div className="create-acc">
                   Don't have an account? <button onClick={() => switchTab('register')}>Create one free</button>
                 </div>
+                <SignupGuide />
                 {needsAdmin && (
                   <div className="create-acc">
                     Need the admin panel? <button type="button" onClick={() => switchTab('setup')}>Create the first admin</button>
@@ -624,7 +647,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     <label>Email ID</label>
                     <div className="send-otp-row">
                       <input type="email" placeholder="yourname@gmail.com" required
-                        value={regEmail} onChange={e => { setRegEmail(e.target.value); setOtpSent(false); setRegOtp(''); }} />
+                        value={regEmail} onChange={e => { setRegEmail(e.target.value); setOtpSent(false); setOtpVerified(false); setRegOtp(''); }} />
                       <button type="button" className="btn-send-otp" id="btnSendRegOtp"
                         onClick={() => void handleSendRegOtp()} disabled={loading}>
                         {otpSent ? 'Resend OTP' : 'Send OTP'}
@@ -634,8 +657,15 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                   {otpSent && (
                     <div className="form-group">
                       <label>Enter OTP</label>
-                      <input className="otp-input" type="text" inputMode="numeric" maxLength={6} placeholder="123456" required
-                        value={regOtp} onChange={e => setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                      <div className="send-otp-row">
+                        <input className="otp-input" type="text" inputMode="numeric" maxLength={6} placeholder="123456" required
+                          value={regOtp} readOnly={otpVerified}
+                          onChange={e => { setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpVerified(false); }} />
+                        <button type="button" className="btn-send-otp" onClick={() => void handleVerifyRegOtp()}
+                          disabled={loading || otpVerified || regOtp.length !== 6}>
+                          {otpVerified ? <><i className="fas fa-check" /> Verified</> : 'Verify'}
+                        </button>
+                      </div>
                     </div>
                   )}
                   <div className="form-group">
@@ -677,8 +707,9 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     </span>
                   </label>
 
-                  <button type="submit" className="btn-signin" disabled={loading || !agreePrivacy}
-                    style={!agreePrivacy ? {opacity:0.6,cursor:'not-allowed'} : {}}>
+                  <button type="submit" className="btn-signin" disabled={loading || !agreePrivacy || !otpVerified}
+                    title={!otpVerified ? 'Verify your email with the OTP first' : undefined}
+                    style={!agreePrivacy || !otpVerified ? {opacity:0.6,cursor:'not-allowed'} : {}}>
                     {loading ? 'Creating Account…' : 'Create Account'}
                   </button>
                 </form>
