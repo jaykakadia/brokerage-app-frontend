@@ -16,6 +16,11 @@ export interface User {
   leads_balance: number;
   leads_used: number;
   plan_expires_at?: string | null;
+  business_name?: string | null;
+  whatsapp?: string | null;
+  facebook_url?: string | null;
+  website_url?: string | null;
+  x_url?: string | null;
   created_at: string;
 }
 
@@ -24,6 +29,11 @@ export interface UserProfileUpdate {
   phone?: string;
   email?: string;
   otp?: string;
+  business_name?: string;
+  whatsapp?: string;
+  facebook_url?: string;
+  website_url?: string;
+  x_url?: string;
 }
 
 export interface ChangePasswordRequest {

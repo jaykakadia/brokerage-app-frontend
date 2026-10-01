@@ -32,6 +32,7 @@ export default function AuthModal({
 
   // Register fields
   const [regName, setRegName] = useState('');
+  const [regBusiness, setRegBusiness] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -165,7 +166,8 @@ export default function AuthModal({
         email: regEmail,
         password: regPassword,
         role: regRole,
-        otp: regOtp.trim()
+        otp: regOtp.trim(),
+        business_name: regBusiness.trim() || undefined
       });
       if (onSuccess) onSuccess();
       onClose();
@@ -390,6 +392,20 @@ export default function AuthModal({
                 value={regName}
                 onChange={(e) => setRegName(e.target.value)}
                 placeholder="e.g. Rahul Sharma"
+                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                Business Name <span style={{ color: '#9ca3af', fontWeight: 500 }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                maxLength={150}
+                value={regBusiness}
+                onChange={(e) => setRegBusiness(e.target.value)}
+                placeholder="e.g. Sharma Properties"
                 style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
               />
             </div>

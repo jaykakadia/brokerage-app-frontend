@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
 import EditProfileModal from '../components/EditProfileModal';
+import SocialLinksPanel from '../components/SocialLinksPanel';
 import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
 
 function formatPlanExpiry(value?: string | null): string {
@@ -28,7 +29,7 @@ export interface AccountPageProps {
 export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps) {
   const { user, refreshUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'my-listings' | 'wishlist' | 'password'>('profile');
+  const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'social' | 'password'>('my-listings');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
@@ -213,6 +214,17 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '13px', color: '#6b7280', alignItems: 'center' }}>
                 <span><i className="fas fa-envelope"></i> {user.email}</span>
                 {user.phone && <span><i className="fas fa-phone"></i> {user.phone}</span>}
+                {user.whatsapp && (
+                  <a
+                    href={`https://wa.me/91${user.whatsapp}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#6b7280', textDecoration: 'none' }}
+                    title="Chat on WhatsApp"
+                  >
+                    <i className="fab fa-whatsapp" style={{ color: '#25d366' }}></i> {user.whatsapp}
+                  </a>
+                )}
                 <span style={{ background: '#f0faf6', color: '#0c6253', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
                   {user.role}
                 </span>
@@ -252,6 +264,11 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
           <div style={{ marginTop: '22px', borderTop: '1px solid #eef2f6' }}>
             {([
               {
+                label: 'Business Name',
+                value: user.business_name || 'Not added',
+                tone: user.business_name ? '#111827' : '#9ca3af'
+              },
+              {
                 label: 'Current Plan',
                 value: !user.plan_id
                   ? 'No Plan'
@@ -282,7 +299,13 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                 }}
               >
                 <span style={{ color: '#6b7280', fontWeight: 600 }}>{row.label}</span>
-                <span style={{ color: row.tone, fontWeight: 700, textAlign: 'right' }}>{row.value}</span>
+                {row.label === 'Business Name' && !user.business_name ? (
+                  <button type="button" className="account-add-link" onClick={openEdit}>
+                    <i className="fas fa-plus"></i> Add Business Name
+                  </button>
+                ) : (
+                  <span style={{ color: row.tone, fontWeight: 700, textAlign: 'right' }}>{row.value}</span>
+                )}
               </div>
             ))}
           </div>
@@ -290,18 +313,6 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
 
         {/* Navigation Tabs */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`btn-outline ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('profile'); openEdit(); }}
-            style={{
-              background: activeTab === 'profile' ? '#0c6253' : '#fff',
-              color: activeTab === 'profile' ? '#fff' : '#374151',
-              borderColor: activeTab === 'profile' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-user-edit"></i> Edit Profile
-          </button>
           <button
             type="button"
             className={`btn-outline ${activeTab === 'my-listings' ? 'active' : ''}`}
@@ -328,6 +339,18 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
           </button>
           <button
             type="button"
+            className={`btn-outline ${activeTab === 'social' ? 'active' : ''}`}
+            onClick={() => setActiveTab('social')}
+            style={{
+              background: activeTab === 'social' ? '#0c6253' : '#fff',
+              color: activeTab === 'social' ? '#fff' : '#374151',
+              borderColor: activeTab === 'social' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-share-alt"></i> Social Links
+          </button>
+          <button
+            type="button"
             className={`btn-outline ${activeTab === 'password' ? 'active' : ''}`}
             onClick={() => setActiveTab('password')}
             style={{
@@ -339,32 +362,6 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
             <i className="fas fa-key"></i> Change Password
           </button>
         </div>
-
-        {/* TAB 1: Profile Edit */}
-        {activeTab === 'profile' && (
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12 }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#111827' }}>
-                Profile Details
-              </h2>
-              <button type="button" className="btn-outline" onClick={openEdit}>
-                <i className="fas fa-pen"></i> Edit
-              </button>
-            </div>
-            <div className="form-group full">
-              <label>Client Name</label>
-              <input type="text" value={user.name} readOnly style={{ background: '#f8fafc' }} />
-            </div>
-            <div className="form-group full">
-              <label>Mobile No</label>
-              <input type="text" value={user.phone || ''} readOnly style={{ background: '#f8fafc' }} />
-            </div>
-            <div className="form-group full">
-              <label>Email ID</label>
-              <input type="email" value={user.email} readOnly style={{ background: '#f8fafc' }} />
-            </div>
-          </div>
-        )}
 
         {/* TAB 2: My Listings */}
         {activeTab === 'my-listings' && (
@@ -592,6 +589,10 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
         )}
 
         {/* TAB 3: Change Password */}
+        {activeTab === 'social' && (
+          <SocialLinksPanel user={user} onSaved={refreshUser} />
+        )}
+
         {activeTab === 'password' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', color: '#111827' }}>

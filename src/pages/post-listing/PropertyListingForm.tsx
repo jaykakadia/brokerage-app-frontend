@@ -1,7 +1,10 @@
-import { FloatField, FloatSelect, Pills, RefCodeSearch, StepIndicator } from './fields';
+import { FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
+import { StateOptions } from '../../utils/indianStates';
 import {
-  digitsOnly,
+  amenitiesFor,
   formatInr,
+  landAreaFor,
+  withAutoPrice,
   stateForCity,
   type CityOption,
   type PropertyFormState,
@@ -56,6 +59,85 @@ export default function PropertyListingForm({
   onPhotos,
   onRemovePhoto
 }: PropertyListingFormProps) {
+  // Plot and agriculture prices follow area x rate
+  const changeLand = (patch: Partial<PropertyFormState>) => onChange(withAutoPrice(form, patch));
+  const land = landAreaFor(form);
+  const rateNumber = Number(form.rate.replace(/\D/g, '')) || 0;
+  const rateField = (unit: string) => (
+    <>
+      <FloatField
+        label={`Rate per ${unit} (Rs.)`}
+        icon="fas fa-tag"
+        inputMode="numeric"
+        value={form.rate}
+        onChange={(value) => changeLand({ rate: formatInr(value) })}
+      />
+      {land && land.area > 0 && rateNumber > 0 ? (
+        <div className="rate-calc">
+          <i className="fas fa-calculator"></i>
+          {land.area} {land.unit} × ₹{form.rate} = <strong>₹{formatInr(String(Math.round(land.area * rateNumber)))}</strong>
+        </div>
+      ) : null}
+      <FloatField
+        label="Total Price (Rs.)"
+        icon="fas fa-rupee-sign"
+        inputMode="numeric"
+        value={form.price}
+        onChange={(value) => onChange({ price: formatInr(value) })}
+      />
+      <div className="rate-hint">Auto-calculated from area × rate. You can still edit it.</div>
+    </>
+  );
+
+  const amenityOptions = amenitiesFor(form.propType);
+  const amenitiesField = amenityOptions.length > 0 ? (
+    <MultiPills
+      label="Amenities"
+      values={form.amenities.filter((a) => amenityOptions.includes(a))}
+      options={amenityOptions}
+      onChange={(amenities) => onChange({ amenities })}
+    />
+  ) : null;
+
+  const priceField = (
+    <div style={{ marginTop: 16 }}>
+      <FloatField
+        label="Price/ Budget (Rs.)"
+        icon="fas fa-rupee-sign"
+        inputMode="numeric"
+        value={form.price}
+        onChange={(value) => onChange({ price: formatInr(value) })}
+      />
+    </div>
+  );
+
+  const frontRoadField = (
+    <>
+      <Pills label="Front Road" value={form.frontRoad} onChange={(frontRoad) => onChange({ frontRoad })} options={[
+        { value: 'No', label: 'No' },
+        { value: 'Yes', label: 'Yes' }
+      ]} />
+      {form.frontRoad === 'Yes' ? (
+        <FloatField
+          label="Road Width (in Ft)"
+          icon="fas fa-road"
+          inputMode="decimal"
+          value={form.roadWidth}
+          onChange={(value) => onChange({ roadWidth: value.replace(/[^\d.]/g, '') })}
+        />
+      ) : null}
+    </>
+  );
+
+  const facingPills = (
+    <Pills label="Facing" value={form.facing} onChange={(facing) => onChange({ facing })} options={[
+      { value: 'East', label: 'East' },
+      { value: 'West', label: 'West' },
+      { value: 'North', label: 'North' },
+      { value: 'South', label: 'South' }
+    ]} />
+  );
+
   const setCity = (city: string) => {
     onChange({ city, state: stateForCity(city, cities) });
   };
@@ -77,20 +159,10 @@ export default function PropertyListingForm({
             <FloatField label="Business Name" icon="fas fa-briefcase" value={form.businessName} onChange={(businessName) => onChange({ businessName })} />
           </div>
           <div style={{ marginTop: 16 }}>
-            <FloatField
-              label="Mobile Number"
-              prefix="+91"
-              required
-              type="tel"
-              inputMode="tel"
-              maxLength={10}
-              value={form.mobile}
-              onChange={(value) => onChange({ mobile: digitsOnly(value, 10) })}
-            />
+            <PhoneWhatsAppFields mobile={form.mobile} whatsapp={form.whatsapp} sameAsMobile={form.sameAsMobile} onChange={onChange} />
           </div>
-          <div style={{ marginTop: 16 }}>
-            <FloatField label="Email ID" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => onChange({ email })} />
-          </div>
+          <FloatField label="Email ID" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => onChange({ email })} />
+          <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} onChange={onChange} />
 
           <div className="bf-actions">
             <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
@@ -132,8 +204,7 @@ export default function PropertyListingForm({
           />
           <div style={{ marginTop: 8 }}>
             <FloatSelect label="Select Property Type" icon="fas fa-building" required value={form.propType} onChange={(propType) => onChange({ propType: propType as PropType })}>
-              <option value="flat">Flat/ Builder Floor</option>
-              <option value="house">House/ Villa</option>
+              <option value="flat">Flat / Builder Floor / House / Villa</option>
               <option value="plot">Plot</option>
               <option value="agriculture">Agriculture Land</option>
               <option value="commercial">Commercial - Shop/ Showroom/ Warehouse</option>
@@ -148,7 +219,9 @@ export default function PropertyListingForm({
                 <option key={item.city} value={item.city}>{item.city}</option>
               ))}
             </FloatSelect>
-            <FloatField label="State" required readOnly value={form.state} onChange={() => undefined} />
+            <FloatSelect label="State" required value={form.state} onChange={(state) => onChange({ state })}>
+              <StateOptions current={form.state} />
+            </FloatSelect>
           </div>
           <FloatField label="Locality / Project / Society" value={form.locality} onChange={(locality) => onChange({ locality })} />
 
@@ -195,9 +268,6 @@ export default function PropertyListingForm({
           <div className="bf-heading"><i className="fas fa-list-ul"></i> Property Details</div>
           {(form.propType === 'flat' || form.propType === 'house') && (
             <>
-              <div style={{ marginTop: 16 }}>
-                <FloatField label="Society / (Optional)" value={form.society} onChange={(society) => onChange({ society })} />
-              </div>
               <Pills label="BHK" value={form.bhk} onChange={(bhk) => onChange({ bhk })} options={[
                 { value: '1BHK', label: '1BHK' },
                 { value: '2BHK', label: '2BHK' },
@@ -209,48 +279,54 @@ export default function PropertyListingForm({
                 { value: '2', label: '2' },
                 { value: '3', label: '3' }
               ]} />
-              <div className="bf-row keep-row">
-                <div style={{ flex: 2 }}><FloatField label="Built-up Area / Area" value={form.area} onChange={(area) => onChange({ area })} /></div>
-                <div style={{ flex: 1 }}>
-                  <FloatSelect label="Unit" value={form.unit} onChange={(unit) => onChange({ unit })}>
-                    <option value="Sq.Ft">Sq.Ft</option>
-                    <option value="Sq.Yd">Sq.Yd</option>
-                    <option value="Sq.Mtr">Sq.Mtr</option>
-                  </FloatSelect>
-                </div>
-              </div>
               <Pills label="Furnish Type" value={form.furnish} onChange={(furnish) => onChange({ furnish })} options={[
                 { value: 'Furnished', label: 'Furnished' },
                 { value: 'Semi-Furnished', label: 'Semi-Furnished' },
                 { value: 'Un-Furnished', label: 'Un-Furnished' }
               ]} />
+              {amenitiesField}
+              {frontRoadField}
+              {facingPills}
+              <div className="bf-row keep-row">
+                <div style={{ flex: 2 }}><FloatField label="Built-up Area / Area" inputMode="decimal" value={form.area} onChange={(value) => changeLand({ area: value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') })} /></div>
+                <div style={{ flex: 1 }}>
+                  <FloatSelect label="Unit" value={form.unit} onChange={(unit) => changeLand({ unit })}>
+                    <option value="Sq.Ft">Sq.Ft</option>
+                    <option value="Sq.Yd">Sq.Yd</option>
+                    <option value="Sq.Mtr">Sq.Mtr</option>
+                  </FloatSelect>
+                </div>
+              </div>
+              {rateField(form.unit)}
             </>
           )}
 
           {form.propType === 'plot' && (
             <>
-              <div style={{ marginTop: 16 }}>
-                <FloatField label="Society / (Optional)" value={form.society} onChange={(society) => onChange({ society })} />
-              </div>
+              {frontRoadField}
+              {facingPills}
               <div className="bf-row keep-row">
-                <div style={{ flex: 2 }}><FloatField label="Area" value={form.plotArea} onChange={(plotArea) => onChange({ plotArea })} /></div>
+                <div style={{ flex: 2 }}><FloatField label="Area" inputMode="decimal" value={form.plotArea} onChange={(value) => changeLand({ plotArea: value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') })} /></div>
                 <div style={{ flex: 1 }}>
-                  <FloatSelect label="Unit" value={form.plotUnit} onChange={(plotUnit) => onChange({ plotUnit })}>
+                  <FloatSelect label="Unit" value={form.plotUnit} onChange={(plotUnit) => changeLand({ plotUnit })}>
                     <option value="Sq.Yd">Sq.Yd</option>
                     <option value="Sq.Ft">Sq.Ft</option>
                     <option value="Sq.Mtr">Sq.Mtr</option>
                   </FloatSelect>
                 </div>
               </div>
+              {rateField(form.plotUnit)}
             </>
           )}
 
           {form.propType === 'agriculture' && (
             <>
+              {frontRoadField}
+              {facingPills}
               <div className="bf-row keep-row">
-                <div style={{ flex: 2 }}><FloatField label="Area" value={form.agriArea} onChange={(agriArea) => onChange({ agriArea })} /></div>
+                <div style={{ flex: 2 }}><FloatField label="Area" inputMode="decimal" value={form.agriArea} onChange={(value) => changeLand({ agriArea: value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') })} /></div>
                 <div style={{ flex: 1 }}>
-                  <FloatSelect label="Unit" value={form.agriUnit} onChange={(agriUnit) => onChange({ agriUnit })}>
+                  <FloatSelect label="Unit" value={form.agriUnit} onChange={(agriUnit) => changeLand({ agriUnit })}>
                     <option value="Acre">Acre</option>
                     <option value="Bigha">Bigha</option>
                     <option value="Hectare">Hectare</option>
@@ -258,18 +334,15 @@ export default function PropertyListingForm({
                   </FloatSelect>
                 </div>
               </div>
-              <Pills label="Front Road" value={form.frontRoad} onChange={(frontRoad) => onChange({ frontRoad })} options={[
-                { value: 'No', label: 'No' },
-                { value: 'Yes', label: 'Yes' }
-              ]} />
-              {form.frontRoad === 'Yes' ? (
-                <FloatField label="If Yes (Road Width in Ft)" value={form.roadWidth} onChange={(roadWidth) => onChange({ roadWidth })} />
-              ) : null}
+              {rateField(form.agriUnit)}
             </>
           )}
 
           {form.propType === 'commercial' && (
             <>
+              {amenitiesField}
+              {frontRoadField}
+              {facingPills}
               <div className="bf-row keep-row">
                 <div style={{ flex: 2 }}><FloatField label="Total Area" value={form.totalArea} onChange={(totalArea) => onChange({ totalArea })} /></div>
                 <div style={{ flex: 1 }}>
@@ -290,14 +363,12 @@ export default function PropertyListingForm({
                   </FloatSelect>
                 </div>
               </div>
+              {priceField}
               <div style={{ marginTop: 16 }}>
-                <FloatSelect label="Possession Info." required value={form.possession} onChange={(possession) => onChange({ possession })}>
+                <FloatSelect label="Possession Info." icon="fas fa-key" required value={form.possession} onChange={(possession) => onChange({ possession })}>
                   <option value="Ready to Move">Ready to Move</option>
                   <option value="Under Construction">Under Construction</option>
                 </FloatSelect>
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <FloatField label="Front Road (Ft)" value={form.frontRoadFt} onChange={(frontRoadFt) => onChange({ frontRoadFt })} />
               </div>
             </>
           )}
@@ -305,13 +376,7 @@ export default function PropertyListingForm({
           {form.propType === 'pg' && (
             <>
               <div style={{ marginTop: 16 }}>
-                <FloatField label="Society / (Optional)" value={form.society} onChange={(society) => onChange({ society })} />
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <FloatField label="PG Name" value={form.pgName} onChange={(pgName) => onChange({ pgName })} />
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <FloatField label="Total Beds" type="number" value={form.totalBeds} onChange={(totalBeds) => onChange({ totalBeds })} />
+                <FloatField label="Total Beds" icon="fas fa-bed" type="number" value={form.totalBeds} onChange={(totalBeds) => onChange({ totalBeds })} />
               </div>
               <Pills label="PG For" value={form.pgFor} onChange={(pgFor) => onChange({ pgFor })} options={[
                 { value: 'Boys', label: 'Boys' },
@@ -322,7 +387,7 @@ export default function PropertyListingForm({
                 { value: 'Furnished', label: 'Furnished' },
                 { value: 'Semi-Furnished', label: 'Semi-Furnished' }
               ]} />
-              <FloatField label="Common Areas (e.g. Lounge, Dining)" value={form.commonAreas} onChange={(commonAreas) => onChange({ commonAreas })} />
+              <FloatField label="Common Areas (e.g. Lounge, Dining)" icon="fas fa-couch" value={form.commonAreas} onChange={(commonAreas) => onChange({ commonAreas })} />
               <Pills label="Meals Available" value={form.pgMeals} onChange={(pgMeals) => onChange({ pgMeals })} options={[
                 { value: 'Yes', label: 'Yes' },
                 { value: 'No', label: 'No' }
@@ -332,20 +397,12 @@ export default function PropertyListingForm({
                 { value: 'Double', label: 'Double' },
                 { value: 'Triple', label: 'Triple+' }
               ]} />
+              {amenitiesField}
+              {frontRoadField}
             </>
           )}
 
-          <div style={{ marginTop: 16 }}>
-            <FloatField label="Price/ Budget (Rs.)" inputMode="numeric" value={form.price} onChange={(value) => onChange({ price: formatInr(value) })} />
-          </div>
-          {form.propType !== 'pg' ? (
-            <Pills label="Facing" value={form.facing} onChange={(facing) => onChange({ facing })} options={[
-              { value: 'East', label: 'East' },
-              { value: 'West', label: 'West' },
-              { value: 'North', label: 'North' },
-              { value: 'South', label: 'South' }
-            ]} />
-          ) : null}
+          {!land && form.propType !== 'commercial' ? priceField : null}
 
           <div className="bf-actions">
             <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>

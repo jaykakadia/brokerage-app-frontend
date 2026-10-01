@@ -279,3 +279,42 @@
       .upload-area { padding: 22px 14px; }
       .cat-suggestions { max-height: 200px; }
     }
+
+/* Mobile + WhatsApp pair keeps its icons even inside a row */
+.bf-row.contact-pair { margin-bottom: 10px; }
+.bf-row.contact-pair .premium-float input { padding-left: 42px; }
+.bf-row.contact-pair .premium-float label { left: 42px; }
+.bf-row.contact-pair .premium-float input:focus ~ label,
+.bf-row.contact-pair .premium-float input:not(:placeholder-shown) ~ label { left: 12px; }
+.bf-row.contact-pair .fa-whatsapp.field-icon { color: #25d366; }
+/* WhatsApp mirrors the mobile number while the checkbox is on: show it as locked, not active */
+.premium-float input[readonly],
+.premium-float input[readonly]:focus,
+.premium-float input[readonly]:not(:placeholder-shown) {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  box-shadow: none;
+  color: #475569;
+  cursor: not-allowed;
+}
+.premium-float input[readonly] ~ label,
+.premium-float input[readonly]:not(:placeholder-shown) ~ label { color: #64748b; background: linear-gradient(to bottom, #fff 50%, #f8fafc 50%); }
+.contact-pair-check { margin: 0 0 18px; }
+
+.social-links-box { margin-top: 2px; padding: 16px 16px 0; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.social-links-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.social-links-title i { color: #0c6253; }
+.social-links-box .fa-facebook-f.field-icon { color: #1877f2; }
+@media (max-width: 640px) {
+  .social-links-box { padding: 14px 12px 0; }
+}
+
+/* Plot / agriculture: area x rate = price */
+.rate-calc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -6px 0 16px; padding: 10px 12px; background: #f0faf6; border: 1px solid #c6f2e2; border-radius: 10px; color: #0c6253; font-size: 13px; }
+.rate-calc strong { font-size: 14px; }
+.rate-hint { margin: -8px 0 18px; font-size: 12px; color: #64748b; }
+
+/* Amenities multi-select */
+.multi-pill span { display: inline-flex; align-items: center; gap: 6px; }
+.multi-pill span i { font-size: 11px; }
+.multi-pill-count { margin-left: 8px; font-size: 12px; font-weight: 600; color: #0c6253; background: #f0faf7; padding: 2px 8px; border-radius: 999px; }

@@ -14,6 +14,7 @@ export interface RegisterRequest {
   confirm_password?: string;
   role?: CanonicalRole;
   otp?: string;
+  business_name?: string;
 }
 
 export interface SendOtpRequest {

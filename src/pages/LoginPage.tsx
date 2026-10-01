@@ -234,6 +234,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
   // Register state
   const [regRole, setRegRole]   = useState<CanonicalRole>('Owner');
   const [regName, setRegName]   = useState('');
+  const [regBusiness, setRegBusiness] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPass,  setRegPass]  = useState('');
@@ -356,7 +357,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     }
     setLoading(true); setError('');
     try {
-      await register({ name: regName, phone: regPhone, email: regEmail, password: regPass, role: regRole, otp: regOtp.trim() });
+      await register({ name: regName, phone: regPhone, email: regEmail, password: regPass, role: regRole, otp: regOtp.trim(), business_name: regBusiness.trim() || undefined });
       showToast('Account created successfully!', 'success', 'Welcome');
       onLoginSuccess?.();
       onNavigate?.('home');
@@ -620,6 +621,11 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     <label>Client Name</label>
                     <input type="text" placeholder="Enter your full name" required
                       value={regName} onChange={e => setRegName(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label>Business Name <span style={{ color: '#9ca3af', fontWeight: 500 }}>(optional)</span></label>
+                    <input type="text" placeholder="e.g. Sharma Properties" maxLength={150}
+                      value={regBusiness} onChange={e => setRegBusiness(e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label>Mobile No</label>

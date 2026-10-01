@@ -23,6 +23,8 @@ import api, {
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
+import { StateOptions } from '../utils/indianStates';
+import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
 import {
   Listing,
@@ -111,6 +113,18 @@ type AdminModule =
   | 'settings'
   | 'razorpay';
 
+const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
+  { key: 'listings', label: 'Listings Management', icon: 'fas fa-building' },
+  { key: 'locations', label: 'Location Management', icon: 'fas fa-map-marker-alt' },
+  { key: 'categories', label: 'Category Management', icon: 'fas fa-tags' },
+  { key: 'users', label: 'User Management', icon: 'fas fa-users' },
+  { key: 'plans', label: 'Plans & Pricing', icon: 'fas fa-gem' },
+  { key: 'tracker', label: 'Business Associates', icon: 'fas fa-chart-line' },
+  { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
+  { key: 'settings', label: 'Settings', icon: 'fas fa-cog' },
+  { key: 'razorpay', label: 'Razorpay Settings', icon: 'fas fa-credit-card' }
+];
+
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const { user, loading: authLoading } = useAuth();
 
@@ -119,6 +133,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
   // === LISTINGS MODULE STATE ===
   const [listings, setListings] = useState<Listing[]>([]);
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [listingCounts, setListingCounts] = useState<ListingCounts>({
     pending: 0,
     approved: 0,
@@ -976,7 +991,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         </div>
       )}
 
-      <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="container" style={{ maxWidth: '1360px', margin: '0 auto' }}>
         {/* Admin Header */}
         <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
@@ -1001,126 +1016,27 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </button>
         </div>
 
-        {/* Admin Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'listings' ? 'active' : ''}`}
-            onClick={() => setActiveModule('listings')}
-            style={{
-              background: activeModule === 'listings' ? '#0c6253' : '#fff',
-              color: activeModule === 'listings' ? '#fff' : '#374151',
-              borderColor: activeModule === 'listings' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-building"></i> Listings Management
-          </button>
+        <div className="admin-layout">
+          {/* Admin Navigation Sidebar */}
+          <aside className="admin-sidebar">
+            <div className="admin-sidebar-title">Admin Menu</div>
+            <nav>
+              {ADMIN_NAV.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`admin-nav-item${activeModule === item.key ? ' active' : ''}`}
+                  onClick={() => setActiveModule(item.key)}
+                  aria-current={activeModule === item.key ? 'page' : undefined}
+                >
+                  <i className={item.icon}></i>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'locations' ? 'active' : ''}`}
-            onClick={() => setActiveModule('locations')}
-            style={{
-              background: activeModule === 'locations' ? '#0c6253' : '#fff',
-              color: activeModule === 'locations' ? '#fff' : '#374151',
-              borderColor: activeModule === 'locations' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-map-marker-alt"></i> Location Management
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'categories' ? 'active' : ''}`}
-            onClick={() => setActiveModule('categories')}
-            style={{
-              background: activeModule === 'categories' ? '#0c6253' : '#fff',
-              color: activeModule === 'categories' ? '#fff' : '#374151',
-              borderColor: activeModule === 'categories' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-tags"></i> Category Management
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveModule('users')}
-            style={{
-              background: activeModule === 'users' ? '#0c6253' : '#fff',
-              color: activeModule === 'users' ? '#fff' : '#374151',
-              borderColor: activeModule === 'users' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-users"></i> User Management
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'plans' ? 'active' : ''}`}
-            onClick={() => setActiveModule('plans')}
-            style={{
-              background: activeModule === 'plans' ? '#0c6253' : '#fff',
-              color: activeModule === 'plans' ? '#fff' : '#374151',
-              borderColor: activeModule === 'plans' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-gem"></i> Plans &amp; Pricing
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'tracker' ? 'active' : ''}`}
-            onClick={() => setActiveModule('tracker')}
-            style={{
-              background: activeModule === 'tracker' ? '#0c6253' : '#fff',
-              color: activeModule === 'tracker' ? '#fff' : '#374151',
-              borderColor: activeModule === 'tracker' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-chart-line"></i> Business Associates
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'blogs' ? 'active' : ''}`}
-            onClick={() => setActiveModule('blogs')}
-            style={{
-              background: activeModule === 'blogs' ? '#0c6253' : '#fff',
-              color: activeModule === 'blogs' ? '#fff' : '#374151',
-              borderColor: activeModule === 'blogs' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-blog"></i> Blog Management
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveModule('settings')}
-            style={{
-              background: activeModule === 'settings' ? '#0c6253' : '#fff',
-              color: activeModule === 'settings' ? '#fff' : '#374151',
-              borderColor: activeModule === 'settings' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-cog"></i> Settings
-          </button>
-
-          <button
-            type="button"
-            className={`btn-outline ${activeModule === 'razorpay' ? 'active' : ''}`}
-            onClick={() => setActiveModule('razorpay')}
-            style={{
-              background: activeModule === 'razorpay' ? '#0c6253' : '#fff',
-              color: activeModule === 'razorpay' ? '#fff' : '#374151',
-              borderColor: activeModule === 'razorpay' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-credit-card"></i> Razorpay Settings
-          </button>
-        </div>
-
+          <div className="admin-main">
         {/* ======================================================== */}
         {/* MODULE 1: LISTINGS MANAGEMENT */}
         {/* ======================================================== */}
@@ -1219,7 +1135,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           #{l.id}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontWeight: 700, color: '#111827' }}>{l.title}</div>
+                          <button
+                            type="button"
+                            className="admin-listing-title"
+                            title="Open listing page"
+                            onClick={() => onNavigate('listing-detail', l)}
+                          >
+                            {l.title}
+                          </button>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             <i className="fas fa-map-marker-alt"></i> {l.location}
                           </div>
@@ -1232,19 +1155,19 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{l.owner_role}</div>
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <span
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              background: l.status === 'approved' ? '#dcfce7' : '#fef3c7',
-                              color: l.status === 'approved' ? '#166534' : '#92400e'
+<select
+                            className="admin-status-select"
+                            value={l.status}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              if (next === 'deleted' && !window.confirm(`Mark listing #${l.id} as deleted?`)) return;
+                              void handleUpdateListingStatus(l.id, statusAction(next));
                             }}
+                            style={{ background: STATUS_COLORS[l.status]?.bg || '#f1f5f9', color: STATUS_COLORS[l.status]?.fg || '#334155' }}
+                            aria-label={`Status of listing #${l.id}`}
                           >
-                            {l.status}
-                          </span>
+                            {LISTING_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
+                          </select>
                         </td>
                         <td style={{ padding: '12px 14px' }}>
                           {l.verified === 1 ? (
@@ -1267,10 +1190,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <button
                               type="button"
                               className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '11px' }}
-                              onClick={() => onNavigate('listing-detail', l)}
+                              style={{ padding: '4px 10px', fontSize: '11px' }}
+                              onClick={() => setEditingListing(l)}
                             >
-                              View
+                              <i className="fas fa-pen"></i> Edit
                             </button>
                             {l.status !== 'approved' && (
                               <button
@@ -1280,16 +1203,6 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                 onClick={() => handleUpdateListingStatus(l.id, 'approve')}
                               >
                                 Approve
-                              </button>
-                            )}
-                            {l.status !== 'suspended' && (
-                              <button
-                                type="button"
-                                className="btn-outline"
-                                style={{ padding: '4px 8px', fontSize: '11px', color: '#ea580c', borderColor: '#fed7aa' }}
-                                onClick={() => handleUpdateListingStatus(l.id, 'suspended')}
-                              >
-                                Suspend
                               </button>
                             )}
                             <button
@@ -1335,12 +1248,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </div>
 
                 <div className="form-group full">
-                  <label>State</label>
-                  <input
-                    type="text"
-                    value={newState}
-                    onChange={(e) => setNewState(e.target.value)}
-                  />
+                  <label>State / Union Territory</label>
+                  <select value={newState} onChange={(e) => setNewState(e.target.value)}>
+                    <option value="">Select state</option>
+                    <StateOptions current={newState} />
+                  </select>
                 </div>
 
                 <div className="form-group full">
@@ -2866,7 +2778,20 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
+
+      <AdminEditListingModal
+        listing={editingListing}
+        onClose={() => setEditingListing(null)}
+        onSaved={(message) => {
+          showToast(message);
+          fetchAdminListings();
+          fetchListingCounts();
+        }}
+        onViewPage={(l) => onNavigate('listing-detail', l)}
+      />
     </div>
   );
 }

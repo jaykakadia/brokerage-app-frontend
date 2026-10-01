@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { FloatField, FloatSelect, RefCodeSearch, StepIndicator } from './fields';
-import { digitsOnly, stateForCity, type CityOption } from './propertyForm';
+import { FloatField, FloatSelect, PhoneWhatsAppFields, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
+import { StateOptions } from '../../utils/indianStates';
+import { digitsOnly, normalizedSocialLinks, profileContactDefaults, socialLinkError, stateForCity, type CityOption } from './propertyForm';
 import type { ApiResponse, Category, Listing, RefCodeItem } from '../../types';
 
 interface SelectedCategory {
@@ -27,6 +28,9 @@ interface BusinessFormState {
   whatsapp: string;
   sameAsMobile: boolean;
   email: string;
+  facebookUrl: string;
+  websiteUrl: string;
+  xUrl: string;
   selectedCategories: SelectedCategory[];
   categorySearch: string;
   description: string;
@@ -49,6 +53,9 @@ const EMPTY_BUSINESS: BusinessFormState = {
   whatsapp: '',
   sameAsMobile: true,
   email: '',
+  facebookUrl: '',
+  websiteUrl: '',
+  xUrl: '',
   selectedCategories: [],
   categorySearch: '',
   description: ''
@@ -57,12 +64,12 @@ const EMPTY_BUSINESS: BusinessFormState = {
 // Fields reused from the user's last business listing (not description, photos or ref code)
 const REUSABLE_FIELDS = [
   'name', 'pincode', 'plot', 'building', 'street', 'landmark', 'area', 'city', 'state',
-  'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email'
+  'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email', 'facebookUrl', 'websiteUrl', 'xUrl'
 ] as const satisfies ReadonlyArray<keyof BusinessFormState>;
 
 const BUSINESS_STEPS = [
-  { label: 'Business Details', icon: 'fas fa-store' },
   { label: 'Contact Details', icon: 'fas fa-address-card' },
+  { label: 'Business Details', icon: 'fas fa-store' },
   { label: 'Categories', icon: 'fas fa-tags' },
   { label: 'Photos & Submit', icon: 'fas fa-camera' }
 ];
@@ -97,14 +104,17 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
   useEffect(() => {
     if (!user) return;
-    const mobile = digitsOnly(user.phone || '', 10);
+    const profile = profileContactDefaults(user);
     setForm((current) => ({
       ...current,
-      name: current.name || user.name || '',
+      name: current.name || user.business_name || user.name || '',
       person: current.person || user.name || '',
-      mobile: current.mobile || mobile,
-      whatsapp: current.whatsapp || (current.sameAsMobile ? (current.mobile || mobile) : ''),
-      email: current.email || user.email || ''
+      // Only take the profile's phone/WhatsApp pair if the user hasn't typed a mobile yet
+      ...(current.mobile ? {} : { mobile: profile.mobile, whatsapp: profile.whatsapp, sameAsMobile: profile.sameAsMobile }),
+      email: current.email || user.email || '',
+      facebookUrl: current.facebookUrl || profile.facebookUrl,
+      websiteUrl: current.websiteUrl || profile.websiteUrl,
+      xUrl: current.xUrl || profile.xUrl
     }));
   }, [user]);
 
@@ -123,7 +133,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             const value = saved[key];
             if (value === undefined || value === null || value === '') continue;
             // Only fill fields the user hasn't typed into yet (business name may still hold the profile name)
-            const untouched = current[key] === '' || current[key] === EMPTY_BUSINESS[key] || (key === 'name' && current.name === user.name);
+            const untouched = current[key] === '' || current[key] === EMPTY_BUSINESS[key] || (key === 'name' && !user.business_name && current.name === user.name);
             if (key === 'sameAsMobile' || untouched) {
               (next as Record<string, unknown>)[key] = value;
             }
@@ -147,8 +157,13 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
   }, [user]);
 
   const clearPrefill = () => {
-    const mobile = digitsOnly(user?.phone || '', 10);
-    setForm({ ...EMPTY_BUSINESS, name: user?.name || '', person: user?.name || '', mobile, whatsapp: mobile, email: user?.email || '' });
+    setForm({
+      ...EMPTY_BUSINESS,
+      ...(user ? profileContactDefaults(user) : {}),
+      name: user?.business_name || user?.name || '',
+      person: user?.name || '',
+      email: user?.email || ''
+    });
     setPrefilledFromLast(false);
     setError(null);
   };
@@ -195,15 +210,18 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
   const continueFrom = (next: 2 | 3 | 4) => {
     if (step === 1) {
+      if (!form.person.trim()) return setError('Please enter Contact Person name');
+      if (!/^\d{10}$/.test(form.mobile)) return setError('Enter a valid 10-digit Mobile Number');
+      if (!form.sameAsMobile && form.whatsapp && !/^\d{10}$/.test(form.whatsapp)) return setError('Enter a valid 10-digit WhatsApp Number');
+      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Enter a valid Email Address');
+      const badLink = socialLinkError(form);
+      if (badLink) return setError(badLink);
+    }
+    if (step === 2) {
       if (!form.name.trim()) return setError('Please enter your Business Name');
       if (!/^\d{6}$/.test(form.pincode)) return setError('Enter a valid 6-digit Pincode');
       if (!form.city) return setError('Please select a City');
       if (!form.state.trim()) return setError('State is missing. Pick a city that has a state.');
-    }
-    if (step === 2) {
-      if (!form.person.trim()) return setError('Please enter Contact Person name');
-      if (!/^\d{10}$/.test(form.mobile)) return setError('Enter a valid 10-digit Mobile Number');
-      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Enter a valid Email Address');
     }
     if (step === 3 && form.selectedCategories.length === 0) return setError('Search and select at least one Business Category');
     goToStep(next);
@@ -280,6 +298,8 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       fd.append('form_data', JSON.stringify({
         kind: 'business',
         ...form,
+        whatsapp: form.sameAsMobile ? form.mobile : form.whatsapp,
+        ...normalizedSocialLinks(form),
         // Kept for older readers that expect a single category
         categoryId: form.selectedCategories.map((c) => c.id).join(','),
         categoryName: categoryNames
@@ -311,7 +331,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
       {step === 1 && (
         <>
-          <div className="bf-heading"><i className="fas fa-store"></i> Enter Your Business Details</div>
+          <div className="bf-heading"><i className="fas fa-address-card"></i> Contact Details</div>
           {prefilledFromLast && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: '#f0faf7', border: '1px solid #bbe5d8', color: '#0c6253', padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
               <span><i className="fas fa-magic" style={{ marginRight: 6 }}></i>Filled from your last business listing. Edit anything that's different.</span>
@@ -320,6 +340,21 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
               </button>
             </div>
           )}
+          <FloatField label="Contact Person" icon="fas fa-user" required value={form.person} onChange={(person) => patch({ person })} />
+          <div style={{ marginTop: 16 }}>
+            <PhoneWhatsAppFields mobile={form.mobile} whatsapp={form.whatsapp} sameAsMobile={form.sameAsMobile} onChange={patch} />
+          </div>
+          <FloatField label="Email Address" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => patch({ email })} />
+          <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} onChange={patch} />
+          <div className="bf-actions">
+            <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Next <i className="fas fa-arrow-right"></i></button>
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <div className="bf-heading"><i className="fas fa-store"></i> Enter Your Business Details</div>
           <FloatField label="Business Name" icon="fas fa-building" required value={form.name} onChange={(name) => patch({ name })} />
           <div style={{ marginTop: 16 }}>
             <FloatField label="Pincode" icon="fas fa-map-pin" required inputMode="numeric" maxLength={6} value={form.pincode} onChange={(value) => patch({ pincode: digitsOnly(value, 6) })} />
@@ -339,7 +374,9 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             <FloatSelect label="City" required value={form.city} onChange={(city) => patch({ city, state: stateForCity(city, cities) })}>
               {cities.map((item) => <option key={item.city} value={item.city}>{item.city}</option>)}
             </FloatSelect>
-            <FloatField label="State" required readOnly value={form.state} onChange={() => undefined} />
+            <FloatSelect label="State" required value={form.state} onChange={(state) => patch({ state })}>
+              <StateOptions current={form.state} />
+            </FloatSelect>
           </div>
 
           <div style={{ marginTop: 18, padding: 14, border: '1.5px dashed #cbd5e1', borderRadius: 12, background: '#f8fafc' }}>
@@ -368,30 +405,6 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
               </button>
             </div>
           </div>
-          <div className="bf-actions">
-            <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <div className="bf-heading"><i className="fas fa-address-card"></i> Contact Details</div>
-          <FloatField label="Contact Person" icon="fas fa-user" required value={form.person} onChange={(person) => patch({ person })} />
-          <div style={{ marginTop: 16 }}>
-            <FloatField label="Mobile Number" prefix="+91" required type="tel" inputMode="tel" maxLength={10} value={form.mobile} onChange={(value) => patch({ mobile: digitsOnly(value, 10) })} />
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <FloatField label="WhatsApp Number" prefix="+91" type="tel" inputMode="tel" maxLength={10} value={form.whatsapp} onChange={(value) => patch({ whatsapp: digitsOnly(value, 10), sameAsMobile: false })} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 12px', gap: 12 }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>Auto-filled from mobile — change if different</span>
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={form.sameAsMobile} onChange={(e) => patch({ sameAsMobile: e.target.checked, whatsapp: e.target.checked ? form.mobile : form.whatsapp })} />
-              Same As Mobile Number
-            </label>
-          </div>
-          <FloatField label="Email Address" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => patch({ email })} />
           <div className="bf-actions">
             <button type="button" className="btn-outline" onClick={() => goToStep(1)}><i className="fas fa-arrow-left"></i> Back</button>
             <button type="button" className="btn-premium" onClick={() => continueFrom(3)}>Next <i className="fas fa-arrow-right"></i></button>

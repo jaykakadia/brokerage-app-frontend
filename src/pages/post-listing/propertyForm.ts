@@ -1,3 +1,5 @@
+import { normalizeExternalUrl } from '../../utils/url';
+
 export type ListingRole = 'business' | 'buyer' | 'owner';
 export type PosterRole = 'real_owner' | 'real_buyer' | 'agent' | 'builder';
 export type ListingFor = 'sale' | 'rent';
@@ -13,7 +15,12 @@ export interface PropertyFormState {
   name: string;
   businessName: string;
   mobile: string;
+  whatsapp: string;
+  sameAsMobile: boolean;
   email: string;
+  facebookUrl: string;
+  websiteUrl: string;
+  xUrl: string;
   posterRole: PosterRole;
   forWhat: ListingFor;
   propType: PropType | '';
@@ -47,6 +54,8 @@ export interface PropertyFormState {
   commonAreas: string;
   pgMeals: string;
   pgRoomType: string;
+  rate: string;
+  amenities: string[];
   price: string;
   facing: string;
   description: string;
@@ -56,7 +65,12 @@ export const EMPTY_PROPERTY_FORM: PropertyFormState = {
   name: '',
   businessName: '',
   mobile: '',
+  whatsapp: '',
+  sameAsMobile: true,
   email: '',
+  facebookUrl: '',
+  websiteUrl: '',
+  xUrl: '',
   posterRole: 'real_owner',
   forWhat: 'sale',
   propType: '',
@@ -90,6 +104,8 @@ export const EMPTY_PROPERTY_FORM: PropertyFormState = {
   commonAreas: '',
   pgMeals: 'Yes',
   pgRoomType: 'Single',
+  rate: '',
+  amenities: [],
   price: '',
   facing: 'East',
   description: ''
@@ -127,9 +143,33 @@ export function formatInr(value: string): string {
   return `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last}`;
 }
 
+const RESIDENTIAL_AMENITIES = [
+  'Lift', 'Power Backup', 'Car Parking', 'Gated Security', 'CCTV', '24x7 Water Supply',
+  'Gas Pipeline', 'Park / Garden', "Children's Play Area", 'Gym', 'Swimming Pool', 'Club House',
+  'Modular Kitchen', 'Air Conditioning', 'Wi-Fi'
+] as const;
+
+const COMMERCIAL_AMENITIES = [
+  'Lift', 'Power Backup', 'Parking', 'Security', 'CCTV', 'Fire Safety', 'Washroom',
+  '24x7 Water Supply', 'Air Conditioning', 'Cafeteria / Food Court', 'Wi-Fi', 'Loading / Unloading Area'
+] as const;
+
+const PG_AMENITIES = [
+  'Wi-Fi', 'Air Conditioning', 'Attached Bathroom', 'Geyser', 'Laundry', 'Housekeeping',
+  'Power Backup', 'RO Water', 'TV', 'Fridge', 'Wardrobe', 'Study Table', 'CCTV', 'Security', 'Parking'
+] as const;
+
+/** Amenity choices for a property type. Plot and agriculture land have none. */
+export function amenitiesFor(propType: PropType | ''): readonly string[] {
+  if (propType === 'flat' || propType === 'house') return RESIDENTIAL_AMENITIES;
+  if (propType === 'commercial') return COMMERCIAL_AMENITIES;
+  if (propType === 'pg') return PG_AMENITIES;
+  return [];
+}
+
 export function propTypeLabel(value: string): string {
   const labels: Record<string, string> = {
-    flat: 'Flat/Builder Floor',
+    flat: 'Flat/Builder Floor/House/Villa',
     house: 'House/Villa',
     plot: 'Plot',
     agriculture: 'Agriculture Land',
@@ -156,7 +196,10 @@ export function validatePropertyStep(form: PropertyFormState, step: PropertyStep
   if (step === 1) {
     if (!form.name.trim()) return 'Please enter Your Name';
     if (!/^\d{10}$/.test(form.mobile)) return 'Enter a valid 10-digit Mobile Number';
+    if (!form.sameAsMobile && form.whatsapp && !/^\d{10}$/.test(form.whatsapp)) return 'Enter a valid 10-digit WhatsApp Number';
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid Email ID';
+    const badLink = socialLinkError(form);
+    if (badLink) return badLink;
   }
   if (step === 2) {
     if (!form.propType) return 'Please select a Property Type';
@@ -167,6 +210,63 @@ export function validatePropertyStep(form: PropertyFormState, step: PropertyStep
     if (propertyPriceNumber(form) <= 0) return 'Please enter Price/Budget';
   }
   return null;
+}
+
+const SOCIAL_LINK_LABELS = { facebookUrl: 'Facebook', websiteUrl: 'Website', xUrl: 'X' } as const;
+type SocialLinkState = Record<keyof typeof SOCIAL_LINK_LABELS, string>;
+
+/** Returns an error message for the first invalid social link, or null when all are blank or valid. */
+export function socialLinkError(form: SocialLinkState): string | null {
+  for (const key of Object.keys(SOCIAL_LINK_LABELS) as Array<keyof SocialLinkState>) {
+    if (normalizeExternalUrl(form[key]) === null) return `Enter a valid ${SOCIAL_LINK_LABELS[key]} link`;
+  }
+  return null;
+}
+
+/** Canonical https:// form of each social link, for saving with the listing. */
+export function normalizedSocialLinks(form: SocialLinkState): SocialLinkState {
+  return {
+    facebookUrl: normalizeExternalUrl(form.facebookUrl) || '',
+    websiteUrl: normalizeExternalUrl(form.websiteUrl) || '',
+    xUrl: normalizeExternalUrl(form.xUrl) || ''
+  };
+}
+
+/** Contact + social defaults taken from the signed-in user's profile. */
+export function profileContactDefaults(user: { phone?: string | null; whatsapp?: string | null; facebook_url?: string | null; website_url?: string | null; x_url?: string | null }) {
+  const mobile = digitsOnly(user.phone || '', 10);
+  const whatsapp = digitsOnly(user.whatsapp || '', 10);
+  const sameAsMobile = !whatsapp || whatsapp === mobile;
+  return {
+    mobile,
+    whatsapp: sameAsMobile ? mobile : whatsapp,
+    sameAsMobile,
+    facebookUrl: user.facebook_url || '',
+    websiteUrl: user.website_url || '',
+    xUrl: user.x_url || ''
+  };
+}
+
+const inrNumber = (value: string): number => Number(value.replace(/[^\d]/g, '')) || 0;
+
+/** Area and unit that a per-unit rate applies to, for property types priced as area x rate. */
+export function landAreaFor(form: Pick<PropertyFormState, 'propType' | 'area' | 'unit' | 'plotArea' | 'plotUnit' | 'agriArea' | 'agriUnit'>): { area: number; unit: string } | null {
+  if (form.propType === 'flat' || form.propType === 'house') return { area: Number(form.area) || 0, unit: form.unit };
+  if (form.propType === 'plot') return { area: Number(form.plotArea) || 0, unit: form.plotUnit };
+  if (form.propType === 'agriculture') return { area: Number(form.agriArea) || 0, unit: form.agriUnit };
+  return null;
+}
+
+/**
+ * Applies a change to an area-priced form (flat/house, plot, agriculture) and recalculates price = area x rate.
+ * Leaves price alone when area or rate is missing, so a manually typed price survives.
+ */
+export function withAutoPrice(form: PropertyFormState, patch: Partial<PropertyFormState>): Partial<PropertyFormState> {
+  const next = { ...form, ...patch };
+  const land = landAreaFor(next);
+  const rate = inrNumber(next.rate);
+  if (!land || land.area <= 0 || rate <= 0) return patch;
+  return { ...patch, price: formatInr(String(Math.round(land.area * rate))) };
 }
 
 export function propertyPriceNumber(form: PropertyFormState): number {

@@ -136,3 +136,16 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
 
   return { page: 'home', param: null };
 }
+
+/** Accepts "facebook.com/x" as well as full URLs; returns '' for blank input and null when invalid. */
+export const normalizeExternalUrl = (raw: string): string | null => {
+  const value = raw.trim();
+  if (!value) return '';
+  const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    const url = new URL(withScheme);
+    return url.hostname.includes('.') ? url.toString() : null;
+  } catch {
+    return null;
+  }
+};

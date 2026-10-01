@@ -5,7 +5,9 @@ import PropertyListingForm from './post-listing/PropertyListingForm';
 import BusinessListingForm from './post-listing/BusinessListingForm';
 import {
   canonicalPosterRole,
-  digitsOnly,
+  amenitiesFor,
+  normalizedSocialLinks,
+  profileContactDefaults,
   EMPTY_PROPERTY_FORM,
   FALLBACK_CITIES,
   listingTitle,
@@ -40,12 +42,17 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
 
   useEffect(() => {
     if (!user) return;
-    const mobile = digitsOnly(user.phone || '', 10);
+    const profile = profileContactDefaults(user);
     setForm((current) => ({
       ...current,
       name: current.name || user.name || '',
-      mobile: current.mobile || mobile,
-      email: current.email || user.email || ''
+      businessName: current.businessName || user.business_name || '',
+      // Only take the profile's phone/WhatsApp pair if the user hasn't typed a mobile yet
+      ...(current.mobile ? {} : { mobile: profile.mobile, whatsapp: profile.whatsapp, sameAsMobile: profile.sameAsMobile }),
+      email: current.email || user.email || '',
+      facebookUrl: current.facebookUrl || profile.facebookUrl,
+      websiteUrl: current.websiteUrl || profile.websiteUrl,
+      xUrl: current.xUrl || profile.xUrl
     }));
   }, [user]);
 
@@ -155,6 +162,9 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
       fd.append('form_data', JSON.stringify({
         kind: role,
         ...form,
+        whatsapp: form.sameAsMobile ? form.mobile : form.whatsapp,
+        ...normalizedSocialLinks(form),
+        amenities: form.amenities.filter((a) => amenitiesFor(form.propType).includes(a)),
         price
       }));
       photos.forEach((photo) => fd.append('photos', photo));

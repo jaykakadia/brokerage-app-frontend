@@ -23,7 +23,7 @@ export function FloatField({
   prefix?: string;
   readOnly?: boolean;
   maxLength?: number;
-  inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal';
+  inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal' | 'url';
 }) {
   return (
     <div className={`premium-float${prefix ? ' input-with-prefix' : ''}`}>
@@ -105,6 +105,42 @@ export function Pills<T extends string>({
               onChange={() => onChange(option.value)}
             />
             <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** Multi-select version of Pills, e.g. for amenities. */
+export function MultiPills({
+  label,
+  values,
+  options,
+  onChange
+}: {
+  label: string;
+  values: string[];
+  options: readonly string[];
+  onChange: (values: string[]) => void;
+}) {
+  const toggle = (option: string): void => {
+    onChange(values.includes(option) ? values.filter((v) => v !== option) : [...values, option]);
+  };
+  return (
+    <>
+      <label className="form-label">
+        {label}
+        {values.length > 0 ? <span className="multi-pill-count">{values.length} selected</span> : null}
+      </label>
+      <div className="pill-group">
+        {options.map((option) => (
+          <label className="pill-radio multi-pill" key={option}>
+            <input type="checkbox" checked={values.includes(option)} onChange={() => toggle(option)} />
+            <span>
+              {values.includes(option) ? <i className="fas fa-check"></i> : null}
+              {option}
+            </span>
           </label>
         ))}
       </div>
@@ -267,6 +303,86 @@ export function RefCodeSearch({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+export interface ContactLinkFields {
+  mobile: string;
+  whatsapp: string;
+  sameAsMobile: boolean;
+  facebookUrl: string;
+  websiteUrl: string;
+  xUrl: string;
+}
+
+const tenDigits = (value: string): string => value.replace(/\D/g, '').slice(0, 10);
+
+/** Mobile and WhatsApp side by side, with a "same as mobile" checkbox that keeps them in sync. */
+export function PhoneWhatsAppFields({
+  mobile,
+  whatsapp,
+  sameAsMobile,
+  onChange
+}: Pick<ContactLinkFields, 'mobile' | 'whatsapp' | 'sameAsMobile'> & {
+  onChange: (patch: Partial<Pick<ContactLinkFields, 'mobile' | 'whatsapp' | 'sameAsMobile'>>) => void;
+}) {
+  return (
+    <>
+      <div className="bf-row keep-row contact-pair">
+        <FloatField
+          label="Mobile Number"
+          icon="fas fa-phone"
+          required
+          type="tel"
+          inputMode="tel"
+          maxLength={10}
+          value={mobile}
+          onChange={(value) => {
+            const next = tenDigits(value);
+            onChange(sameAsMobile ? { mobile: next, whatsapp: next } : { mobile: next });
+          }}
+        />
+        <FloatField
+          label="WhatsApp Number"
+          icon="fab fa-whatsapp"
+          type="tel"
+          inputMode="tel"
+          maxLength={10}
+          readOnly={sameAsMobile}
+          value={sameAsMobile ? mobile : whatsapp}
+          onChange={(value) => onChange({ whatsapp: tenDigits(value) })}
+        />
+      </div>
+      <label className="checkbox-label contact-pair-check">
+        <input
+          type="checkbox"
+          checked={sameAsMobile}
+          onChange={(e) => onChange(e.target.checked ? { sameAsMobile: true, whatsapp: mobile } : { sameAsMobile: false })}
+        />
+        WhatsApp number same as mobile number
+      </label>
+    </>
+  );
+}
+
+/** Optional social links block shared by the listing forms. */
+export function SocialLinkFields({
+  facebookUrl,
+  websiteUrl,
+  xUrl,
+  onChange
+}: Pick<ContactLinkFields, 'facebookUrl' | 'websiteUrl' | 'xUrl'> & {
+  onChange: (patch: Partial<Pick<ContactLinkFields, 'facebookUrl' | 'websiteUrl' | 'xUrl'>>) => void;
+}) {
+  return (
+    <div className="social-links-box">
+      <div className="social-links-title">
+        <i className="fas fa-share-alt"></i> Social Links
+      </div>
+      <FloatField label="Facebook Link" icon="fab fa-facebook-f" inputMode="url" value={facebookUrl} onChange={(value) => onChange({ facebookUrl: value })} />
+      <FloatField label="Website Link" icon="fas fa-globe" inputMode="url" value={websiteUrl} onChange={(value) => onChange({ websiteUrl: value })} />
+      <FloatField label="X (Twitter) Link" icon="fab fa-x-twitter" inputMode="url" value={xUrl} onChange={(value) => onChange({ xUrl: value })} />
     </div>
   );
 }
