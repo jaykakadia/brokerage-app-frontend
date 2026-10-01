@@ -380,8 +380,8 @@ export function SocialLinkFields({
       <div className="social-links-title">
         <i className="fas fa-share-alt"></i> Social Links
       </div>
-      <FloatField label="Facebook Link" icon="fab fa-facebook-f" inputMode="url" value={facebookUrl} onChange={(value) => onChange({ facebookUrl: value })} />
       <FloatField label="Website Link" icon="fas fa-globe" inputMode="url" value={websiteUrl} onChange={(value) => onChange({ websiteUrl: value })} />
+      <FloatField label="Facebook Link" icon="fab fa-facebook-f" inputMode="url" value={facebookUrl} onChange={(value) => onChange({ facebookUrl: value })} />
       <FloatField label="X (Twitter) Link" icon="fab fa-x-twitter" inputMode="url" value={xUrl} onChange={(value) => onChange({ xUrl: value })} />
     </div>
   );

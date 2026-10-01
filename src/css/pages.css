@@ -354,30 +354,6 @@
 .profile-phone-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 480px) { .profile-phone-row { grid-template-columns: 1fr; } }
 
-/* ===== Account: social links tab ===== */
-.social-panel { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
-.social-panel-head h2 { font-size: 18px; font-weight: 700; margin: 0 0 4px; color: #111827; }
-.social-panel-head p { font-size: 13px; color: #6b7280; margin: 0 0 12px; }
-.social-msg { background: #f0faf6; border: 1px solid #c6f2e2; color: #0c6253; padding: 10px 14px; border-radius: 8px; margin: 8px 0; font-size: 14px; }
-.social-msg.is-error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
-.social-row { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid #f3f4f6; flex-wrap: wrap; }
-.social-icon { flex: 0 0 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
-.social-label { flex: 1; font-size: 14px; font-weight: 600; color: #374151; }
-.social-saved { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.social-saved a { color: #0c6253; font-weight: 700; font-size: 14px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
-.social-saved a i { font-size: 11px; margin-left: 4px; }
-.social-saved a:hover { text-decoration: underline; }
-.social-icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-size: 12px; }
-.social-icon-btn:hover { color: #0c6253; border-color: #0c6253; }
-.social-icon-btn.is-danger:hover { color: #dc2626; border-color: #fca5a5; }
-.social-edit { display: flex; gap: 8px; flex: 1 1 100%; }
-.social-edit input { flex: 1; min-width: 0; padding: 9px 12px; border: 1.5px solid #0c6253; border-radius: 8px; font-size: 14px; font-family: inherit; }
-.social-edit input:focus { outline: none; }
-.social-edit .btn-primary, .social-edit .btn-outline { padding: 8px 14px; font-size: 13px; }
-@media (max-width: 600px) {
-  .social-panel { padding: 20px; }
-  .social-saved a { max-width: 160px; }
-}
 .account-add-link { display: inline-flex; align-items: center; gap: 6px; background: #f0faf6; color: #0c6253; border: 1px dashed #0c6253; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
 .account-add-link:hover { background: #dcfce7; }
 

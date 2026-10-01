@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api, { getApiErrorMessage } from '../services/api';
+import { normalizeExternalUrl } from '../utils/url';
 import type { MessageResponse, User, UserProfileUpdate } from '../types';
 
 export interface EditProfileModalProps {
@@ -16,7 +17,19 @@ interface ProfileForm {
   businessName: string;
   whatsapp: string;
   whatsappSameAsPhone: boolean;
+  websiteUrl: string;
+  facebookUrl: string;
+  xUrl: string;
 }
+
+type SocialKey = 'websiteUrl' | 'facebookUrl' | 'xUrl';
+
+// Website is the primary link, so it comes first.
+const SOCIAL_FIELDS: Array<{ key: SocialKey; label: string; icon: string; color: string; placeholder: string }> = [
+  { key: 'websiteUrl', label: 'Website', icon: 'fas fa-globe', color: '#0c6253', placeholder: 'yourwebsite.com' },
+  { key: 'facebookUrl', label: 'Facebook', icon: 'fab fa-facebook-f', color: '#1877f2', placeholder: 'facebook.com/yourpage' },
+  { key: 'xUrl', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827', placeholder: 'x.com/yourhandle' }
+];
 
 function formFromUser(user: User): ProfileForm {
   const whatsapp = user.whatsapp || '';
@@ -26,7 +39,10 @@ function formFromUser(user: User): ProfileForm {
     email: user.email || '',
     businessName: user.business_name || '',
     whatsapp,
-    whatsappSameAsPhone: !whatsapp || whatsapp === user.phone
+    whatsappSameAsPhone: !whatsapp || whatsapp === user.phone,
+    websiteUrl: user.website_url || '',
+    facebookUrl: user.facebook_url || '',
+    xUrl: user.x_url || ''
   };
 }
 
@@ -92,12 +108,25 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
       return;
     }
 
+    const links: Partial<Record<SocialKey, string>> = {};
+    for (const { key, label } of SOCIAL_FIELDS) {
+      const url = normalizeExternalUrl(form[key]);
+      if (url === null) {
+        setMessage({ type: 'error', text: `Enter a valid ${label} link.` });
+        return;
+      }
+      links[key] = url;
+    }
+
     const payload: UserProfileUpdate = {
       name: form.name.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
       business_name: form.businessName.trim(),
-      whatsapp
+      whatsapp,
+      website_url: links.websiteUrl,
+      facebook_url: links.facebookUrl,
+      x_url: links.xUrl
     };
     if (identityChanged) payload.otp = otp.trim();
 
@@ -208,6 +237,19 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
             <label><i className="fas fa-envelope" style={{ color: '#0c6253', marginRight: 6 }}></i>Email ID</label>
             <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required />
           </div>
+
+          <div className="form-group full" style={{ marginBottom: 6 }}>
+            <label><i className="fas fa-share-alt" style={{ color: '#0c6253', marginRight: 6 }}></i>Social Links <span style={{ color: '#9ca3af', fontWeight: 500 }}>(optional)</span></label>
+          </div>
+          {SOCIAL_FIELDS.map(({ key, label, icon, color, placeholder }) => (
+            <div className="form-group full" key={key}>
+              <label style={{ fontWeight: 600 }}>
+                <i className={icon} style={{ color, marginRight: 6, width: 14, textAlign: 'center' }}></i>{label}
+                {key === 'websiteUrl' ? <span style={{ color: '#0c6253', fontWeight: 600, fontSize: 12, marginLeft: 6 }}>Primary</span> : null}
+              </label>
+              <input type="text" inputMode="url" placeholder={placeholder} value={form[key]} onChange={(e) => set(key, e.target.value)} />
+            </div>
+          ))}
 
           {identityChanged && (
             <div className="form-group full">

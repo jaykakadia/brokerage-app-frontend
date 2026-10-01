@@ -4,8 +4,16 @@ import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
 import EditProfileModal from '../components/EditProfileModal';
-import SocialLinksPanel from '../components/SocialLinksPanel';
 import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
+
+// Website is the primary link, so it is listed first.
+const PROFILE_LINKS = [
+  { key: 'website_url', label: 'Website', icon: 'fas fa-globe', color: '#0c6253' },
+  { key: 'facebook_url', label: 'Facebook', icon: 'fab fa-facebook-f', color: '#1877f2' },
+  { key: 'x_url', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827' }
+] as const;
+
+const displayUrl = (url: string): string => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '');
 
 function formatPlanExpiry(value?: string | null): string {
   if (!value) return '—';
@@ -29,7 +37,7 @@ export interface AccountPageProps {
 export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps) {
   const { user, refreshUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'social' | 'password'>('my-listings');
+  const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'password'>('my-listings');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
@@ -211,6 +219,11 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
               <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#111827', margin: '0 0 6px 0' }}>
                 {user.name}
               </h1>
+              {user.business_name && (
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0c6253', margin: '-2px 0 6px 0' }}>
+                  <i className="fas fa-briefcase" style={{ marginRight: '6px' }}></i>{user.business_name}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '13px', color: '#6b7280', alignItems: 'center' }}>
                 <span><i className="fas fa-envelope"></i> {user.email}</span>
                 {user.phone && <span><i className="fas fa-phone"></i> {user.phone}</span>}
@@ -268,6 +281,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                 value: user.business_name || 'Not added',
                 tone: user.business_name ? '#111827' : '#9ca3af'
               },
+              { label: 'Social Links', value: '', tone: '#111827' },
               {
                 label: 'Current Plan',
                 value: !user.plan_id
@@ -299,7 +313,22 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                 }}
               >
                 <span style={{ color: '#6b7280', fontWeight: 600 }}>{row.label}</span>
-                {row.label === 'Business Name' && !user.business_name ? (
+                {row.label === 'Social Links' ? (
+                  PROFILE_LINKS.some(({ key }) => user[key]) ? (
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      {PROFILE_LINKS.filter(({ key }) => user[key]).map(({ key, label, icon, color }) => (
+                        <a key={key} href={user[key] || ''} target="_blank" rel="noopener noreferrer" title={label}
+                          style={{ color: '#111827', fontWeight: 700, textDecoration: 'none', wordBreak: 'break-all' }}>
+                          <i className={icon} style={{ color, marginRight: '6px' }}></i>{displayUrl(user[key] || '')}
+                        </a>
+                      ))}
+                    </span>
+                  ) : (
+                    <button type="button" className="account-add-link" onClick={openEdit}>
+                      <i className="fas fa-plus"></i> Add Website / Social Links
+                    </button>
+                  )
+                ) : row.label === 'Business Name' && !user.business_name ? (
                   <button type="button" className="account-add-link" onClick={openEdit}>
                     <i className="fas fa-plus"></i> Add Business Name
                   </button>
@@ -336,18 +365,6 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
             }}
           >
             <i className="fas fa-heart" style={{ color: activeTab === 'wishlist' ? '#fff' : '#dc2626' }}></i> Wishlist ({wishlistItems.length})
-          </button>
-          <button
-            type="button"
-            className={`btn-outline ${activeTab === 'social' ? 'active' : ''}`}
-            onClick={() => setActiveTab('social')}
-            style={{
-              background: activeTab === 'social' ? '#0c6253' : '#fff',
-              color: activeTab === 'social' ? '#fff' : '#374151',
-              borderColor: activeTab === 'social' ? '#0c6253' : '#d1d5db'
-            }}
-          >
-            <i className="fas fa-share-alt"></i> Social Links
           </button>
           <button
             type="button"
@@ -589,9 +606,6 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
         )}
 
         {/* TAB 3: Change Password */}
-        {activeTab === 'social' && (
-          <SocialLinksPanel user={user} onSaved={refreshUser} />
-        )}
 
         {activeTab === 'password' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>

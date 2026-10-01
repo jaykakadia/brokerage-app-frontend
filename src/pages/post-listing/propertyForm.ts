@@ -212,7 +212,7 @@ export function validatePropertyStep(form: PropertyFormState, step: PropertyStep
   return null;
 }
 
-const SOCIAL_LINK_LABELS = { facebookUrl: 'Facebook', websiteUrl: 'Website', xUrl: 'X' } as const;
+const SOCIAL_LINK_LABELS = { websiteUrl: 'Website', facebookUrl: 'Facebook', xUrl: 'X' } as const;
 type SocialLinkState = Record<keyof typeof SOCIAL_LINK_LABELS, string>;
 
 /** Returns an error message for the first invalid social link, or null when all are blank or valid. */
