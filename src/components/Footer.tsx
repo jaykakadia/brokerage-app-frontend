@@ -45,37 +45,37 @@ export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
         <div className="footer-col">
           <h4>Property Types</h4>
           <ul>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Flats / Apartments</a></li>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Independent Houses</a></li>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Residential Plots</a></li>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Commercial Shops</a></li>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Office Space</a></li>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Agricultural Land</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Flats / Apartments</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Independent Houses</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Residential Plots</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Commercial Shops</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Office Space</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Agricultural Land</a></li>
           </ul>
         </div>
 
         <div className="footer-col">
           <h4>Quick Links</h4>
           <ul>
-            <li><a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
-            <li><a href="#blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Blog</a></li>
-            <li><a href="#advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>
-            <li><a href="#about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }}>About Us</a></li>
-            <li><a href="#contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}>Contact Us</a></li>
+            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
+            <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Blog</a></li>
+            <li><a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>
+            <li><a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }}>About Us</a></li>
+            <li><a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}>Contact Us</a></li>
           </ul>
         </div>
       </div>
 
       <div className="footer-bottom">
         <div className="container footer-bottom-inner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div className="footer-copy">© 2025 TradeCall India. All rights reserved.</div>
+          <div className="footer-copy">© 2026 TradeCall India. All rights reserved.</div>
           <div className="footer-legal" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <a href="#privacy" onClick={(e) => { e.preventDefault(); onNavigate('privacy'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="#terms" onClick={(e) => { e.preventDefault(); onNavigate('terms'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Terms of Use</a>
-            <a href="#blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Blog</a>
-            <a href="#about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>About Us</a>
-            <a href="#contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Contact</a>
-            <a href="#advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Advertise</a>
+            <a href="/privacy" onClick={(e) => { e.preventDefault(); onNavigate('privacy'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Privacy Policy</a>
+            <a href="/Terms-of-use-tradecall-India" onClick={(e) => { e.preventDefault(); onNavigate('terms'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Terms of Use</a>
+            <a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Blog</a>
+            <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>About Us</a>
+            <a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Contact</a>
+            <a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Advertise</a>
           </div>
         </div>
       </div>
