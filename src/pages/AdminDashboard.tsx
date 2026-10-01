@@ -2380,7 +2380,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </h2>
               </div>
               <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
-                Shown as a tutorial at the top of the Create Account screen and the sign-up popup. YouTube links play right on the page. Without a guide link, "Read Guide" opens the Blog page; without a video link, "Watch Video" is hidden.
+                Shown as "Need help signing up?" below the Create Account button (sign-up page and popup). YouTube links play right on the page. Without a guide link, "Blog guide" opens the Blog page; without a video link, "Video tutorial" shows as coming soon.
               </p>
               <form onSubmit={handleSaveSignupGuide}>
                 <div style={{ marginBottom: '14px' }}>

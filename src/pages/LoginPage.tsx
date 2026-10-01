@@ -580,7 +580,6 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
               <div id="registerPanel">
                 <div className="lf-heading">Create your account</div>
                 <div className="lf-sub">Start posting and managing listings today</div>
-                <SignupGuide />
                 <form onSubmit={handleRegister}>
                   {/* Role cards */}
                   <div className="role-selection">
@@ -686,6 +685,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                 <div className="create-acc">
                   Already have an account? <button onClick={() => switchTab('signin')}>Sign In</button>
                 </div>
+                <SignupGuide />
               </div>
             )}
 

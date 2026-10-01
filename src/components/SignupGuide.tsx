@@ -13,12 +13,12 @@ const youtubeEmbedUrl = (url: string): string | null => {
   return match ? `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=1&rel=0` : null;
 };
 
-/** Used for "Read Guide" until the admin sets a guide link. */
+/** "Blog guide" opens the site's blog until the admin sets a guide link. */
 const FALLBACK_GUIDE_URL = '/blog';
 
 /**
- * "How to sign up" tutorial links set by the admin (Settings > Sign-up Guide Links).
- * Always shown: "Read Guide" falls back to the site's blog, "Watch Video" appears once a video link is set.
+ * "Need help signing up?" block shown below the Create Account button.
+ * Links come from admin Settings > Sign-up Guide Links. YouTube videos play in an in-page player.
  */
 export default function SignupGuide() {
   const [blogUrl, setBlogUrl] = useState('');
@@ -33,7 +33,7 @@ export default function SignupGuide() {
         setBlogUrl(safeUrl(res.data.data.blog_url));
         setVideoUrl(safeUrl(res.data.data.video_url));
       })
-      .catch(() => {/* no guide configured -> show nothing */});
+      .catch(() => {/* fall back to the blog page; video shows as coming soon */});
     return () => { cancelled = true; };
   }, []);
 
@@ -47,31 +47,45 @@ export default function SignupGuide() {
   const guideUrl = blogUrl || FALLBACK_GUIDE_URL;
   const embed = videoUrl ? youtubeEmbedUrl(videoUrl) : null;
 
+  const videoContent = (
+    <>
+      <span className="signup-help-icon video"><i className="fas fa-play"></i></span>
+      <span className="signup-help-text">
+        <strong>Video tutorial</strong>
+        <small>{videoUrl ? 'Watch how to sign up' : 'Coming soon'}</small>
+      </span>
+    </>
+  );
+
   return (
     <>
-      <div className="signup-guide">
-        <div className="signup-guide-text">
-          <i className="fas fa-circle-question"></i>
-          <div>
-            <strong>New to TradeCall?</strong>
-            <span>See how to create your account step by step.</span>
-          </div>
-        </div>
-        <div className="signup-guide-actions">
-          {videoUrl ? (
-            embed ? (
-              <button type="button" className="signup-guide-btn video" onClick={() => setPlaying(true)}>
-                <i className="fab fa-youtube"></i> Watch Video
-              </button>
-            ) : (
-              <a className="signup-guide-btn video" href={videoUrl} target="_blank" rel="noopener noreferrer">
-                <i className="fas fa-play-circle"></i> Watch Video
-              </a>
-            )
-          ) : null}
-          <a className="signup-guide-btn blog" href={guideUrl} target="_blank" rel="noopener noreferrer">
-            <i className="fas fa-book-open"></i> Read Guide
+      <div className="signup-help" role="region" aria-label="Help with signing up">
+        <div className="signup-help-divider"><span>Need help signing up?</span></div>
+        <div className="signup-help-options">
+          <a className="signup-help-option" href={guideUrl} target="_blank" rel="noopener noreferrer">
+            <span className="signup-help-icon blog"><i className="fas fa-book-open"></i></span>
+            <span className="signup-help-text">
+              <strong>Blog guide</strong>
+              <small>Step-by-step article</small>
+            </span>
+            <i className="fas fa-arrow-right signup-help-arrow"></i>
           </a>
+
+          {!videoUrl ? (
+            <div className="signup-help-option is-disabled" aria-disabled="true" title="The video tutorial will be added soon">
+              {videoContent}
+            </div>
+          ) : embed ? (
+            <button type="button" className="signup-help-option" onClick={() => setPlaying(true)}>
+              {videoContent}
+              <i className="fas fa-arrow-right signup-help-arrow"></i>
+            </button>
+          ) : (
+            <a className="signup-help-option" href={videoUrl} target="_blank" rel="noopener noreferrer">
+              {videoContent}
+              <i className="fas fa-arrow-right signup-help-arrow"></i>
+            </a>
+          )}
         </div>
       </div>
 

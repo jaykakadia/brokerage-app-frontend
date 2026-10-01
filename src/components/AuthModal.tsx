@@ -369,7 +369,6 @@ export default function AuthModal({
           </form>
         ) : (
           <form onSubmit={handleRegister}>
-            <SignupGuide />
             <div className="form-group" style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Your Role</label>
               <select
@@ -486,6 +485,7 @@ export default function AuthModal({
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
+            <SignupGuide />
           </form>
         )}
       </div>
