@@ -1,6 +1,7 @@
 export type ListingRole = 'business' | 'buyer' | 'owner';
 export type PosterRole = 'real_owner' | 'real_buyer' | 'agent' | 'builder';
 export type ListingFor = 'sale' | 'rent';
+export type PropertyStep = 1 | 2 | 3 | 4;
 export type PropType = 'flat' | 'house' | 'plot' | 'agriculture' | 'commercial' | 'pg';
 
 export interface CityOption {
@@ -151,13 +152,20 @@ export function canonicalPosterRole(role: PosterRole): 'Owner' | 'Agent' | 'Buil
   return 'Owner';
 }
 
-export function validatePropertyStepOne(form: PropertyFormState): string | null {
-  if (!form.name.trim()) return 'Please enter Your Name';
-  if (!/^\d{10}$/.test(form.mobile)) return 'Enter a valid 10-digit Mobile Number';
-  if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid Email ID';
-  if (!form.propType) return 'Please select a Property Type';
-  if (!form.city) return 'Please select a City';
-  if (!form.state.trim()) return 'State is missing. Pick a city that has a state.';
+export function validatePropertyStep(form: PropertyFormState, step: PropertyStep): string | null {
+  if (step === 1) {
+    if (!form.name.trim()) return 'Please enter Your Name';
+    if (!/^\d{10}$/.test(form.mobile)) return 'Enter a valid 10-digit Mobile Number';
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid Email ID';
+  }
+  if (step === 2) {
+    if (!form.propType) return 'Please select a Property Type';
+    if (!form.city) return 'Please select a City';
+    if (!form.state.trim()) return 'State is missing. Pick a city that has a state.';
+  }
+  if (step === 3) {
+    if (propertyPriceNumber(form) <= 0) return 'Please enter Price/Budget';
+  }
   return null;
 }
 

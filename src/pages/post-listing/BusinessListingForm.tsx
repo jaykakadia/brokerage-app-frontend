@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { FloatField, FloatSelect, RefCodeSearch } from './fields';
+import { FloatField, FloatSelect, RefCodeSearch, StepIndicator } from './fields';
 import { digitsOnly, stateForCity, type CityOption } from './propertyForm';
 import type { ApiResponse, Category, Listing, RefCodeItem } from '../../types';
 
@@ -59,6 +59,13 @@ const REUSABLE_FIELDS = [
   'name', 'pincode', 'plot', 'building', 'street', 'landmark', 'area', 'city', 'state',
   'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email'
 ] as const satisfies ReadonlyArray<keyof BusinessFormState>;
+
+const BUSINESS_STEPS = [
+  { label: 'Business Details', icon: 'fas fa-store' },
+  { label: 'Contact Details', icon: 'fas fa-address-card' },
+  { label: 'Categories', icon: 'fas fa-tags' },
+  { label: 'Photos & Submit', icon: 'fas fa-camera' }
+];
 
 export interface BusinessListingFormProps {
   cities: CityOption[];
@@ -199,8 +206,14 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Enter a valid Email Address');
     }
     if (step === 3 && form.selectedCategories.length === 0) return setError('Search and select at least one Business Category');
+    goToStep(next);
+  };
+
+  const goToStep = (next: 1 | 2 | 3 | 4) => {
     setError(null);
     setStep(next);
+    // Bring the top of the form back into view (matters most on phones)
+    document.querySelector('.post-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const searchRef = async () => {
@@ -289,6 +302,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
   return (
     <div className="business-premium-box">
+      <StepIndicator steps={BUSINESS_STEPS} current={step} />
       {error ? (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 16 }}>
           {error}
@@ -321,7 +335,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             <FloatField label="Landmark" value={form.landmark} onChange={(landmark) => patch({ landmark })} />
           </div>
           <FloatField label="Area" icon="fas fa-map" value={form.area} onChange={(area) => patch({ area })} />
-          <div className="bf-row">
+          <div className="bf-row keep-row">
             <FloatSelect label="City" required value={form.city} onChange={(city) => patch({ city, state: stateForCity(city, cities) })}>
               {cities.map((item) => <option key={item.city} value={item.city}>{item.city}</option>)}
             </FloatSelect>
@@ -354,7 +368,9 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
               </button>
             </div>
           </div>
-          <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Save and Continue <i className="fas fa-arrow-right"></i></button>
+          <div className="bf-actions">
+            <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Next <i className="fas fa-arrow-right"></i></button>
+          </div>
         </>
       )}
 
@@ -376,9 +392,9 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             </label>
           </div>
           <FloatField label="Email Address" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => patch({ email })} />
-          <div className="bf-row" style={{ marginTop: 20 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1, marginTop: 0 }} onClick={() => setStep(1)}>Back</button>
-            <button type="button" className="btn-premium" style={{ flex: 2, marginTop: 0 }} onClick={() => continueFrom(3)}>Save and Continue <i className="fas fa-arrow-right"></i></button>
+          <div className="bf-actions">
+            <button type="button" className="btn-outline" onClick={() => goToStep(1)}><i className="fas fa-arrow-left"></i> Back</button>
+            <button type="button" className="btn-premium" onClick={() => continueFrom(3)}>Next <i className="fas fa-arrow-right"></i></button>
           </div>
         </>
       )}
@@ -440,9 +456,9 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
               </div>
             ) : null}
           </div>
-          <div className="bf-row" style={{ marginTop: 20 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1, marginTop: 0 }} onClick={() => setStep(2)}>Back</button>
-            <button type="button" className="btn-premium" style={{ flex: 2, marginTop: 0 }} onClick={() => continueFrom(4)}>Save and Continue <i className="fas fa-arrow-right"></i></button>
+          <div className="bf-actions">
+            <button type="button" className="btn-outline" onClick={() => goToStep(2)}><i className="fas fa-arrow-left"></i> Back</button>
+            <button type="button" className="btn-premium" onClick={() => continueFrom(4)}>Next <i className="fas fa-arrow-right"></i></button>
           </div>
         </>
       )}
@@ -476,9 +492,9 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             onChange={(e) => patch({ description: e.target.value })}
             style={{ width: '100%', padding: 14, border: '1.5px solid #e2e8f0', borderRadius: 10, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, marginBottom: 16, outline: 'none' }}
           />
-          <div className="bf-row" style={{ marginTop: 20 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1, marginTop: 0 }} onClick={() => setStep(3)}>Back</button>
-            <button type="button" className="btn-premium" style={{ flex: 2, marginTop: 0 }} disabled={loading} onClick={() => { void submit(); }}>
+          <div className="bf-actions">
+            <button type="button" className="btn-outline" onClick={() => goToStep(3)}><i className="fas fa-arrow-left"></i> Back</button>
+            <button type="button" className="btn-premium" disabled={loading} onClick={() => { void submit(); }}>
               {loading ? 'Submitting...' : <>Submit Profile <i className="fas fa-check"></i></>}
             </button>
           </div>

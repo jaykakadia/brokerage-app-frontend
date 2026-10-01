@@ -11,10 +11,11 @@ import {
   listingTitle,
   propertyPriceNumber,
   stateForCity,
-  validatePropertyStepOne,
+  validatePropertyStep,
   type CityOption,
   type ListingRole,
-  type PropertyFormState
+  type PropertyFormState,
+  type PropertyStep
 } from './post-listing/propertyForm';
 import type { Listing, Location, ApiResponse, NavigateFunction, RefCodeItem } from '../types';
 
@@ -26,7 +27,7 @@ export interface PostListingPageProps {
 export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingPageProps) {
   const { user } = useAuth();
   const [role, setRole] = useState<ListingRole | ''>('');
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<PropertyStep>(1);
   const [businessStep, setBusinessStep] = useState(1);
   const [form, setForm] = useState<PropertyFormState>(EMPTY_PROPERTY_FORM);
   const [cities, setCities] = useState<CityOption[]>(FALLBACK_CITIES);
@@ -109,14 +110,20 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
     }
   };
 
+  const goToStep = (next: PropertyStep) => {
+    setStep(next);
+    setError(null);
+    // Bring the top of the form back into view (matters most on phones)
+    document.querySelector('.post-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const continueStep = () => {
-    const message = validatePropertyStepOne(form);
+    const message = validatePropertyStep(form, step);
     if (message) {
       setError(message);
       return;
     }
-    setError(null);
-    setStep(2);
+    if (step < 4) goToStep((step + 1) as PropertyStep);
   };
 
   const submit = async () => {
@@ -124,11 +131,15 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
       onOpenAuth?.();
       return;
     }
-    const price = propertyPriceNumber(form);
-    if (price <= 0) {
-      setError('Please enter Price/Budget');
-      return;
+    for (const s of [1, 2, 3] as PropertyStep[]) {
+      const message = validatePropertyStep(form, s);
+      if (message) {
+        goToStep(s);
+        setError(message);
+        return;
+      }
     }
+    const price = propertyPriceNumber(form);
     setLoading(true);
     setError(null);
     try {
@@ -274,7 +285,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
               loading={loading}
               onChange={patch}
               onContinue={continueStep}
-              onBack={() => { setStep(1); setError(null); }}
+              onBack={() => { if (step > 1) goToStep((step - 1) as PropertyStep); }}
               onSearchRef={() => { void searchRef(); }}
               onSelectRef={(item) => setRefCodes((current) =>
                 current.some((c) => c.reference_code === item.reference_code) ? current : [item, ...current])}

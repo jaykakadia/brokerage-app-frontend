@@ -1,17 +1,25 @@
-import { FloatField, FloatSelect, Pills, RefCodeSearch } from './fields';
+import { FloatField, FloatSelect, Pills, RefCodeSearch, StepIndicator } from './fields';
 import {
   digitsOnly,
   formatInr,
   stateForCity,
   type CityOption,
   type PropertyFormState,
-  type PropType
+  type PropType,
+  type PropertyStep
 } from './propertyForm';
 import type { RefCodeItem } from '../../types';
 
+export const PROPERTY_STEPS = [
+  { label: 'Contact Details', icon: 'fas fa-address-card' },
+  { label: 'Type & Location', icon: 'fas fa-map-marker-alt' },
+  { label: 'Property Details', icon: 'fas fa-list-ul' },
+  { label: 'Photos & Submit', icon: 'fas fa-camera' }
+];
+
 export interface PropertyListingFormProps {
   variant: 'owner' | 'buyer';
-  step: 1 | 2;
+  step: PropertyStep;
   form: PropertyFormState;
   cities: CityOption[];
   refCodes: RefCodeItem[];
@@ -54,13 +62,14 @@ export default function PropertyListingForm({
 
   return (
     <div className="business-premium-box">
+      <StepIndicator steps={PROPERTY_STEPS} current={step} />
       {error ? (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: '10px', marginBottom: '16px' }}>
           {error}
         </div>
       ) : null}
 
-      {step === 1 ? (
+      {step === 1 && (
         <>
           <div className="bf-heading"><i className="fas fa-address-card"></i> Contact Details</div>
           <FloatField label="Your Name" icon="fas fa-user" required value={form.name} onChange={(name) => onChange({ name })} />
@@ -83,7 +92,15 @@ export default function PropertyListingForm({
             <FloatField label="Email ID" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => onChange({ email })} />
           </div>
 
-          <div className="bf-heading" style={{ marginTop: 30 }}><i className="fas fa-home"></i> Property Details</div>
+          <div className="bf-actions">
+            <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <div className="bf-heading"><i className="fas fa-home"></i> Property Type &amp; Location</div>
           <Pills
             label="You Are"
             value={form.posterRole}
@@ -125,7 +142,7 @@ export default function PropertyListingForm({
           </div>
 
           <div className="bf-heading" style={{ marginTop: 24, fontSize: 16 }}><i className="fas fa-map-marker-alt"></i> Property Location</div>
-          <div className="bf-row">
+          <div className="bf-row keep-row">
             <FloatSelect label="City" required value={form.city} onChange={setCity}>
               {cities.map((item) => (
                 <option key={item.city} value={item.city}>{item.city}</option>
@@ -166,15 +183,14 @@ export default function PropertyListingForm({
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn-premium"
-            onClick={onContinue}
-          >
-            Save and Continue <i className="fas fa-arrow-right"></i>
-          </button>
+          <div className="bf-actions">
+            <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
+            <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
+          </div>
         </>
-      ) : (
+      )}
+
+      {step === 3 && (
         <>
           <div className="bf-heading"><i className="fas fa-list-ul"></i> Property Details</div>
           {(form.propType === 'flat' || form.propType === 'house') && (
@@ -193,7 +209,7 @@ export default function PropertyListingForm({
                 { value: '2', label: '2' },
                 { value: '3', label: '3' }
               ]} />
-              <div className="bf-row">
+              <div className="bf-row keep-row">
                 <div style={{ flex: 2 }}><FloatField label="Built-up Area / Area" value={form.area} onChange={(area) => onChange({ area })} /></div>
                 <div style={{ flex: 1 }}>
                   <FloatSelect label="Unit" value={form.unit} onChange={(unit) => onChange({ unit })}>
@@ -216,7 +232,7 @@ export default function PropertyListingForm({
               <div style={{ marginTop: 16 }}>
                 <FloatField label="Society / (Optional)" value={form.society} onChange={(society) => onChange({ society })} />
               </div>
-              <div className="bf-row">
+              <div className="bf-row keep-row">
                 <div style={{ flex: 2 }}><FloatField label="Area" value={form.plotArea} onChange={(plotArea) => onChange({ plotArea })} /></div>
                 <div style={{ flex: 1 }}>
                   <FloatSelect label="Unit" value={form.plotUnit} onChange={(plotUnit) => onChange({ plotUnit })}>
@@ -231,7 +247,7 @@ export default function PropertyListingForm({
 
           {form.propType === 'agriculture' && (
             <>
-              <div className="bf-row">
+              <div className="bf-row keep-row">
                 <div style={{ flex: 2 }}><FloatField label="Area" value={form.agriArea} onChange={(agriArea) => onChange({ agriArea })} /></div>
                 <div style={{ flex: 1 }}>
                   <FloatSelect label="Unit" value={form.agriUnit} onChange={(agriUnit) => onChange({ agriUnit })}>
@@ -254,7 +270,7 @@ export default function PropertyListingForm({
 
           {form.propType === 'commercial' && (
             <>
-              <div className="bf-row">
+              <div className="bf-row keep-row">
                 <div style={{ flex: 2 }}><FloatField label="Total Area" value={form.totalArea} onChange={(totalArea) => onChange({ totalArea })} /></div>
                 <div style={{ flex: 1 }}>
                   <FloatSelect label="Unit" value={form.totalUnit} onChange={(totalUnit) => onChange({ totalUnit })}>
@@ -264,7 +280,7 @@ export default function PropertyListingForm({
                   </FloatSelect>
                 </div>
               </div>
-              <div className="bf-row">
+              <div className="bf-row keep-row">
                 <div style={{ flex: 2 }}><FloatField label="Built-up Area" value={form.builtArea} onChange={(builtArea) => onChange({ builtArea })} /></div>
                 <div style={{ flex: 1 }}>
                   <FloatSelect label="Unit" value={form.builtUnit} onChange={(builtUnit) => onChange({ builtUnit })}>
@@ -331,7 +347,16 @@ export default function PropertyListingForm({
             ]} />
           ) : null}
 
-          <div className="bf-heading" style={{ marginTop: 24, marginBottom: 12, fontSize: 16 }}><i className="fas fa-camera"></i> Add Images</div>
+          <div className="bf-actions">
+            <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
+            <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
+          </div>
+        </>
+      )}
+
+      {step === 4 && (
+        <>
+          <div className="bf-heading"><i className="fas fa-camera"></i> Photos &amp; Description</div>
           <div className="upload-area" onClick={() => document.getElementById('ownerPhotos')?.click()} style={{ marginBottom: 16 }}>
             <i className="fas fa-cloud-upload-alt upload-icon"></i>
             <div className="upload-title">Click to Add Property Photos</div>
@@ -360,9 +385,9 @@ export default function PropertyListingForm({
             style={{ width: '100%', padding: 14, border: '1.5px solid #e2e8f0', borderRadius: 10, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, marginBottom: 16, outline: 'none' }}
           />
 
-          <div className="bf-row" style={{ marginTop: 8 }}>
-            <button type="button" className="btn-outline" style={{ flex: 1, marginTop: 0 }} onClick={onBack}>Back</button>
-            <button type="button" className="btn-premium" style={{ flex: 2, marginTop: 0 }} disabled={loading} onClick={onSubmit}>
+          <div className="bf-actions">
+            <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
+            <button type="button" className="btn-premium" disabled={loading} onClick={onSubmit}>
               {loading ? 'Submitting...' : <>Submit Listing <i className="fas fa-check"></i></>}
             </button>
           </div>

@@ -112,6 +112,35 @@ export function Pills<T extends string>({
   );
 }
 
+/** Progress bar showing the current step of a multi-step listing form. */
+export function StepIndicator({ steps, current }: { steps: { label: string; icon: string }[]; current: number }) {
+  const pct = steps.length > 1 ? ((current - 1) / (steps.length - 1)) * 100 : 100;
+  return (
+    <div className="wizard-steps" aria-label={`Step ${current} of ${steps.length}`}>
+      <div className="wizard-steps-track">
+        <div className="wizard-steps-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <ol className="wizard-steps-list">
+        {steps.map((item, i) => {
+          const n = i + 1;
+          const state = n < current ? 'done' : n === current ? 'active' : 'todo';
+          return (
+            <li key={item.label} className={`wizard-step ${state}`} aria-current={state === 'active' ? 'step' : undefined}>
+              <span className="wizard-step-dot">
+                {state === 'done' ? <i className="fas fa-check"></i> : <i className={item.icon}></i>}
+              </span>
+              <span className="wizard-step-label">{item.label}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="wizard-steps-mobile">
+        Step {current} of {steps.length} · <strong>{steps[current - 1]?.label}</strong>
+      </div>
+    </div>
+  );
+}
+
 /** Search box that suggests Business Associate names / reference codes as the user types. */
 export function RefCodeSearch({
   value,
