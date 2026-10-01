@@ -18,7 +18,9 @@ export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
           </div>
           <p>Palwal's trusted property and business directory serving the NCR/Haryana corridor.</p>
           <div className="footer-email" style={{ marginBottom: '8px' }}>
-            <i className="fas fa-envelope"></i> tradecall.in@gmail.com
+            <a href="mailto:support.tradecall@gmail.com" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <i className="fas fa-envelope"></i> support.tradecall@gmail.com
+            </a>
           </div>
           <div className="footer-phone" style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)' }}>
             <i className="fab fa-whatsapp"></i> 9992292828 (WhatsApp)

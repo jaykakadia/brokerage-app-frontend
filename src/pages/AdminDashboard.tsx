@@ -19,11 +19,13 @@ import api, {
   sendTestMail,
   getAdminSignupGuide,
   saveSignupGuide,
-  getApiErrorMessage
+  getApiErrorMessage,
+  getEnquiryCounts
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import { StateOptions } from '../utils/indianStates';
+import AdminEnquiries from '../components/AdminEnquiries';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
 import {
@@ -110,6 +112,7 @@ type AdminModule =
   | 'plans'
   | 'tracker'
   | 'blogs'
+  | 'enquiries'
   | 'settings'
   | 'razorpay';
 
@@ -121,6 +124,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'plans', label: 'Plans & Pricing', icon: 'fas fa-gem' },
   { key: 'tracker', label: 'Business Associates', icon: 'fas fa-chart-line' },
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
+  { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
   { key: 'settings', label: 'Settings', icon: 'fas fa-cog' },
   { key: 'razorpay', label: 'Razorpay Settings', icon: 'fas fa-credit-card' }
 ];
@@ -134,6 +138,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   // === LISTINGS MODULE STATE ===
   const [listings, setListings] = useState<Listing[]>([]);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [newEnquiryCount, setNewEnquiryCount] = useState(0);
   const [listingCounts, setListingCounts] = useState<ListingCounts>({
     pending: 0,
     approved: 0,
@@ -257,6 +262,13 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Sidebar badge: how many Contact Us enquiries are still new
+  useEffect(() => {
+    getEnquiryCounts()
+      .then((res) => setNewEnquiryCount(res.data?.data?.new ?? 0))
+      .catch(() => {/* badge is optional */});
+  }, []);
 
   // --- FETCH LISTINGS & COUNTS ---
   const fetchListingCounts = async () => {
@@ -1031,12 +1043,22 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 >
                   <i className={item.icon}></i>
                   <span>{item.label}</span>
+                  {item.key === 'enquiries' && newEnquiryCount > 0 ? (
+                    <span className="admin-nav-badge" title={`${newEnquiryCount} new`}>{newEnquiryCount}</span>
+                  ) : null}
                 </button>
               ))}
             </nav>
           </aside>
 
           <div className="admin-main">
+        {activeModule === 'enquiries' && (
+          <AdminEnquiries
+            showToast={showToast}
+            onCountsChange={(counts) => setNewEnquiryCount(counts.new)}
+          />
+        )}
+
         {/* ======================================================== */}
         {/* MODULE 1: LISTINGS MANAGEMENT */}
         {/* ======================================================== */}

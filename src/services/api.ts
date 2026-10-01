@@ -25,7 +25,11 @@ import type {
   MailSettingsUpdate,
   SignupGuideSettings,
   ToggleWishlistResponse,
-  ListingStatsResponse
+  ListingStatsResponse,
+  Enquiry,
+  EnquiryCreate,
+  EnquiryCounts,
+  EnquiryStatus
 } from '../types';
 
 // Production builds call the API on their own origin: the host forwards /api and /uploads to the
@@ -233,3 +237,19 @@ export const getListingStats = (): Promise<AxiosResponse<ListingStatsResponse>> 
   api.get('/api/v1/listings/stats');
 
 export default api;
+
+// --- Enquiries (Contact Us form) ---
+export const submitEnquiry = (data: EnquiryCreate): Promise<AxiosResponse<MessageResponse>> =>
+  api.post('/api/v1/enquiries', data);
+
+export const getAdminEnquiries = (params?: { status?: string; search?: string }): Promise<AxiosResponse<ApiResponse<Enquiry[]>>> =>
+  api.get('/api/v1/admin/enquiries', { params });
+
+export const getEnquiryCounts = (): Promise<AxiosResponse<ApiResponse<EnquiryCounts>>> =>
+  api.get('/api/v1/admin/enquiries/counts');
+
+export const updateEnquiry = (id: number, data: { status?: EnquiryStatus; admin_note?: string }): Promise<AxiosResponse<ApiResponse<Enquiry>>> =>
+  api.patch(`/api/v1/admin/enquiries/${id}`, data);
+
+export const deleteEnquiry = (id: number): Promise<AxiosResponse<MessageResponse>> =>
+  api.delete(`/api/v1/admin/enquiries/${id}`);

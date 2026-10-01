@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { submitEnquiry, getApiErrorMessage } from '../services/api';
 import type { NavigateFunction } from '../types';
 
 export interface ContactPageProps {
@@ -11,10 +12,26 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
+  const [website, setWebsite] = useState(''); // honeypot, hidden from people
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent): void => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    setSubmitted(true);
+    if (!/^\d{10}$/.test(phone)) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    setSending(true);
+    setError(null);
+    try {
+      await submitEnquiry({ name: name.trim(), email: email.trim(), phone, message: message.trim(), website });
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Could not send your message. Please try again or WhatsApp us.'));
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -80,7 +97,22 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
                 Thank you! Your message has been received. Our team will contact you shortly.
               </div>
             ) : (
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={(e) => { void handleSubmit(e); }}>
+                {error ? (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+                    {error}
+                  </div>
+                ) : null}
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+                />
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Full Name *</label>
                   <input
@@ -108,9 +140,11 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Mobile Number *</label>
                     <input
                       type="tel"
+                      inputMode="numeric"
                       required
+                      maxLength={10}
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="e.g. 9876543210"
                       style={{ width: '100%', padding: '12px', border: '1.5px solid #e5e7eb', borderRadius: '8px', fontFamily: 'inherit' }}
                     />
@@ -129,9 +163,10 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
                 </div>
                 <button
                   type="submit"
-                  style={{ width: '100%', padding: '14px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '16px', cursor: 'pointer' }}
+                  disabled={sending}
+                  style={{ width: '100%', padding: '14px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '16px', cursor: sending ? 'wait' : 'pointer', opacity: sending ? 0.75 : 1 }}
                 >
-                  Send Message
+                  {sending ? <><i className="fas fa-spinner fa-spin"></i> Sending...</> : 'Send Message'}
                 </button>
               </form>
             )}

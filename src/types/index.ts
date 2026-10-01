@@ -13,3 +13,4 @@ export * from './blog';
 export * from './setting';
 export * from './wishlist';
 export * from './navigation';
+export * from './enquiry';

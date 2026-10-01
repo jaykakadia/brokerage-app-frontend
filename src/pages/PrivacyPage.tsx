@@ -61,8 +61,8 @@ export default function PrivacyPage({ onNavigate: _onNavigate }: PrivacyPageProp
             </h2>
             <p style={{ color: '#6b7280', lineHeight: 1.8 }}>
               If you have questions about this Privacy Policy, please contact us at{' '}
-              <a href="mailto:tradecall.in@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
-                tradecall.in@gmail.com
+              <a href="mailto:support.tradecall@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
+                support.tradecall@gmail.com
               </a>
             </p>
           </div>

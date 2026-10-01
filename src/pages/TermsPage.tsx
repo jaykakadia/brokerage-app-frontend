@@ -116,8 +116,8 @@ export default function TermsPage({ onNavigate: _onNavigate, initialTab = 'terms
                 </h2>
                 <p style={{ color: '#6b7280', lineHeight: 1.8 }}>
                   For questions regarding these terms, reach us at{' '}
-                  <a href="mailto:tradecall.in@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
-                    tradecall.in@gmail.com
+                  <a href="mailto:support.tradecall@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
+                    support.tradecall@gmail.com
                   </a>{' '}
                   or WhatsApp at <strong>+91 9992292828</strong>.
                 </p>
@@ -157,8 +157,8 @@ export default function TermsPage({ onNavigate: _onNavigate, initialTab = 'terms
                 </h2>
                 <p style={{ color: '#6b7280', lineHeight: 1.8 }}>
                   For data privacy inquiries or account deletion requests, write to{' '}
-                  <a href="mailto:tradecall.in@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
-                    tradecall.in@gmail.com
+                  <a href="mailto:support.tradecall@gmail.com" style={{ color: '#0c6253', fontWeight: 600 }}>
+                    support.tradecall@gmail.com
                   </a>.
                 </p>
               </div>
