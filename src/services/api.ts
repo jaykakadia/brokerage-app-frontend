@@ -28,9 +28,13 @@ import type {
   ListingStatsResponse
 } from '../types';
 
-export const API_BASE_URL: string = (
-  import.meta.env.VITE_API_URL || 'http://localhost:8000'
-).replace(/\/+$/, '');
+// Production builds call the API on their own origin: the host forwards /api and /uploads to the
+// backend (see vercel.json). That keeps the HTTP-only auth cookie first-party; calling the backend's
+// own domain makes it a third-party cookie, which browsers drop, so every signed-in request 401s.
+// VITE_API_URL is only used by the local dev server.
+export const API_BASE_URL: string = import.meta.env.PROD
+  ? ''
+  : (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
