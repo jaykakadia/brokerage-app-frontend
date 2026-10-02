@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api, { getApiErrorMessage } from '../services/api';
 import SignupGuide from '../components/SignupGuide';
+import { retryAfterSeconds, useResendCooldown } from '../hooks/useResendCooldown';
 import type { CanonicalRole, ListingStatsResponse, MessageResponse, NavigateFunction } from '../types';
 
 export interface LoginPageProps {
@@ -220,6 +221,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
   const [regOtp,   setRegOtp]   = useState('');
   const [otpSent,  setOtpSent]  = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+  const regCooldown = useResendCooldown();
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
   // Forgot state
@@ -227,6 +229,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
   const [fgOtp,   setFgOtp]     = useState('');
   const [fgPass,  setFgPass]    = useState('');
   const [fgStep,  setFgStep]    = useState<1 | 2>(1);  // 1 = enter email, 2 = otp+new pass
+  const fgCooldown = useResendCooldown();
 
   const [toasts, setToasts] = useState<Array<{ id: number; type: 'error' | 'success' | 'info'; title: string; msg: string }>>([]);
 
@@ -301,10 +304,19 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
       setOtpSent(true);
       setOtpVerified(false);
       setRegOtp('');
+      regCooldown.start();
       showToast(res.data.message || 'OTP sent to your email. Valid for 10 minutes.', 'success', 'OTP sent');
       showSuccess(res.data.message || 'OTP sent to your email.');
     } catch (err: unknown) {
+      // An OTP already went to this email in the last minute: it is still valid, so let them enter it.
+      const wait = retryAfterSeconds(err);
       const msg = getApiErrorMessage(err, 'Failed to send OTP.');
+      if (wait) {
+        regCooldown.start(wait);
+        setOtpSent(true);
+        showToast(msg, 'info', 'OTP already sent');
+        return showSuccess(msg);
+      }
       showToast(msg, 'error', 'OTP failed');
       showError(msg);
     } finally { setLoading(false); }
@@ -375,8 +387,11 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
     try {
       const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', { email: fgEmail, action: 'forgot' });
       setFgStep(2);
+      fgCooldown.start();
       showSuccess(res.data.message || 'Reset OTP sent to your email.');
     } catch (err: unknown) {
+      const wait = retryAfterSeconds(err);
+      if (wait) { fgCooldown.start(wait); setFgStep(2); }
       showError(getApiErrorMessage(err, 'Failed to send OTP.'));
     } finally { setLoading(false); }
   };
@@ -647,10 +662,10 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     <label>Email ID</label>
                     <div className="send-otp-row">
                       <input type="email" placeholder="yourname@gmail.com" required
-                        value={regEmail} onChange={e => { setRegEmail(e.target.value); setOtpSent(false); setOtpVerified(false); setRegOtp(''); }} />
+                        value={regEmail} onChange={e => { setRegEmail(e.target.value); setOtpSent(false); setOtpVerified(false); setRegOtp(''); regCooldown.reset(); }} />
                       <button type="button" className="btn-send-otp" id="btnSendRegOtp"
-                        onClick={() => void handleSendRegOtp()} disabled={loading}>
-                        {otpSent ? 'Resend OTP' : 'Send OTP'}
+                        onClick={() => void handleSendRegOtp()} disabled={loading || regCooldown.secondsLeft > 0}>
+                        {regCooldown.secondsLeft > 0 ? `Resend in ${regCooldown.secondsLeft}s` : otpSent ? 'Resend OTP' : 'Send OTP'}
                       </button>
                     </div>
                   </div>
@@ -730,7 +745,7 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
                     <div className="form-group">
                       <label>Email Address</label>
                       <input type="email" placeholder="yourname@gmail.com"
-                        value={fgEmail} onChange={e => setFgEmail(e.target.value)} />
+                        value={fgEmail} onChange={e => { setFgEmail(e.target.value); fgCooldown.reset(); }} />
                     </div>
                     <button className="btn-signin" disabled={loading} onClick={() => void handleFgSendOtp()}>
                       {loading ? 'Sending…' : 'Send Reset OTP'}

@@ -98,7 +98,11 @@ export const getImageUrl = (path?: string | null): string => {
 export function getApiErrorMessage(error: unknown, fallback = 'An unexpected error occurred'): string {
   if (!error) return fallback;
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data;
+    let data = error.response?.data;
+    // Some proxies hand the JSON body back as text; read its message instead of showing raw JSON.
+    if (typeof data === 'string' && data.trim().startsWith('{')) {
+      try { data = JSON.parse(data); } catch { /* fall through and show the text */ }
+    }
     if (typeof data === 'string' && data.trim()) return data;
     if (data && typeof data === 'object') {
       const resp = data as ApiErrorResponse;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api, { getApiErrorMessage } from '../services/api';
 import { normalizeExternalUrl } from '../utils/url';
+import { retryAfterSeconds, useResendCooldown } from '../hooks/useResendCooldown';
 import type { MessageResponse, User, UserProfileUpdate } from '../types';
 
 export interface EditProfileModalProps {
@@ -51,6 +52,7 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
   const [otp, setOtp] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [sending, setSending] = useState(false);
+  const cooldown = useResendCooldown();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -84,11 +86,14 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
         email: target,
         action: 'profile_update'
       });
+      cooldown.start();
       setMessage({
         type: 'success',
         text: res.data?.message || `OTP sent to ${target}.`
       });
     } catch (err: unknown) {
+      const wait = retryAfterSeconds(err);
+      if (wait) cooldown.start(wait);
       setMessage({ type: 'error', text: getApiErrorMessage(err, 'Could not send the OTP.') });
     } finally {
       setSending(false);
@@ -235,7 +240,7 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
           </label>
           <div className="form-group full">
             <label><i className="fas fa-envelope" style={{ color: '#0c6253', marginRight: 6 }}></i>Email ID</label>
-            <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required />
+            <input type="email" value={form.email} onChange={(e) => { set('email', e.target.value); cooldown.reset(); }} required />
           </div>
 
           <div className="form-group full" style={{ marginBottom: 6 }}>
@@ -265,8 +270,8 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
                   required
                   style={{ flex: 1 }}
                 />
-                <button type="button" className="btn-outline" onClick={() => { void sendOtp(); }} disabled={sending} style={{ whiteSpace: 'nowrap' }}>
-                  {sending ? 'Sending...' : 'Send OTP'}
+                <button type="button" className="btn-outline" onClick={() => { void sendOtp(); }} disabled={sending || cooldown.secondsLeft > 0} style={{ whiteSpace: 'nowrap' }}>
+                  {sending ? 'Sending...' : cooldown.secondsLeft > 0 ? `Resend in ${cooldown.secondsLeft}s` : 'Send OTP'}
                 </button>
               </div>
               <small style={{ color: '#64748b', display: 'block', marginTop: 8 }}>

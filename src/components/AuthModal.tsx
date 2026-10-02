@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api, { getApiErrorMessage } from '../services/api';
 import SignupGuide from './SignupGuide';
+import { retryAfterSeconds, useResendCooldown } from '../hooks/useResendCooldown';
 import { isCanonicalRole, type CanonicalRole, type MessageResponse } from '../types';
 
 export interface AuthModalProps {
@@ -41,6 +42,8 @@ export default function AuthModal({
   const [regOtp, setRegOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+  const regCooldown = useResendCooldown();
+  const forgotCooldown = useResendCooldown();
 
   // Forgot password fields
   const [forgotEmail, setForgotEmail] = useState('');
@@ -78,8 +81,12 @@ export default function AuthModal({
         action: 'forgot'
       });
       setForgotOtpSent(true);
+      forgotCooldown.start();
       setSuccessMsg(res.data.message || 'Reset OTP sent to your email.');
     } catch (err: unknown) {
+      // An OTP already went to this email in the last minute: it is still valid, so let them enter it.
+      const wait = retryAfterSeconds(err);
+      if (wait) { forgotCooldown.start(wait); setForgotOtpSent(true); }
       setError(getApiErrorMessage(err, 'Failed to send reset OTP.'));
     } finally {
       setLoading(false);
@@ -128,8 +135,11 @@ export default function AuthModal({
       setOtpSent(true);
       setOtpVerified(false);
       setRegOtp('');
+      regCooldown.start();
       setSuccessMsg(res.data.message || 'OTP dispatched to email.');
     } catch (err: unknown) {
+      const wait = retryAfterSeconds(err);
+      if (wait) { regCooldown.start(wait); setOtpSent(true); }
       setError(getApiErrorMessage(err, 'Failed to send OTP.'));
     } finally {
       setLoading(false);
@@ -329,17 +339,17 @@ export default function AuthModal({
                   type="email"
                   required
                   value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
+                  onChange={(e) => { setForgotEmail(e.target.value); forgotCooldown.reset(); }}
                   placeholder="name@example.com"
                   style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
                 />
                 <button
                   type="button"
                   onClick={() => void handleForgotSendOtp()}
-                  disabled={loading}
-                  style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  disabled={loading || forgotCooldown.secondsLeft > 0}
+                  style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
-                  Send OTP
+                  {forgotCooldown.secondsLeft > 0 ? `Resend in ${forgotCooldown.secondsLeft}s` : 'Send OTP'}
                 </button>
               </div>
             </div>
@@ -453,17 +463,17 @@ export default function AuthModal({
                   type="email"
                   required
                   value={regEmail}
-                  onChange={(e) => { setRegEmail(e.target.value); setOtpSent(false); setOtpVerified(false); setRegOtp(''); }}
+                  onChange={(e) => { setRegEmail(e.target.value); setOtpSent(false); setOtpVerified(false); setRegOtp(''); regCooldown.reset(); }}
                   placeholder="name@example.com"
                   style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #e5e7eb', borderRadius: '8px' }}
                 />
                 <button
                   type="button"
                   onClick={() => void handleSendOtp()}
-                  disabled={loading}
-                  style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                  disabled={loading || regCooldown.secondsLeft > 0}
+                  style={{ padding: '0 12px', background: '#f0fdf4', color: '#0c6253', border: '1px solid #0c6253', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
-                  Send OTP
+                  {regCooldown.secondsLeft > 0 ? `Resend in ${regCooldown.secondsLeft}s` : 'Send OTP'}
                 </button>
               </div>
             </div>
