@@ -15,6 +15,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import BlogPage from './pages/BlogPage';
 import BlogDetailPage from './pages/BlogDetailPage';
 import LoginPage from './pages/LoginPage';
+import { parseAppRoute, getListingUrl } from './utils/url';
 import type { NavigateFunction } from './types';
 
 export default function App() {
@@ -22,62 +23,109 @@ export default function App() {
   const [selectedListingId, setSelectedListingId] = useState<string | number | null>(null);
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
   const [activeCity, setActiveCity] = useState<string>('');
-  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [loginTab, setLoginTab] = useState<'signin' | 'register'>('signin');
+  const [authModalConfig, setAuthModalConfig] = useState<{
+    isOpen: boolean;
+    title?: string;
+    subtitle?: string;
+    icon?: string;
+    onSuccess?: () => void;
+  }>({ isOpen: false });
 
-  // Sync hash routing
+  const openAuthModal = (_options?: {
+    title?: string;
+    subtitle?: string;
+    icon?: string;
+    onSuccess?: () => void;
+  }) => {
+    navigateTo('login');
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // Sync HTML5 path-based routing (clean URLs without #)
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '') || 'home';
-      if (hash.startsWith('listing/')) {
-        const id = hash.replace('listing/', '');
-        setSelectedListingId(id);
-        setActivePage('listing-detail');
-      } else if (hash.startsWith('blog/')) {
-        const blogSlug = hash.replace('blog/', '');
-        setSelectedBlogId(blogSlug);
-        setActivePage('blog-detail');
-      } else if ([
-        'home',
-        'post-listing',
-        'account',
-        'admin',
-        'about',
-        'contact',
-        'advertise',
-        'terms',
-        'privacy',
-        'blog',
-        'login'
-      ].includes(hash)) {
-        setActivePage(hash);
-      } else {
-        setActivePage('home');
+    const handleRouteChange = () => {
+      // If legacy hash was supplied (e.g. /#advertise or /#home), migrate to clean path
+      if (window.location.hash && window.location.hash.length > 1) {
+        const parsed = parseAppRoute(window.location.pathname, window.location.hash);
+        let targetPath = `/${parsed.page}`;
+        if (parsed.page === 'listing-detail' && parsed.param) {
+          targetPath = `/listing/${parsed.param}`;
+        } else if (parsed.page === 'blog-detail' && parsed.param) {
+          targetPath = `/blog/${parsed.param}`;
+        } else if (parsed.page === 'terms') {
+          targetPath = '/Terms-of-use-tradecall-India';
+        } else if (parsed.page === 'home') {
+          targetPath = '/home';
+        } else if (parsed.page === 'login') {
+          targetPath = parsed.param === 'register' ? '/register' : '/login';
+        }
+        window.history.replaceState(null, '', targetPath);
+        setActivePage(parsed.page);
+        if (parsed.page === 'listing-detail') setSelectedListingId(parsed.param);
+        if (parsed.page === 'blog-detail') setSelectedBlogId(String(parsed.param));
+        if (parsed.page === 'login') setLoginTab(parsed.param === 'register' ? 'register' : 'signin');
+        return;
+      }
+
+      const parsed = parseAppRoute(window.location.pathname, '');
+      setActivePage(parsed.page);
+      if (parsed.page === 'listing-detail') {
+        setSelectedListingId(parsed.param);
+      } else if (parsed.page === 'blog-detail') {
+        setSelectedBlogId(String(parsed.param));
+      } else if (parsed.page === 'login') {
+        setLoginTab(parsed.param === 'register' ? 'register' : 'signin');
       }
     };
 
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    handleRouteChange();
+    window.addEventListener('popstate', handleRouteChange);
+    return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
-    if (page === 'listing-detail' && param) {
-      const id = typeof param === 'object' ? null : param;
-      setSelectedListingId(id);
-      setActivePage('listing-detail');
-      if (id !== null) {
-        window.location.hash = `listing/${id}`;
+    let path = `/${page}`;
+    if (page === 'home') {
+      path = '/home';
+      setActivePage('home');
+    } else if (page === 'login' || page === 'register' || page === 'signin') {
+      const tab = page === 'register' || param === 'register' ? 'register' : 'signin';
+      setLoginTab(tab);
+      path = page === 'register' ? '/register' : '/login';
+      setActivePage('login');
+    } else if (page === 'listing-detail' && param) {
+      if (typeof param === 'object' && param !== null && 'id' in param) {
+        const listingObj = param as any;
+        setSelectedListingId(listingObj.id);
+        path = getListingUrl(listingObj);
+      } else {
+        const id = typeof param === 'object' ? null : param;
+        setSelectedListingId(id);
+        path = id ? `/listing/${id}` : '/home';
       }
+      setActivePage('listing-detail');
     } else if (page === 'blog-detail' && param) {
       const slug = typeof param === 'object' ? null : String(param);
       setSelectedBlogId(slug);
+      path = slug ? `/blog/${slug}` : '/blog';
       setActivePage('blog-detail');
-      if (slug !== null) {
-        window.location.hash = `blog/${slug}`;
-      }
+    } else if (page === 'terms' || page.toLowerCase() === 'terms-of-use-tradecall-india') {
+      path = '/Terms-of-use-tradecall-India';
+      setActivePage('terms');
+    } else if (page === 'privacy') {
+      path = '/privacy';
+      setActivePage('privacy');
     } else {
       setActivePage(page);
-      window.location.hash = page;
+      path = `/${page}`;
+    }
+
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -86,6 +134,7 @@ export default function App() {
   if (activePage === 'login') {
     return (
       <LoginPage
+        initialTab={loginTab}
         onNavigate={navigateTo}
         onLoginSuccess={() => navigateTo('home')}
       />
@@ -99,7 +148,7 @@ export default function App() {
         onCitySelect={setActiveCity}
         onNavigate={navigateTo}
         activePage={activePage}
-        onOpenAuth={() => navigateTo('login')}
+        onOpenAuth={() => openAuthModal()}
       />
 
       <main style={{ flex: 1 }}>
@@ -108,7 +157,7 @@ export default function App() {
             activeCity={activeCity}
             onCitySelect={setActiveCity}
             onNavigate={navigateTo}
-            onOpenAuth={() => navigateTo('login')}
+            onOpenAuth={openAuthModal}
           />
         )}
 
@@ -116,21 +165,21 @@ export default function App() {
           <ListingDetailPage
             listingId={selectedListingId}
             onNavigate={navigateTo}
-            onOpenAuth={() => navigateTo('login')}
+            onOpenAuth={openAuthModal}
           />
         )}
 
         {activePage === 'post-listing' && (
           <PostListingPage
             onNavigate={navigateTo}
-            onOpenAuth={() => navigateTo('login')}
+            onOpenAuth={openAuthModal}
           />
         )}
 
         {activePage === 'account' && (
           <AccountPage
             onNavigate={navigateTo}
-            onOpenAuth={() => navigateTo('login')}
+            onOpenAuth={openAuthModal}
           />
         )}
 
@@ -155,7 +204,7 @@ export default function App() {
         {activePage === 'advertise' && (
           <AdvertisePage
             onNavigate={navigateTo}
-            onOpenAuth={() => navigateTo('login')}
+            onOpenAuth={openAuthModal}
           />
         )}
 
@@ -195,8 +244,12 @@ export default function App() {
       />
 
       <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        isOpen={authModalConfig.isOpen}
+        onClose={closeAuthModal}
+        title={authModalConfig.title}
+        subtitle={authModalConfig.subtitle}
+        icon={authModalConfig.icon}
+        onSuccess={authModalConfig.onSuccess}
       />
 
       {/* Floating WhatsApp CTA */}

@@ -2,14 +2,23 @@ import { useState, useEffect } from 'react';
 import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from '../utils/formatters';
+import { getListingUniqueId, getListingUrl } from '../utils/url';
+import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactRevealData } from '../components/ContactRevealModal';
 import type { Listing, ApiResponse, MessageResponse, NavigateFunction } from '../types';
 
+export interface AuthModalOptions {
+  title?: string;
+  subtitle?: string;
+  icon?: string;
+  onSuccess?: () => void;
+}
+
 export interface ListingDetailPageProps {
   listingId: number | string | null;
   onNavigate: NavigateFunction;
-  onOpenAuth?: () => void;
+  onOpenAuth?: (options?: AuthModalOptions) => void;
 }
 
 export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }: ListingDetailPageProps) {
@@ -41,11 +50,26 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
       if (res.data?.status === 'success' && res.data?.data) {
         setListing(res.data.data);
       } else {
-        setError('Listing could not be found.');
+        const cleanId = String(listingId).replace(/^(TC011P-|TC-)/i, '');
+        const fallback = DEFAULT_FEATURED_LISTINGS.find(
+          (l) => String(l.id) === cleanId || getListingUniqueId(l) === String(listingId)
+        );
+        if (fallback) {
+          setListing(fallback);
+        } else {
+          setError('Listing could not be found.');
+        }
       }
-    } catch (err: unknown) {
-      console.error('Error loading listing detail:', err);
-      setError('Unable to load listing details. It may have been removed.');
+    } catch {
+      const cleanId = String(listingId).replace(/^(TC011P-|TC-)/i, '');
+      const fallback = DEFAULT_FEATURED_LISTINGS.find(
+        (l) => String(l.id) === cleanId || getListingUniqueId(l) === String(listingId)
+      );
+      if (fallback) {
+        setListing(fallback);
+      } else {
+        setError('Unable to load listing details. It may have been removed.');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,8 +104,25 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
   const handleToggleWishlist = async (): Promise<void> => {
     if (!user) {
-      if (onOpenAuth) onOpenAuth();
-      else alert('Please sign in to save this property.');
+      if (onOpenAuth) {
+        onOpenAuth({
+          title: 'Sign In to Save Property',
+          subtitle: 'Please sign in or create an account to save properties to your wishlist.',
+          icon: 'fa-heart',
+          onSuccess: async () => {
+            try {
+              const res = await toggleWishlist(Number(listingId));
+              const action = res.data?.action;
+              setIsWishlisted(action === 'added');
+              showToast(action === 'added' ? 'Added to your wishlist!' : 'Removed from your wishlist.');
+            } catch {
+              showToast('Failed to update wishlist.', 'error');
+            }
+          }
+        });
+      } else {
+        alert('Please sign in to save this property.');
+      }
       return;
     }
     try {
@@ -96,8 +137,18 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
   const handleContactOwner = async (): Promise<void> => {
     if (!user) {
-      if (onOpenAuth) onOpenAuth();
-      else alert('Please sign in to view owner contact details.');
+      if (onOpenAuth) {
+        onOpenAuth({
+          title: 'Sign In to View Contact Details',
+          subtitle: 'Please sign in or create an account to connect directly with the property owner.',
+          icon: 'fa-phone-alt',
+          onSuccess: () => {
+            void handleContactOwner();
+          }
+        });
+      } else {
+        alert('Please sign in to view owner contact details.');
+      }
       return;
     }
 
@@ -307,7 +358,9 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                     <i className="fas fa-check-circle"></i> VERIFIED
                   </span>
                 )}
-                <span style={{ color: '#6b7280', fontSize: '13px' }}>ID: #{listing.id}</span>
+                <span style={{ background: '#f1f5f9', color: '#334155', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', fontSize: '12px', letterSpacing: '0.3px' }}>
+                  UID: {getListingUniqueId(listing)}
+                </span>
               </div>
 
               <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#111827', margin: '0 0 10px 0' }}>
@@ -327,24 +380,54 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
               {Boolean(formData.priceNegotiable) && (
                 <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>Price Negotiable</span>
               )}
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() => void handleToggleWishlist()}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  color: isWishlisted ? '#dc2626' : '#4b5563',
-                  borderColor: isWishlisted ? '#fca5a5' : '#d1d5db',
-                  background: isWishlisted ? '#fef2f2' : '#fff'
-                }}
-              >
-                <i className={isWishlisted ? 'fas fa-heart' : 'far fa-heart'} style={{ color: isWishlisted ? '#dc2626' : '#9ca3af' }}></i>
-                {isWishlisted ? 'Saved in Wishlist' : 'Save to Wishlist'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => {
+                    const fullUrl = window.location.origin + getListingUrl(listing);
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(fullUrl).then(() => {
+                        setToast({ msg: 'Unique listing link copied to clipboard!', type: 'success' });
+                      }).catch(() => {
+                        setToast({ msg: fullUrl, type: 'success' });
+                      });
+                    }
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '13px',
+                    color: '#0c6253',
+                    borderColor: '#a7f3d0',
+                    background: '#f0faf6'
+                  }}
+                  title="Copy unique link for this listing"
+                >
+                  <i className="fas fa-share-alt"></i>
+                  Share Link
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => void handleToggleWishlist()}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '13px',
+                    color: isWishlisted ? '#dc2626' : '#4b5563',
+                    borderColor: isWishlisted ? '#fca5a5' : '#d1d5db',
+                    background: isWishlisted ? '#fef2f2' : '#fff'
+                  }}
+                >
+                  <i className={isWishlisted ? 'fas fa-heart' : 'far fa-heart'} style={{ color: isWishlisted ? '#dc2626' : '#9ca3af' }}></i>
+                  {isWishlisted ? 'Saved in Wishlist' : 'Save to Wishlist'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

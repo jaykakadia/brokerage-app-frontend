@@ -449,7 +449,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                           type="button"
                           className="btn-outline"
                           style={{ padding: '8px 14px', fontSize: '12px' }}
-                          onClick={() => onNavigate('listing-detail', listing.id)}
+                          onClick={() => onNavigate('listing-detail', listing)}
                         >
                           <i className="fas fa-eye"></i> View
                         </button>
@@ -551,7 +551,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                           type="button"
                           className="btn-primary"
                           style={{ padding: '8px 16px', fontSize: '13px' }}
-                          onClick={() => onNavigate('listing-detail', item.id)}
+                          onClick={() => onNavigate('listing-detail', item)}
                         >
                           <i className="fas fa-eye"></i> View Details
                         </button>

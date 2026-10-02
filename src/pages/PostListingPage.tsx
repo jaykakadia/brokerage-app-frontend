@@ -217,7 +217,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
             <button
               type="button"
               className="btn-primary"
-              onClick={() => onNavigate('listing-detail', successListing.id)}
+              onClick={() => onNavigate('listing-detail', successListing)}
             >
               View Listing
             </button>

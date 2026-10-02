@@ -1176,7 +1176,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               type="button"
                               className="btn-outline"
                               style={{ padding: '4px 8px', fontSize: '11px' }}
-                              onClick={() => onNavigate('listing-detail', l.id)}
+                              onClick={() => onNavigate('listing-detail', l)}
                             >
                               View
                             </button>

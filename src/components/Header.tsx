@@ -5,12 +5,12 @@ import type { NavigateFunction } from '../types';
 export interface HeaderProps {
   onNavigate: NavigateFunction;
   activePage: string;
-  onOpenAuth: () => void;
+  onOpenAuth?: () => void;
   activeCity?: string;
   onCitySelect?: (city: string) => void;
 }
 
-export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderProps) {
+export default function Header({ onNavigate, activePage }: HeaderProps) {
   const { user, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -19,7 +19,7 @@ export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderPro
       <header className="site-header" id="siteHeader">
         <div className="header-container">
           <div className="header-left">
-            <a href="#home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
+            <a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
               <div className="logo-icon">
                 <div className="logo-bars">
                   <span className="logo-bar"></span>
@@ -37,35 +37,35 @@ export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderPro
 
           <nav className="main-nav">
             <a
-              href="#home"
+              href="/home"
               className={`nav-item ${activePage === 'home' ? 'active' : ''}`}
               onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
             >
               Home
             </a>
             <a
-              href="#advertise"
+              href="/advertise"
               className={`nav-item ${activePage === 'advertise' ? 'active' : ''}`}
               onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}
             >
               Advertise
             </a>
             <a
-              href="#blog"
+              href="/blog"
               className={`nav-item ${activePage === 'blog' || activePage === 'blog-detail' ? 'active' : ''}`}
               onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}
             >
               Blog
             </a>
             <a
-              href="#about"
+              href="/about"
               className={`nav-item ${activePage === 'about' ? 'active' : ''}`}
               onClick={(e) => { e.preventDefault(); onNavigate('about'); }}
             >
               About Us
             </a>
             <a
-              href="#contact"
+              href="/contact"
               className={`nav-item ${activePage === 'contact' ? 'active' : ''}`}
               onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}
             >
@@ -73,7 +73,7 @@ export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderPro
             </a>
             {user?.role?.toLowerCase() === 'admin' && (
               <a
-                href="#admin"
+                href="/admin"
                 className={`nav-item ${activePage === 'admin' ? 'active' : ''}`}
                 onClick={(e) => { e.preventDefault(); onNavigate('admin'); }}
                 style={{ color: '#0c6253', fontWeight: 'bold' }}
@@ -116,7 +116,7 @@ export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderPro
               <button
                 type="button"
                 className="btn-header-ghost"
-                onClick={onOpenAuth}
+                onClick={() => onNavigate('login')}
               >
                 <i className="fas fa-sign-in-alt"></i> Sign-In / Register
               </button>
@@ -151,24 +151,24 @@ export default function Header({ onNavigate, activePage, onOpenAuth }: HeaderPro
               </button>
             </div>
             <nav className="drawer-nav">
-              <a href="#home" className={`drawer-nav-item ${activePage === 'home' ? 'active' : ''}`} onClick={() => { onNavigate('home'); setDrawerOpen(false); }}>Home</a>
-              <a href="#advertise" className={`drawer-nav-item ${activePage === 'advertise' ? 'active' : ''}`} onClick={() => { onNavigate('advertise'); setDrawerOpen(false); }}>Advertise</a>
-              <a href="#blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={() => { onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
-              <a href="#about" className={`drawer-nav-item ${activePage === 'about' ? 'active' : ''}`} onClick={() => { onNavigate('about'); setDrawerOpen(false); }}>About Us</a>
-              <a href="#contact" className={`drawer-nav-item ${activePage === 'contact' ? 'active' : ''}`} onClick={() => { onNavigate('contact'); setDrawerOpen(false); }}>Contact Us</a>
-              <a href="#post" className="drawer-nav-item" onClick={() => { onNavigate('post-listing'); setDrawerOpen(false); }}>Post Free Listing</a>
+              <a href="/home" className={`drawer-nav-item ${activePage === 'home' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+              <a href="/advertise" className={`drawer-nav-item ${activePage === 'advertise' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('advertise'); setDrawerOpen(false); }}>Advertise</a>
+              <a href="/blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
+              <a href="/about" className={`drawer-nav-item ${activePage === 'about' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('about'); setDrawerOpen(false); }}>About Us</a>
+              <a href="/contact" className={`drawer-nav-item ${activePage === 'contact' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('contact'); setDrawerOpen(false); }}>Contact Us</a>
+              <a href="/post-listing" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); setDrawerOpen(false); }}>Post Free Listing</a>
               {user && (
-                <a href="#account" className="drawer-nav-item" onClick={() => { onNavigate('account'); setDrawerOpen(false); }}>My Account ({user.name})</a>
+                <a href="/account" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('account'); setDrawerOpen(false); }}>My Account ({user.name})</a>
               )}
               {user?.role?.toLowerCase() === 'admin' && (
-                <a href="#admin" className="drawer-nav-item" onClick={() => { onNavigate('admin'); setDrawerOpen(false); }}>Admin Dashboard</a>
+                <a href="/admin" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('admin'); setDrawerOpen(false); }}>Admin Dashboard</a>
               )}
             </nav>
             <div className="drawer-footer">
               {user ? (
                 <button className="btn-primary" style={{ width: '100%' }} onClick={() => { void logout(); setDrawerOpen(false); }}>Sign Out</button>
               ) : (
-                <button className="btn-drawer-signin" onClick={() => { onOpenAuth(); setDrawerOpen(false); }}>
+                <button className="btn-drawer-signin" onClick={() => { onNavigate('login'); setDrawerOpen(false); }}>
                   <i className="fas fa-sign-in-alt"></i> Sign-In / Register
                 </button>
               )}

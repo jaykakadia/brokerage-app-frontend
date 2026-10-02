@@ -2,15 +2,22 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import type { Listing, ListingStatsResponse } from '../types';
+import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
+
+export interface AuthModalOptions {
+  title?: string;
+  subtitle?: string;
+  icon?: string;
+  onSuccess?: () => void;
+}
 
 export interface HomePageProps {
   activeCity?: string;
   onCitySelect?: (city: string) => void;
-  onNavigate: (page: string, params?: Record<string, string> | string | number) => void;
-  onOpenAuth?: () => void;
+  onNavigate: NavigateFunction;
+  onOpenAuth?: (options?: AuthModalOptions) => void;
 }
 
 interface PropertyTypeOption {
@@ -60,7 +67,7 @@ const BUDGET_PRESETS: BudgetPreset[] = [
   { label: 'Above ₹2 Crore', min: '20000000', max: '' }
 ];
 
-const DEFAULT_FEATURED_LISTINGS: Listing[] = [
+export const DEFAULT_FEATURED_LISTINGS: Listing[] = [
   {
     id: 9001,
     title: 'Plot for Sale at RPS Society',
@@ -168,8 +175,29 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const handleToggleWishlist = async (e: React.MouseEvent, listingId: number): Promise<void> => {
     e.stopPropagation();
     if (!user) {
-      if (onOpenAuth) onOpenAuth();
-      else alert('Please sign in to save properties to your wishlist.');
+      if (onOpenAuth) {
+        onOpenAuth({
+          title: 'Sign In to Save Properties',
+          subtitle: 'Please sign in or create an account to save properties to your wishlist.',
+          icon: 'fa-heart',
+          onSuccess: async () => {
+            try {
+              const res = await toggleWishlist(listingId);
+              const action = res.data?.action;
+              setWishlistIds((prev) => {
+                const next = new Set(prev);
+                if (action === 'added') next.add(listingId);
+                else next.delete(listingId);
+                return next;
+              });
+            } catch (err: unknown) {
+              console.error('Failed to save to wishlist after sign-in:', err);
+            }
+          }
+        });
+      } else {
+        alert('Please sign in to save properties to your wishlist.');
+      }
       return;
     }
     try {
@@ -513,15 +541,6 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     }, 4500);
     return () => clearInterval(interval);
   }, [featuredListings.length, isCarouselHovered]);
-
-  const activeDotIndex = featuredListings.length > 0
-    ? ((carouselIndex % featuredListings.length) + featuredListings.length) % featuredListings.length
-    : 0;
-
-  const handleDotClick = (idx: number): void => {
-    setWithTransition(true);
-    setCarouselIndex(featuredListings.length + idx);
-  };
 
   const handleTouchStart = (e: React.TouchEvent): void => {
     touchStartX.current = e.touches[0].clientX;
@@ -960,7 +979,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                         <button
                           type="button"
                           className="btn-view"
-                          onClick={() => onNavigate('listing-detail', listing.id)}
+                          onClick={() => onNavigate('listing-detail', listing)}
                         >
                           <i className="fas fa-info-circle"></i> Details
                         </button>
@@ -990,18 +1009,6 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </button>
             )}
           </div>
-
-          {featuredListings.length > 1 && (
-            <div className="carousel-dots" id="carouselDots">
-              {featuredListings.map((_, idx) => (
-                <span
-                  key={idx}
-                  className={`dot ${idx === activeDotIndex ? 'active' : ''}`}
-                  onClick={() => handleDotClick(idx)}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
@@ -1245,7 +1252,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                           <button
                             type="button"
                             className="btn-view"
-                            onClick={() => onNavigate('listing-detail', listing.id)}
+                            onClick={() => onNavigate('listing-detail', listing)}
                           >
                             <i className="fas fa-info-circle"></i> Details
                           </button>
