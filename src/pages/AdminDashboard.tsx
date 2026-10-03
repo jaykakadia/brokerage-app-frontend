@@ -1272,7 +1272,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <table className="admin-table admin-listings-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '12px 14px' }}>ID</th>
@@ -1287,10 +1287,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <tbody>
                     {listings.map((l) => (
                       <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#64748b' }}>
+                        <td data-label="ID" style={{ padding: '12px 14px', fontWeight: 700, color: '#64748b' }}>
                           #{l.id}
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
+                        <td data-label="Listing" style={{ padding: '12px 14px' }}>
                           <button
                             type="button"
                             className="admin-listing-title"
@@ -1303,14 +1303,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <i className="fas fa-map-marker-alt"></i> {l.location}
                           </div>
                         </td>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0c6253' }}>
+                        <td data-label="Price" style={{ padding: '12px 14px', fontWeight: 700, color: '#0c6253' }}>
                           {formatListingPrice(l.price)}
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
+                        <td data-label="Owner" style={{ padding: '12px 14px' }}>
                           <div style={{ fontWeight: 600 }}>{l.owner_name}</div>
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{l.owner_role}</div>
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
+                        <td data-label="Status" style={{ padding: '12px 14px' }}>
 <select
                             className="admin-status-select"
                             value={l.status}
@@ -1325,7 +1325,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             {LISTING_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
                           </select>
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
+                        <td data-label="Stamp" style={{ padding: '12px 14px' }}>
                           {l.verified === 1 ? (
                             <span style={{ color: '#16a34a', fontWeight: 700 }}>
                               <i className="fas fa-check-circle"></i> Verified
@@ -1341,7 +1341,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             </button>
                           )}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                        <td data-label="Actions" style={{ padding: '12px 14px', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: '6px' }}>
                             <button
                               type="button"
