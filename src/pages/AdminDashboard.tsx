@@ -61,15 +61,17 @@ interface PlanFormState {
   status: string;
 }
 
-interface NewUserFormState {
+interface UserFormState {
+  id: number | null; // null = creating a new user
   name: string;
   email: string;
   phone: string;
   password: string;
   role: 'Owner' | 'Agent' | 'Builder' | 'Admin';
+  status: string;
 }
 
-const EMPTY_USER_FORM: NewUserFormState = { name: '', email: '', phone: '', password: '', role: 'Owner' };
+const EMPTY_USER_FORM: UserFormState = { id: null, name: '', email: '', phone: '', password: '', role: 'Owner', status: 'active' };
 
 interface EmployeeFormState {
   id: number;
@@ -187,7 +189,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [userSearch, setUserSearch] = useState<string>('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('');
   const [userModalOpen, setUserModalOpen] = useState<boolean>(false);
-  const [userForm, setUserForm] = useState<NewUserFormState>(EMPTY_USER_FORM);
+  const [userForm, setUserForm] = useState<UserFormState>(EMPTY_USER_FORM);
   const [showUserPassword, setShowUserPassword] = useState<boolean>(false);
   const [userSaving, setUserSaving] = useState<boolean>(false);
 
@@ -523,46 +525,64 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  const openUserModal = () => {
-    setUserForm(EMPTY_USER_FORM);
+  const openUserModal = (target?: User) => {
+    setUserForm(target ? {
+      id: target.id,
+      name: target.name,
+      email: target.email,
+      phone: target.phone || '',
+      password: '',
+      role: target.role as UserFormState['role'],
+      status: target.status
+    } : EMPTY_USER_FORM);
     setShowUserPassword(false);
     setUserModalOpen(true);
   };
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (userForm.password.length < 6) {
+    const isEdit = userForm.id !== null;
+    // Password is required for new users; when editing, blank keeps the current one.
+    if ((!isEdit || userForm.password) && userForm.password.length < 6) {
       showToast('Password must be at least 6 characters', 'error');
       return;
     }
+    const payload = {
+      name: userForm.name.trim(),
+      email: userForm.email.trim(),
+      phone: userForm.phone.trim(),
+      role: userForm.role,
+      status: userForm.status,
+      ...(userForm.password ? { password: userForm.password } : {})
+    };
     setUserSaving(true);
     try {
-      await api.post('/api/v1/admin/users', {
-        name: userForm.name.trim(),
-        email: userForm.email.trim(),
-        phone: userForm.phone.trim(),
-        password: userForm.password,
-        role: userForm.role,
-        status: 'active'
-      });
-      showToast(`User '${userForm.name.trim()}' created`);
+      if (isEdit) {
+        await api.put(`/api/v1/admin/users/${userForm.id}`, payload);
+        showToast(`User '${payload.name}' updated`);
+      } else {
+        await api.post('/api/v1/admin/users', payload);
+        showToast(`User '${payload.name}' created`);
+      }
       setUserModalOpen(false);
       fetchUsers();
     } catch (err: unknown) {
-      showToast(getApiErrorMessage(err, 'Failed to create user'), 'error');
+      showToast(getApiErrorMessage(err, isEdit ? 'Failed to update user' : 'Failed to create user'), 'error');
     } finally {
       setUserSaving(false);
     }
   };
 
-  const handleDeactivateUser = async (userId: number) => {
-    if (!window.confirm('Deactivate this user account?')) return;
+  const handleDeleteUser = async (target: User) => {
+    if (!window.confirm(
+      `Permanently delete ${target.name} (${target.email})?\n\nTheir listings and wishlist will also be deleted. This cannot be undone.`
+    )) return;
     try {
-      await api.post(`/api/v1/admin/users/${userId}/delete`);
-      showToast('User deactivated');
+      await api.delete(`/api/v1/admin/users/${target.id}`);
+      showToast(`User '${target.name}' deleted`);
       fetchUsers();
     } catch (err: unknown) {
-      showToast(getApiErrorMessage(err) || 'Failed to deactivate user', 'error');
+      showToast(getApiErrorMessage(err, 'Failed to delete user'), 'error');
     }
   };
 
@@ -1731,7 +1751,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     type="button"
                     className="btn-primary"
                     style={{ padding: '8px 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
-                    onClick={openUserModal}
+                    onClick={() => openUserModal()}
                   >
                     <i className="fas fa-user-plus"></i> Create User
                   </button>
@@ -1799,16 +1819,26 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             </span>
                           </td>
                           <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                            {u.id !== user.id && (
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                               <button
                                 type="button"
                                 className="btn-outline"
-                                style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
-                                onClick={() => handleDeactivateUser(u.id)}
+                                style={{ padding: '4px 10px', fontSize: '11px' }}
+                                onClick={() => openUserModal(u)}
                               >
-                                Deactivate
+                                <i className="fas fa-pen"></i> Edit
                               </button>
-                            )}
+                              {u.id !== user.id && (
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '4px 10px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                  onClick={() => handleDeleteUser(u)}
+                                >
+                                  <i className="fas fa-trash"></i> Delete
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2606,7 +2636,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </div>
         )}
 
-        {/* Modal: Create User */}
+        {/* Modal: Create / Edit User */}
         {userModalOpen && (
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -2616,7 +2646,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '480px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  Create New User
+                  {userForm.id ? `Edit User #${userForm.id}` : 'Create New User'}
                 </h3>
                 <button
                   type="button"
@@ -2627,7 +2657,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateUser}>
+              <form onSubmit={handleSaveUser}>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                     Full Name
@@ -2675,18 +2705,18 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                    Password
+                    {userForm.id ? 'New Password' : 'Password'}
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
                       type={showUserPassword ? 'text' : 'password'}
-                      placeholder="At least 6 characters"
+                      placeholder={userForm.id ? 'Leave blank to keep current password' : 'At least 6 characters'}
                       value={userForm.password}
                       onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                       style={{ width: '100%', padding: '10px 40px 10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                       autoComplete="new-password"
                       minLength={6}
-                      required
+                      required={!userForm.id}
                     />
                     <button
                       type="button"
@@ -2698,17 +2728,20 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </button>
                   </div>
                   <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
-                    Share this password with the user. They can change it from their account.
+                    {userForm.id
+                      ? 'Only fill this to reset the user\'s password.'
+                      : 'Share this password with the user. They can change it from their account.'}
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: userForm.id !== null ? '16px' : '24px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                     Role
                   </label>
                   <select
                     value={userForm.role}
-                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value as NewUserFormState['role'] })}
+                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserFormState['role'] })}
+                    disabled={userForm.id === user.id}
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
                   >
                     <option value="Owner">Owner</option>
@@ -2722,6 +2755,28 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </div>
                   )}
                 </div>
+
+                {userForm.id !== null && (
+                  <div style={{ marginBottom: '24px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                      Status
+                    </label>
+                    <select
+                      value={userForm.status}
+                      onChange={(e) => setUserForm({ ...userForm, status: e.target.value })}
+                      disabled={userForm.id === user.id}
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    >
+                      <option value="active">Active</option>
+                      <option value="deleted">Deactivated (cannot sign in)</option>
+                    </select>
+                    {userForm.id === user.id && (
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                        You can't change the role or status of your own account.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
@@ -2738,7 +2793,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     style={{ flex: 1, padding: '12px' }}
                     disabled={userSaving}
                   >
-                    {userSaving ? <><i className="fas fa-spinner fa-spin"></i> Creating...</> : 'Create User'}
+                    {userSaving
+                      ? <><i className="fas fa-spinner fa-spin"></i> Saving...</>
+                      : (userForm.id ? 'Save Changes' : 'Create User')}
                   </button>
                 </div>
               </form>
