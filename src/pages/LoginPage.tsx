@@ -4,6 +4,7 @@ import api, { getApiErrorMessage } from '../services/api';
 import type { CanonicalRole, ListingStatsResponse, MessageResponse, NavigateFunction } from '../types';
 
 export interface LoginPageProps {
+  initialTab?: 'signin' | 'register' | 'forgot';
   onNavigate?: NavigateFunction;
   onLoginSuccess?: () => void;
 }
@@ -164,12 +165,18 @@ const ROLES: { value: CanonicalRole; icon: string; title: string; sub: string }[
   { value: 'Builder', icon: 'fa-hard-hat',    title: 'Builder', sub: 'I develop properties' },
 ];
 
-export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps) {
+export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSuccess }: LoginPageProps) {
   const { login, register } = useAuth();
-  const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>('signin');
+  const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>(initialTab);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (initialTab) {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Site stats (dynamic)
   const [siteStats, setSiteStats] = useState<Partial<ListingStatsResponse>>({
@@ -185,7 +192,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       .catch(() => {/* keep static fallback */});
   }, []);
 
-  const fmt = (val: number | undefined, fallback: number): number => val !== undefined && val !== null ? val : fallback;
+  const fmt = (val: number | undefined, fallback: number): number => (val && val >= fallback ? val : fallback);
 
   const [siEmail, setSiEmail] = useState('');
   const [siPass, setSiPass]   = useState('');
@@ -209,6 +216,18 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const [fgPass,  setFgPass]    = useState('');
   const [fgStep,  setFgStep]    = useState<1 | 2>(1);  // 1 = enter email, 2 = otp+new pass
 
+  const [toasts, setToasts] = useState<Array<{ id: number; type: 'error' | 'success' | 'info'; title: string; msg: string }>>([]);
+
+  const showToast = (msg: string, type: 'error' | 'success' | 'info' = 'info', title?: string) => {
+    const id = Date.now();
+    const defaultTitle = type === 'error' ? 'OTP failed' : type === 'success' ? 'Success' : 'Notice';
+    const newToast = { id, type, title: title || defaultTitle, msg };
+    setToasts((prev) => [...prev, newToast]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, type === 'error' ? 5000 : 3500);
+  };
+
   const showError   = (msg: string): void => { setError(msg); setSuccess(''); };
   const showSuccess = (msg: string): void => { setSuccess(msg); setError(''); };
   const switchTab   = (t: 'signin' | 'register' | 'forgot'): void => { setTab(t); setError(''); setSuccess(''); };
@@ -216,48 +235,78 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   // ── Sign In ──
   const handleSignIn = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!siEmail || !siPass) return showError('Enter email and password.');
+    if (!siEmail || !siPass) {
+      showToast('Enter email and password.', 'error', 'Missing details');
+      return showError('Enter email and password.');
+    }
     setLoading(true); setError('');
     try {
       await login(siEmail, siPass, remember);
+      showToast('Login successful', 'success', 'Welcome');
       onLoginSuccess?.();
       onNavigate?.('home');
     } catch (err: unknown) {
-      showError(getApiErrorMessage(err, 'Sign-in failed. Check your credentials.'));
+      const msg = getApiErrorMessage(err, 'Sign-in failed. Check your credentials.');
+      showToast(msg, 'error', 'Login failed');
+      showError(msg);
     } finally { setLoading(false); }
   };
 
   // ── Send OTP (register) ──
   const handleSendRegOtp = async (): Promise<void> => {
-    if (!regName)  return showError('Enter your full name.');
-    if (!regPhone) return showError('Enter your mobile number.');
-    if (!regEmail) return showError('Enter your email.');
+    if (!regName) {
+      showToast('Enter client name', 'error', 'Missing details');
+      return showError('Enter your full name.');
+    }
+    if (!regPhone) {
+      showToast('Enter mobile number', 'error', 'Missing details');
+      return showError('Enter your mobile number.');
+    }
+    if (!regEmail) {
+      showToast('Enter email ID', 'error', 'Missing details');
+      return showError('Enter your email.');
+    }
     setLoading(true); setError('');
     try {
       const res = await api.post<MessageResponse>('/api/v1/auth/send-otp', { email: regEmail, action: 'register', name: regName, phone: regPhone });
       setOtpSent(true);
+      showToast(res.data.message || 'OTP sent to your email. Valid for 10 minutes.', 'success', 'OTP sent');
       showSuccess(res.data.message || 'OTP sent to your email.');
     } catch (err: unknown) {
-      showError(getApiErrorMessage(err, 'Failed to send OTP.'));
+      const msg = getApiErrorMessage(err, 'Failed to send OTP.');
+      showToast(msg, 'error', 'OTP failed');
+      showError(msg);
     } finally { setLoading(false); }
   };
 
   // ── Register ──
   const handleRegister = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!regName)  return showError('Enter your full name.');
+    if (!regName) return showError('Enter your full name.');
     if (!regPhone) return showError('Enter your mobile number.');
     if (!regEmail) return showError('Enter your email.');
-    if (regPass.length < 6) return showError('Password must be at least 6 characters.');
-    if (regPass !== regConfirm) return showError('Passwords do not match.');
-    if (!agreePrivacy) return showError('Please agree to the Terms of Use and Privacy Policy.');
+    if (regPass.length < 6) {
+      showToast('Password must be at least 6 characters', 'error', 'Weak password');
+      return showError('Password must be at least 6 characters.');
+    }
+    if (regPass !== regConfirm) {
+      showToast('Passwords do not match', 'error', 'Password mismatch');
+      return showError('Passwords do not match.');
+    }
+    if (!agreePrivacy) {
+      showToast('Please agree to Terms of Use and Privacy Policy', 'error', 'Notice');
+      return showError('Please agree to the Terms of Use and Privacy Policy.');
+    }
     setLoading(true); setError('');
     try {
       await register({ name: regName, phone: regPhone, email: regEmail, password: regPass, role: regRole, otp: regOtp || undefined });
+      showToast('Account created successfully!', 'success', 'Welcome');
       onLoginSuccess?.();
       onNavigate?.('home');
     } catch (err: unknown) {
-      showError(getApiErrorMessage(err, 'Registration failed.'));
+      const msg = getApiErrorMessage(err, 'Registration failed.');
+      showToast(msg, 'error', 'Registration failed');
+      showError(msg);
     } finally { setLoading(false); }
   };
 
@@ -297,7 +346,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         {/* ── LEFT PANEL ── */}
         <div className="login-left">
           {/* Logo — exact same structure as tradecall.in */}
-          <div className="ll-logo">
+          <div className="ll-logo" onClick={() => onNavigate?.('home')} style={{ cursor: 'pointer' }} title="Go to TradeCall India Home">
             <div className="logo-bars">
               <span className="logo-bar" />
               <span className="logo-bar" />
@@ -342,7 +391,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
           <div className="ll-footer-txt">
             Based in Palwal, Haryana © 2026 TradeCall India &nbsp;·&nbsp;
-            <a onClick={() => onNavigate?.('privacy')}>Privacy Policy</a> &nbsp;·&nbsp;
+            <a onClick={() => onNavigate?.('terms')}>Privacy Policy</a> &nbsp;·&nbsp;
             <a onClick={() => onNavigate?.('terms')}>Terms of Use</a>
           </div>
         </div>
@@ -549,6 +598,41 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           </div>
         </div>
       </div>
+
+      {/* Toast Notification Stack (matching original tradecall.in) */}
+      <div className="toast-stack" id="toastStack">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast ${t.type}`}>
+            <div className="toast-icon">
+              <i className={`fas ${t.type === 'success' ? 'fa-check' : t.type === 'error' ? 'fa-exclamation' : 'fa-info'}`} />
+            </div>
+            <div className="toast-body">
+              <p className="toast-title">{t.title}</p>
+              <p className="toast-msg">{t.msg}</p>
+            </div>
+            <button
+              type="button"
+              className="toast-close"
+              aria-label="Close"
+              onClick={() => setToasts((prev) => prev.filter((item) => item.id !== t.id))}
+            >
+              <i className="fas fa-times" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Floating WhatsApp Button */}
+      <a
+        href="https://wa.me/919992292828?text=Hello%20TradeCall%20India,%20I%20have%20an%20enquiry"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="whatsapp-float-btn"
+        title="Chat on WhatsApp"
+        aria-label="Chat on WhatsApp"
+      >
+        <i className="fab fa-whatsapp"></i>
+      </a>
     </div>
   );
 }

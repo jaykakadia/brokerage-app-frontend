@@ -6,9 +6,20 @@ import { isCanonicalRole, type CanonicalRole, type MessageResponse } from '../ty
 export interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  icon?: string;
+  onSuccess?: () => void;
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export default function AuthModal({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  icon,
+  onSuccess
+}: AuthModalProps) {
   const { login, register } = useAuth();
   const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>('signin');
   const [loading, setLoading] = useState(false);
@@ -111,6 +122,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError('');
     try {
       await login(loginEmail, loginPassword);
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Sign-in failed. Check credentials.'));
@@ -132,6 +144,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         role: regRole,
         otp: regOtp || undefined
       });
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Registration failed.'));
@@ -141,9 +154,46 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="modal-overlay active" style={{ display: 'flex', zIndex: 99999 }}>
-      <div className="modal-box" style={{ maxWidth: '440px', width: '100%', textAlign: 'left', padding: '30px' }}>
-        <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
+    <div
+      className="modal-overlay active"
+      style={{ display: 'flex', zIndex: 99999 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="modal-box" style={{ maxWidth: '440px', width: '100%', textAlign: 'left', padding: '30px', position: 'relative' }}>
+        <button
+          className="modal-close"
+          onClick={onClose}
+          aria-label="Close dialog"
+          style={{ position: 'absolute', top: '16px', right: '16px' }}
+        >
+          <i className="fas fa-times"></i>
+        </button>
+
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            borderRadius: '50%',
+            background: '#ecfdf5',
+            color: '#0d7a5f',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            marginBottom: '10px',
+            border: '1px solid #a7f3d0'
+          }}>
+            <i className={`fas ${icon || 'fa-user-lock'}`}></i>
+          </div>
+          <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#111827', margin: '0 0 6px 0' }}>
+            {title || (tab === 'signin' ? 'Sign In to Your Account' : tab === 'register' ? 'Create an Account' : 'Reset Password')}
+          </h3>
+          <p style={{ fontSize: '13.5px', color: '#6b7280', margin: 0, lineHeight: 1.4 }}>
+            {subtitle || (tab === 'signin' ? 'Sign in to save properties, view contact info, and manage listings' : 'Join TradeCall India to list and browse verified properties')}
+          </p>
+        </div>
 
         <div className="auth-tabs" style={{ display: 'flex', border: '1.5px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden', marginBottom: '20px' }}>
           <button
