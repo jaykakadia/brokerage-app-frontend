@@ -61,6 +61,16 @@ interface PlanFormState {
   status: string;
 }
 
+interface NewUserFormState {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  role: 'Owner' | 'Agent' | 'Builder' | 'Admin';
+}
+
+const EMPTY_USER_FORM: NewUserFormState = { name: '', email: '', phone: '', password: '', role: 'Owner' };
+
 interface EmployeeFormState {
   id: number;
   reference_code: string;
@@ -176,6 +186,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [usersLoading, setUsersLoading] = useState<boolean>(false);
   const [userSearch, setUserSearch] = useState<string>('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('');
+  const [userModalOpen, setUserModalOpen] = useState<boolean>(false);
+  const [userForm, setUserForm] = useState<NewUserFormState>(EMPTY_USER_FORM);
+  const [showUserPassword, setShowUserPassword] = useState<boolean>(false);
+  const [userSaving, setUserSaving] = useState<boolean>(false);
 
   // === ROLE LIMITS STATE ===
   const [roleLimits, setRoleLimits] = useState<RoleLimitsMap>({ Owner: 0, Agent: 0, Builder: 0 });
@@ -506,6 +520,38 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       fetchUsers();
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err) || 'Failed to update user role', 'error');
+    }
+  };
+
+  const openUserModal = () => {
+    setUserForm(EMPTY_USER_FORM);
+    setShowUserPassword(false);
+    setUserModalOpen(true);
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userForm.password.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+    setUserSaving(true);
+    try {
+      await api.post('/api/v1/admin/users', {
+        name: userForm.name.trim(),
+        email: userForm.email.trim(),
+        phone: userForm.phone.trim(),
+        password: userForm.password,
+        role: userForm.role,
+        status: 'active'
+      });
+      showToast(`User '${userForm.name.trim()}' created`);
+      setUserModalOpen(false);
+      fetchUsers();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, 'Failed to create user'), 'error');
+    } finally {
+      setUserSaving(false);
     }
   };
 
@@ -1650,7 +1696,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   User Accounts &amp; Role Management
                 </h2>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <select
                     value={userRoleFilter}
                     onChange={(e) => setUserRoleFilter(e.target.value)}
@@ -1679,6 +1725,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     onClick={fetchUsers}
                   >
                     <i className="fas fa-search"></i>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ padding: '8px 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                    onClick={openUserModal}
+                  >
+                    <i className="fas fa-user-plus"></i> Create User
                   </button>
                 </div>
               </div>
@@ -2547,6 +2602,146 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </div>
                 </form>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Create User */}
+        {userModalOpen && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}>
+            <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '480px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  Create New User
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setUserModalOpen(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateUser}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter full name"
+                    value={userForm.name}
+                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="name@example.com"
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile number"
+                    value={userForm.phone}
+                    onChange={(e) => setUserForm({ ...userForm, phone: e.target.value.replace(/[^\d+]/g, '') })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                    minLength={10}
+                    maxLength={13}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showUserPassword ? 'text' : 'password'}
+                      placeholder="At least 6 characters"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                      style={{ width: '100%', padding: '10px 40px 10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                      autoComplete="new-password"
+                      minLength={6}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowUserPassword(!showUserPassword)}
+                      aria-label={showUserPassword ? 'Hide password' : 'Show password'}
+                      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
+                    >
+                      <i className={showUserPassword ? 'fas fa-eye-slash' : 'fas fa-eye'}></i>
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                    Share this password with the user. They can change it from their account.
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Role
+                  </label>
+                  <select
+                    value={userForm.role}
+                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value as NewUserFormState['role'] })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                  >
+                    <option value="Owner">Owner</option>
+                    <option value="Agent">Agent</option>
+                    <option value="Builder">Builder</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                  {userForm.role === 'Admin' && (
+                    <div style={{ fontSize: '12px', color: '#b45309', marginTop: '6px' }}>
+                      <i className="fas fa-exclamation-triangle"></i> Admins get full access to this Admin Center.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ flex: 1, padding: '12px' }}
+                    onClick={() => setUserModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '12px' }}
+                    disabled={userSaving}
+                  >
+                    {userSaving ? <><i className="fas fa-spinner fa-spin"></i> Creating...</> : 'Create User'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -92,8 +92,24 @@ export const getImageUrl = (path?: string | null): string => {
   return cleanPath;
 };
 
+/** Standard message for failures where the server sent nothing readable (host error pages, timeouts). */
+function statusErrorMessage(status: number | undefined, fallback: string): string {
+  if (status === undefined) return 'Unable to reach the server. Please check your internet connection and try again.';
+  if (status === 401) return 'Your session has expired. Please sign in again.';
+  if (status === 403) return 'You do not have permission to perform this action.';
+  if (status === 404) return 'The requested resource was not found.';
+  if (status === 408 || status === 504) return 'The server took too long to respond. Please try again.';
+  if (status === 413) return 'The file you uploaded is too large.';
+  if (status === 429) return 'Too many requests. Please wait a moment and try again.';
+  if (status === 502 || status === 503) return 'The server is temporarily unavailable. Please try again in a minute.';
+  if (status >= 500) return 'Something went wrong on our side. Please try again later.';
+  return fallback;
+}
+
 /**
  * Safely extracts human-readable error message from an unknown error or Axios error.
+ * Only messages the API itself sent (JSON `detail`/`message`) are shown verbatim; raw bodies such as
+ * a host's HTML error page are replaced with a standard message for the status code.
  */
 export function getApiErrorMessage(error: unknown, fallback = 'An unexpected error occurred'): string {
   if (!error) return fallback;
@@ -101,9 +117,8 @@ export function getApiErrorMessage(error: unknown, fallback = 'An unexpected err
     let data = error.response?.data;
     // Some proxies hand the JSON body back as text; read its message instead of showing raw JSON.
     if (typeof data === 'string' && data.trim().startsWith('{')) {
-      try { data = JSON.parse(data); } catch { /* fall through and show the text */ }
+      try { data = JSON.parse(data); } catch { /* not JSON: fall through to the status message */ }
     }
-    if (typeof data === 'string' && data.trim()) return data;
     if (data && typeof data === 'object') {
       const resp = data as ApiErrorResponse;
       if (typeof resp.detail === 'string') return resp.detail;
@@ -113,7 +128,8 @@ export function getApiErrorMessage(error: unknown, fallback = 'An unexpected err
       }
       if (typeof resp.message === 'string') return resp.message;
     }
-    return error.message || fallback;
+    if (error.code === 'ECONNABORTED') return statusErrorMessage(408, fallback);
+    return statusErrorMessage(error.response?.status, fallback);
   }
   if (error instanceof Error) {
     return error.message;
