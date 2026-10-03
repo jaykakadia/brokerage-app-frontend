@@ -573,6 +573,21 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const handleToggleUserStatus = async (target: User) => {
+    const activate = target.status !== 'active';
+    if (!window.confirm(activate
+      ? `Activate ${target.name}? They will be able to sign in again.`
+      : `Deactivate ${target.name}? They will not be able to sign in until reactivated.`
+    )) return;
+    try {
+      await api.put(`/api/v1/admin/users/${target.id}`, { status: activate ? 'active' : 'deleted' });
+      showToast(`User '${target.name}' ${activate ? 'activated' : 'deactivated'}`);
+      fetchUsers();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, activate ? 'Failed to activate user' : 'Failed to deactivate user'), 'error');
+    }
+  };
+
   const handleDeleteUser = async (target: User) => {
     if (!window.confirm(
       `Permanently delete ${target.name} (${target.email})?\n\nTheir listings and wishlist will also be deleted. This cannot be undone.`
@@ -1815,7 +1830,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                 color: u.status === 'active' ? '#166534' : '#b91c1c'
                               }}
                             >
-                              {u.status}
+                              {u.status === 'active' ? 'Active' : u.status === 'deleted' ? 'Deactivated' : u.status}
                             </span>
                           </td>
                           <td style={{ padding: '12px 14px', textAlign: 'right' }}>
@@ -1829,14 +1844,28 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                 <i className="fas fa-pen"></i> Edit
                               </button>
                               {u.id !== user.id && (
-                                <button
-                                  type="button"
-                                  className="btn-outline"
-                                  style={{ padding: '4px 10px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
-                                  onClick={() => handleDeleteUser(u)}
-                                >
-                                  <i className="fas fa-trash"></i> Delete
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    style={u.status === 'active'
+                                      ? { padding: '4px 10px', fontSize: '11px', color: '#b45309', borderColor: '#fcd34d' }
+                                      : { padding: '4px 10px', fontSize: '11px', color: '#166534', borderColor: '#86efac' }}
+                                    onClick={() => handleToggleUserStatus(u)}
+                                  >
+                                    {u.status === 'active'
+                                      ? <><i className="fas fa-ban"></i> Deactivate</>
+                                      : <><i className="fas fa-check"></i> Activate</>}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    style={{ padding: '4px 10px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                    onClick={() => handleDeleteUser(u)}
+                                  >
+                                    <i className="fas fa-trash"></i> Delete
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
