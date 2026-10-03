@@ -6,7 +6,7 @@ import { getListingUniqueId } from '../utils/url';
 import { buildKeyDetails } from '../utils/listingDetails';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
-import ContactRevealModal, { ContactLinks, ContactRevealData } from '../components/ContactRevealModal';
+import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
 import type { Listing, ApiResponse, MessageResponse, NavigateFunction } from '../types';
 
 export interface AuthModalOptions {
@@ -162,17 +162,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     try {
       const res = await revealContact(Number(listingId));
       if (res.data?.status === 'success') {
-        const contact = res.data.contact || {};
-        const plan = res.data.plan || {};
-        setContactData({
-          owner_name: contact.owner_name || contact.person || listing?.owner_name,
-          owner_phone: contact.phone || contact.mobile || listing?.owner_phone || undefined,
-          owner_email: contact.email || listing?.owner_email || undefined,
-          leads_balance: plan.leads_balance ?? plan.leads_remaining ?? user.leads_balance,
-          already_revealed: res.data.already_revealed ?? false,
-          message: res.data.message,
-          links: res.data.links
-        });
+        setContactData(contactDataFromReveal(res.data, listing, user.leads_balance));
         setContactModalOpen(true);
         await refreshUser();
       } else {
@@ -264,7 +254,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     ? new Date(listing.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
         .replace(/^(\w+) (\d+), (\d+)$/, '$2 $1 $3')
     : '';
-  const whatsappDigits = contactData?.owner_phone ? contactData.owner_phone.replace(/\D/g, '').slice(-10) : '';
+  const whatsappDigits = (contactData?.owner_whatsapp || contactData?.owner_phone || '').replace(/\D/g, '').slice(-10);
 
   return (
     <section className="ld-wrap">

@@ -1,4 +1,4 @@
-import type { RevealLinks } from '../types';
+import type { Listing, RevealContactResponse, RevealLinks } from '../types';
 
 // Website first: it is the primary link
 const LINKS: Array<{ key: keyof RevealLinks; label: string; icon: string; color: string }> = [
@@ -32,11 +32,28 @@ export function ContactLinks({ links }: { links?: RevealLinks }) {
 export interface ContactRevealData {
   owner_name?: string;
   owner_phone?: string;
+  owner_whatsapp?: string;
   owner_email?: string;
   leads_balance?: number;
   already_revealed?: boolean;
   message?: string;
   links?: RevealLinks;
+}
+
+/** Builds the popup data from an unlock response. */
+export function contactDataFromReveal(res: RevealContactResponse, listing: Listing | null, fallbackBalance?: number): ContactRevealData {
+  const contact = res.contact || {};
+  const plan = res.plan || {};
+  return {
+    owner_name: contact.owner_name || contact.person || listing?.owner_name,
+    owner_phone: contact.phone || contact.mobile || listing?.owner_phone || undefined,
+    owner_whatsapp: contact.whatsapp || undefined,
+    owner_email: contact.email || listing?.owner_email || undefined,
+    leads_balance: plan.leads_balance ?? plan.leads_remaining ?? fallbackBalance,
+    already_revealed: res.already_revealed ?? false,
+    message: res.message,
+    links: res.links
+  };
 }
 
 export interface ContactRevealModalProps {
@@ -49,9 +66,10 @@ export interface ContactRevealModalProps {
 export default function ContactRevealModal({ isOpen, onClose, contactData, listingTitle }: ContactRevealModalProps) {
   if (!isOpen || !contactData) return null;
 
-  const { owner_name, owner_phone, owner_email, leads_balance, already_revealed, message, links } = contactData;
+  const { owner_name, owner_phone, owner_whatsapp, owner_email, leads_balance, already_revealed, message, links } = contactData;
   const cleanPhone = owner_phone ? owner_phone.replace(/[^0-9]/g, '') : '';
-  const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const cleanWa = (owner_whatsapp || owner_phone || '').replace(/[^0-9]/g, '');
+  const waPhone = cleanWa.length === 10 ? `91${cleanWa}` : cleanWa;
 
   return (
     <div
@@ -223,7 +241,7 @@ export default function ContactRevealModal({ isOpen, onClose, contactData, listi
               )}
             </div>
 
-            {cleanPhone && (
+            {waPhone && (
               <a
                 href={`https://wa.me/${waPhone}?text=${encodeURIComponent(
                   `Hello ${owner_name || 'Owner'}, I saw your property listing "${listingTitle || 'on TradeCall'}" and would like to discuss it.`

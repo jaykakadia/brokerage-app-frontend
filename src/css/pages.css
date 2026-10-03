@@ -500,7 +500,6 @@ div.signup-video-box .signup-video-close { position: absolute; top: -44px; right
 .business-dir-tags span { background: #f0faf6; color: #0c6253; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
 .business-dir-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .business-dir-actions a, .business-dir-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; font-size: 12px; text-decoration: none; white-space: nowrap; }
-.business-dir-wa { color: #128c7e; border-color: #86efac; }
 @media (max-width: 768px) {
   .business-dir-filters { grid-template-columns: 1fr; }
 }

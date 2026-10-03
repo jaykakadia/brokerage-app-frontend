@@ -2,17 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../services/api';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { isBusinessListing } from '../utils/listingKind';
+import { useContactUnlock } from '../hooks/useContactUnlock';
+import type { AuthModalOptions } from './ListingDetailPage';
 import type { Listing, NavigateFunction } from '../types';
 
 export interface BusinessDirectoryPageProps {
   onNavigate: NavigateFunction;
+  onOpenAuth?: (options?: AuthModalOptions) => void;
 }
 
 interface BusinessInfo {
   categories: string[];
   city: string;
-  mobile: string;
-  whatsapp: string;
 }
 
 function businessInfo(listing: Listing): BusinessInfo {
@@ -22,16 +23,15 @@ function businessInfo(listing: Listing): BusinessInfo {
   if (!categories.length && typeof data.categoryName === 'string' && data.categoryName) {
     categories.push(...data.categoryName.split(',').map((c) => c.trim()).filter(Boolean));
   }
-  const mobile = typeof data.mobile === 'string' ? data.mobile : '';
   return {
     categories,
-    city: (typeof data.city === 'string' && data.city) || listing.location.split(',').pop()?.trim() || '',
-    mobile,
-    whatsapp: (typeof data.whatsapp === 'string' && data.whatsapp) || mobile
+    city: (typeof data.city === 'string' && data.city) || listing.location.split(',').pop()?.trim() || ''
   };
 }
 
-export default function BusinessDirectoryPage({ onNavigate }: BusinessDirectoryPageProps) {
+export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: BusinessDirectoryPageProps) {
+  // Phone, WhatsApp and email stay locked until the visitor unlocks them (1 lead), as on property listings
+  const contact = useContactUnlock(onOpenAuth);
   const [businesses, setBusinesses] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +119,9 @@ export default function BusinessDirectoryPage({ onNavigate }: BusinessDirectoryP
             )}
           </div>
 
+          {contact.error && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 14 }}>{contact.error}</div>
+          )}
           {error ? (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10 }}>{error}</div>
           ) : loading ? (
@@ -157,14 +160,11 @@ export default function BusinessDirectoryPage({ onNavigate }: BusinessDirectoryP
                       )}
                       <div className="card-location"><i className="fas fa-map-marker-alt"></i> {b.location}</div>
                       <div className="business-dir-actions">
-                        {info.mobile && (
-                          <a href={`tel:${info.mobile}`} className="btn-outline"><i className="fas fa-phone-alt"></i> Call</a>
-                        )}
-                        {info.whatsapp && (
-                          <a href={`https://wa.me/91${info.whatsapp.replace(/\D/g, '').slice(-10)}`} target="_blank" rel="noopener noreferrer" className="btn-outline business-dir-wa">
-                            <i className="fab fa-whatsapp"></i> WhatsApp
-                          </a>
-                        )}
+                        <button type="button" className="btn-outline" disabled={contact.unlockingId === b.id} onClick={() => void contact.unlock(b)}>
+                          {contact.unlockingId === b.id
+                            ? <><i className="fas fa-spinner fa-spin"></i> Unlocking...</>
+                            : <><i className="fas fa-phone-alt"></i> Contact</>}
+                        </button>
                         <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
                           <i className="fas fa-info-circle"></i> Details
                         </button>
@@ -177,6 +177,7 @@ export default function BusinessDirectoryPage({ onNavigate }: BusinessDirectoryP
           )}
         </div>
       </section>
+      {contact.modals}
     </>
   );
 }

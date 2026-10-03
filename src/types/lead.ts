@@ -16,6 +16,7 @@ export interface RevealContactInfo {
   owner_name?: string;
   mobile?: string;
   phone?: string;
+  whatsapp?: string;
   email?: string;
   [key: string]: string | undefined;
 }

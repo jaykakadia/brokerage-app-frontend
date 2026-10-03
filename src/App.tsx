@@ -217,6 +217,7 @@ export default function App() {
         {activePage === 'business-directory' && (
           <BusinessDirectoryPage
             onNavigate={navigateTo}
+            onOpenAuth={openAuthModal}
           />
         )}
 
