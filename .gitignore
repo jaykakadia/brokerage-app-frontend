@@ -9,6 +9,7 @@ dist-ssr/
 *.local
 
 # Environment files
+.env
 .env.development.local
 .env.test.local
 .env.production.local
