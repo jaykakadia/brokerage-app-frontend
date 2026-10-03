@@ -1,3 +1,34 @@
+import type { RevealLinks } from '../types';
+
+// Website first: it is the primary link
+const LINKS: Array<{ key: keyof RevealLinks; label: string; icon: string; color: string }> = [
+  { key: 'website', label: 'Website', icon: 'fas fa-globe', color: '#0c6253' },
+  { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook-f', color: '#1877f2' },
+  { key: 'x', label: 'X', icon: 'fab fa-x-twitter', color: '#111827' },
+  { key: 'youtube', label: 'YouTube', icon: 'fab fa-youtube', color: '#ff0000' }
+];
+
+/** Website / social buttons for an unlocked contact; renders nothing when there are none. */
+export function ContactLinks({ links }: { links?: RevealLinks }) {
+  const present = LINKS.filter(({ key }) => /^https?:\/\//i.test(links?.[key] || ''));
+  if (present.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+      {present.map(({ key, label, icon, color }) => (
+        <a
+          key={key}
+          href={links?.[key]}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', color: '#0f172a', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+        >
+          <i className={icon} style={{ color }}></i> {label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export interface ContactRevealData {
   owner_name?: string;
   owner_phone?: string;
@@ -5,6 +36,7 @@ export interface ContactRevealData {
   leads_balance?: number;
   already_revealed?: boolean;
   message?: string;
+  links?: RevealLinks;
 }
 
 export interface ContactRevealModalProps {
@@ -17,7 +49,7 @@ export interface ContactRevealModalProps {
 export default function ContactRevealModal({ isOpen, onClose, contactData, listingTitle }: ContactRevealModalProps) {
   if (!isOpen || !contactData) return null;
 
-  const { owner_name, owner_phone, owner_email, leads_balance, already_revealed, message } = contactData;
+  const { owner_name, owner_phone, owner_email, leads_balance, already_revealed, message, links } = contactData;
   const cleanPhone = owner_phone ? owner_phone.replace(/[^0-9]/g, '') : '';
   const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
@@ -254,6 +286,7 @@ export default function ContactRevealModal({ isOpen, onClose, contactData, listi
                 </div>
               </div>
             )}
+            <ContactLinks links={links} />
           </div>
 
           {/* Balance Status Footer */}

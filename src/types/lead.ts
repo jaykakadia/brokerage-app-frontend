@@ -28,8 +28,17 @@ export interface RevealPlanInfo {
   [key: string]: number | undefined;
 }
 
+/** Social links on the listing, only sent once the contact is unlocked. */
+export interface RevealLinks {
+  website?: string;
+  facebook?: string;
+  x?: string;
+  youtube?: string;
+}
+
 export interface RevealContactResponse {
   status: string;
+  links?: RevealLinks;
   code?: string;
   message?: string;
   contact?: RevealContactInfo;

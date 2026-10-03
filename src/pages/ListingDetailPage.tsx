@@ -6,7 +6,7 @@ import { getListingUniqueId } from '../utils/url';
 import { buildKeyDetails } from '../utils/listingDetails';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
-import ContactRevealModal, { ContactRevealData } from '../components/ContactRevealModal';
+import ContactRevealModal, { ContactLinks, ContactRevealData } from '../components/ContactRevealModal';
 import type { Listing, ApiResponse, MessageResponse, NavigateFunction } from '../types';
 
 export interface AuthModalOptions {
@@ -170,7 +170,8 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           owner_email: contact.email || listing?.owner_email || undefined,
           leads_balance: plan.leads_balance ?? plan.leads_remaining ?? user.leads_balance,
           already_revealed: res.data.already_revealed ?? false,
-          message: res.data.message
+          message: res.data.message,
+          links: res.data.links
         });
         setContactModalOpen(true);
         await refreshUser();
@@ -472,6 +473,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                       <i className="fas fa-envelope"></i> {contactData.owner_email}
                     </a>
                   )}
+                  <ContactLinks links={contactData.links} />
                 </div>
               ) : (
                 <button
