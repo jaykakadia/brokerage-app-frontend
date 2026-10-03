@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import api, { getApiErrorMessage } from '../services/api';
+import api, { getApiErrorMessage, getWishlist, toggleWishlist } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { isBusinessListing } from '../utils/listingKind';
 import { useContactUnlock } from '../hooks/useContactUnlock';
@@ -32,6 +33,44 @@ function businessInfo(listing: Listing): BusinessInfo {
 export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: BusinessDirectoryPageProps) {
   // Phone, WhatsApp and email stay locked until the visitor unlocks them (1 lead), as on property listings
   const contact = useContactUnlock(onOpenAuth);
+  const { user } = useAuth();
+  const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!user) {
+      setWishlistIds(new Set());
+      return;
+    }
+    getWishlist(true)
+      .then((res) => {
+        if (Array.isArray(res.data?.data)) setWishlistIds(new Set(res.data.data));
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const toggleSaved = async (listingId: number): Promise<void> => {
+    if (!user) {
+      onOpenAuth?.({
+        title: 'Sign In to Save Businesses',
+        subtitle: 'Please sign in or create an account to save businesses to your wishlist.',
+        icon: 'fa-heart',
+        onSuccess: () => { void toggleSaved(listingId); }
+      });
+      return;
+    }
+    try {
+      const res = await toggleWishlist(listingId);
+      const added = res.data?.action === 'added';
+      setWishlistIds((prev) => {
+        const next = new Set(prev);
+        if (added) next.add(listingId);
+        else next.delete(listingId);
+        return next;
+      });
+    } catch {
+      // leave the heart as it was
+    }
+  };
   const [businesses, setBusinesses] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +206,14 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                         </button>
                         <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
                           <i className="fas fa-info-circle"></i> Details
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
+                          onClick={() => void toggleSaved(b.id)}
+                        >
+                          <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+                          <span>Wishlist</span>
                         </button>
                       </div>
                     </div>
