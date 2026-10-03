@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_APP_NAME?: string;
   readonly VITE_PROXY_TARGET?: string;
+  readonly VITE_UPLOADS_URL?: string;
 }
 
 interface ImportMeta {

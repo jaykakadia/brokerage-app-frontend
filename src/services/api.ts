@@ -40,6 +40,12 @@ export const API_BASE_URL: string = import.meta.env.PROD
   ? ''
   : (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
+// Where /uploads images are fetched from. Locally this can point at the live backend
+// (VITE_UPLOADS_URL) so photos uploaded on the live site show up in the dev server too.
+const UPLOADS_BASE_URL: string = import.meta.env.PROD
+  ? ''
+  : (import.meta.env.VITE_UPLOADS_URL || API_BASE_URL).replace(/\/+$/, '');
+
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // Send and receive HTTP-only cookies
@@ -87,7 +93,7 @@ export const getImageUrl = (path?: string | null): string => {
   }
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   if (cleanPath.startsWith('/uploads')) {
-    return `${API_BASE_URL}${cleanPath}`;
+    return `${UPLOADS_BASE_URL}${cleanPath}`;
   }
   return cleanPath;
 };
