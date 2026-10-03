@@ -91,11 +91,12 @@ export default function AdminEditListingModal({ listing, onClose, onSaved, onVie
             </div>
           )}
           <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
-            Posted by <strong>{listing.owner_name}</strong>. Go through the steps and click <strong>Save Changes</strong> on the last step.
+            Posted by <strong>{listing.owner_name}</strong>. Everything they submitted is below. Edit any field and click <strong>Save Changes</strong> at the bottom.
           </p>
           <ListingWizard
             key={listing.id}
             editListing={listing}
+            singlePage
             onSaved={() => {
               onSaved(`Listing #${listing.id} updated`);
               onClose();

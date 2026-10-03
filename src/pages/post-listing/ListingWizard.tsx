@@ -54,9 +54,11 @@ export interface ListingWizardProps {
   editListing?: Listing | null;
   onSaved: (listing: Listing) => void;
   onRequireAuth?: () => void;
+  /** Show every section of the form on one page (admin edit) */
+  singlePage?: boolean;
 }
 
-export default function ListingWizard({ editListing = null, onSaved, onRequireAuth }: ListingWizardProps) {
+export default function ListingWizard({ editListing = null, onSaved, onRequireAuth, singlePage = false }: ListingWizardProps) {
   const { user } = useAuth();
   const [role, setRole] = useState<ListingRole | ''>(() => (editListing ? listingRoleOf(editListing) : ''));
   const [step, setStep] = useState<PropertyStep>(1);
@@ -296,6 +298,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
           removedImageIds={removedImageIds}
           onRemoveExisting={editListing ? (id) => setRemovedImageIds((current) => [...current, id]) : undefined}
           submitLabel={editListing ? 'Save Changes' : 'Submit Listing'}
+          singlePage={singlePage}
         />
       )}
 
@@ -306,6 +309,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
           onSuccess={onSaved}
           onStepChange={setBusinessStep}
           editListing={editListing}
+          singlePage={singlePage}
         />
       )}
     </>

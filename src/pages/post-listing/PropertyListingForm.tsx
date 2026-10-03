@@ -43,6 +43,8 @@ export interface PropertyListingFormProps {
   removedImageIds?: number[];
   onRemoveExisting?: (id: number) => void;
   submitLabel?: string;
+  /** Show every section on one page with a single Save button (admin edit) */
+  singlePage?: boolean;
 }
 
 export default function PropertyListingForm({
@@ -66,8 +68,10 @@ export default function PropertyListingForm({
   existingImages = [],
   removedImageIds = [],
   onRemoveExisting,
-  submitLabel = 'Submit Listing'
+  submitLabel = 'Submit Listing',
+  singlePage = false
 }: PropertyListingFormProps) {
+  const show = (s: PropertyStep): boolean => singlePage || step === s;
   // Plot and agriculture prices follow area x rate
   const changeLand = (patch: Partial<PropertyFormState>) => onChange(withAutoPrice(form, patch));
   const land = landAreaFor(form);
@@ -153,14 +157,14 @@ export default function PropertyListingForm({
 
   return (
     <div className="business-premium-box">
-      <StepIndicator steps={PROPERTY_STEPS} current={step} />
+      {singlePage ? null : <StepIndicator steps={PROPERTY_STEPS} current={step} />}
       {error ? (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: '10px', marginBottom: '16px' }}>
           {error}
         </div>
       ) : null}
 
-      {step === 1 && (
+      {show(1) && (
         <>
           <div className="bf-heading"><i className="fas fa-address-card"></i> Contact Details</div>
           <FloatField label="Your Name" icon="fas fa-user" required value={form.name} onChange={(name) => onChange({ name })} />
@@ -173,13 +177,15 @@ export default function PropertyListingForm({
           <FloatField label="Email ID" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => onChange({ email })} />
           <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} onChange={onChange} />
 
-          <div className="bf-actions">
-            <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
+          {singlePage ? null : (
+            <div className="bf-actions">
+              <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
+            </div>
+          )}
         </>
       )}
 
-      {step === 2 && (
+      {show(2) && (
         <>
           <div className="bf-heading"><i className="fas fa-home"></i> Property Type &amp; Location</div>
           <Pills
@@ -265,14 +271,16 @@ export default function PropertyListingForm({
             </div>
           </div>
 
-          <div className="bf-actions">
-            <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
-            <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
+          {singlePage ? null : (
+            <div className="bf-actions">
+              <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
+              <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
+            </div>
+          )}
         </>
       )}
 
-      {step === 3 && (
+      {show(3) && (
         <>
           <div className="bf-heading"><i className="fas fa-list-ul"></i> Property Details</div>
           {(form.propType === 'flat' || form.propType === 'house') && (
@@ -413,14 +421,16 @@ export default function PropertyListingForm({
 
           {!land && form.propType !== 'commercial' ? priceField : null}
 
-          <div className="bf-actions">
-            <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
-            <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
+          {singlePage ? null : (
+            <div className="bf-actions">
+              <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
+              <button type="button" className="btn-premium" onClick={onContinue}>Next <i className="fas fa-arrow-right"></i></button>
+            </div>
+          )}
         </>
       )}
 
-      {step === 4 && (
+      {show(4) && (
         <>
           <div className="bf-heading"><i className="fas fa-camera"></i> Photos &amp; Description</div>
           <div className="upload-area" onClick={() => document.getElementById('ownerPhotos')?.click()} style={{ marginBottom: 16 }}>
@@ -454,8 +464,13 @@ export default function PropertyListingForm({
             style={{ width: '100%', padding: 14, border: '1.5px solid #e2e8f0', borderRadius: 10, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, marginBottom: 16, outline: 'none' }}
           />
 
+          {singlePage && error ? (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: '10px', marginBottom: '16px' }}>
+              {error}
+            </div>
+          ) : null}
           <div className="bf-actions">
-            <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
+            {singlePage ? null : <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>}
             <button type="button" className="btn-premium" disabled={loading} onClick={onSubmit}>
               {loading ? 'Saving...' : <>{submitLabel} <i className="fas fa-check"></i></>}
             </button>

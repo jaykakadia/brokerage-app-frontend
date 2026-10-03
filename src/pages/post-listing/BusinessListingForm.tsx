@@ -103,9 +103,11 @@ export interface BusinessListingFormProps {
   onStepChange?: (step: number) => void;
   /** Edit mode: fill the form from this listing and save changes to it instead of creating a new one */
   editListing?: Listing | null;
+  /** Show every section on one page with a single Save button (admin edit) */
+  singlePage?: boolean;
 }
 
-export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange, editListing = null }: BusinessListingFormProps) {
+export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange, editListing = null, singlePage = false }: BusinessListingFormProps) {
   const { user: authUser } = useAuth();
   // In edit mode the form holds the saved listing, so the signed-in user's profile must not prefill it
   const user = editListing ? null : authUser;
@@ -235,24 +237,31 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
   const categoryNames = form.selectedCategories.map((c) => c.name).join(', ');
 
+  const stepError = (s: 1 | 2 | 3): string | null => {
+    if (s === 1) {
+      if (!form.person.trim()) return 'Please enter Contact Person name';
+      if (!/^\d{10}$/.test(form.mobile)) return 'Enter a valid 10-digit Mobile Number';
+      if (!form.sameAsMobile && form.whatsapp && !/^\d{10}$/.test(form.whatsapp)) return 'Enter a valid 10-digit WhatsApp Number';
+      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid Email Address';
+      return socialLinkError(form);
+    }
+    if (s === 2) {
+      if (!form.name.trim()) return 'Please enter your Business Name';
+      if (!/^\d{6}$/.test(form.pincode)) return 'Enter a valid 6-digit Pincode';
+      if (!form.city) return 'Please select a City';
+      if (!form.state.trim()) return 'State is missing. Pick a city that has a state.';
+      return null;
+    }
+    return form.selectedCategories.length === 0 ? 'Search and select at least one Business Category' : null;
+  };
+
   const continueFrom = (next: 2 | 3 | 4) => {
-    if (step === 1) {
-      if (!form.person.trim()) return setError('Please enter Contact Person name');
-      if (!/^\d{10}$/.test(form.mobile)) return setError('Enter a valid 10-digit Mobile Number');
-      if (!form.sameAsMobile && form.whatsapp && !/^\d{10}$/.test(form.whatsapp)) return setError('Enter a valid 10-digit WhatsApp Number');
-      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Enter a valid Email Address');
-      const badLink = socialLinkError(form);
-      if (badLink) return setError(badLink);
-    }
-    if (step === 2) {
-      if (!form.name.trim()) return setError('Please enter your Business Name');
-      if (!/^\d{6}$/.test(form.pincode)) return setError('Enter a valid 6-digit Pincode');
-      if (!form.city) return setError('Please select a City');
-      if (!form.state.trim()) return setError('State is missing. Pick a city that has a state.');
-    }
-    if (step === 3 && form.selectedCategories.length === 0) return setError('Search and select at least one Business Category');
+    const message = stepError((next - 1) as 1 | 2 | 3);
+    if (message) return setError(message);
     goToStep(next);
   };
+
+  const show = (s: 1 | 2 | 3 | 4): boolean => singlePage || step === s;
 
   const goToStep = (next: 1 | 2 | 3 | 4) => {
     setError(null);
@@ -294,6 +303,16 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
   };
 
   const submit = async () => {
+    if (singlePage) {
+      // One page: the step checks never ran, so run them all before saving
+      for (const s of [1, 2, 3] as const) {
+        const message = stepError(s);
+        if (message) {
+          setError(message);
+          return;
+        }
+      }
+    }
     const words = form.description.trim().split(/\s+/).filter(Boolean);
     if (words.length > 400) {
       setError('Description cannot exceed 400 words.');
@@ -356,14 +375,14 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
 
   return (
     <div className="business-premium-box">
-      <StepIndicator steps={BUSINESS_STEPS} current={step} />
+      {singlePage ? null : <StepIndicator steps={BUSINESS_STEPS} current={step} />}
       {error ? (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 16 }}>
           {error}
         </div>
       ) : null}
 
-      {step === 1 && (
+      {show(1) && (
         <>
           <div className="bf-heading"><i className="fas fa-address-card"></i> Contact Details</div>
           {prefilledFromLast && (
@@ -380,13 +399,15 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
           </div>
           <FloatField label="Email Address" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => patch({ email })} />
           <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} onChange={patch} />
-          <div className="bf-actions">
-            <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
+          {singlePage ? null : (
+            <div className="bf-actions">
+              <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Next <i className="fas fa-arrow-right"></i></button>
+            </div>
+          )}
         </>
       )}
 
-      {step === 2 && (
+      {show(2) && (
         <>
           <div className="bf-heading"><i className="fas fa-store"></i> Enter Your Business Details</div>
           <FloatField label="Business Name" icon="fas fa-building" required value={form.name} onChange={(name) => patch({ name })} />
@@ -439,14 +460,16 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
               </button>
             </div>
           </div>
-          <div className="bf-actions">
-            <button type="button" className="btn-outline" onClick={() => goToStep(1)}><i className="fas fa-arrow-left"></i> Back</button>
-            <button type="button" className="btn-premium" onClick={() => continueFrom(3)}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
+          {singlePage ? null : (
+            <div className="bf-actions">
+              <button type="button" className="btn-outline" onClick={() => goToStep(1)}><i className="fas fa-arrow-left"></i> Back</button>
+              <button type="button" className="btn-premium" onClick={() => continueFrom(3)}>Next <i className="fas fa-arrow-right"></i></button>
+            </div>
+          )}
         </>
       )}
 
-      {step === 3 && (
+      {show(3) && (
         <>
           <div className="bf-heading"><i className="fas fa-tags"></i> Add Business Categories</div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: -4, marginBottom: 10 }}>
@@ -504,14 +527,16 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
               ))}
             </div>
           ) : null}
-          <div className="bf-actions">
-            <button type="button" className="btn-outline" onClick={() => goToStep(2)}><i className="fas fa-arrow-left"></i> Back</button>
-            <button type="button" className="btn-premium" onClick={() => continueFrom(4)}>Next <i className="fas fa-arrow-right"></i></button>
-          </div>
+          {singlePage ? null : (
+            <div className="bf-actions">
+              <button type="button" className="btn-outline" onClick={() => goToStep(2)}><i className="fas fa-arrow-left"></i> Back</button>
+              <button type="button" className="btn-premium" onClick={() => continueFrom(4)}>Next <i className="fas fa-arrow-right"></i></button>
+            </div>
+          )}
         </>
       )}
 
-      {step === 4 && (
+      {show(4) && (
         <>
           <div className="bf-heading"><i className="fas fa-camera"></i> Add Images</div>
           <div className="upload-area" onClick={() => document.getElementById('bPhotos')?.click()} style={{ marginBottom: 16 }}>
@@ -547,8 +572,13 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             onChange={(e) => patch({ description: e.target.value })}
             style={{ width: '100%', padding: 14, border: '1.5px solid #e2e8f0', borderRadius: 10, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, marginBottom: 16, outline: 'none' }}
           />
+          {singlePage && error ? (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 16 }}>
+              {error}
+            </div>
+          ) : null}
           <div className="bf-actions">
-            <button type="button" className="btn-outline" onClick={() => goToStep(3)}><i className="fas fa-arrow-left"></i> Back</button>
+            {singlePage ? null : <button type="button" className="btn-outline" onClick={() => goToStep(3)}><i className="fas fa-arrow-left"></i> Back</button>}
             <button type="button" className="btn-premium" disabled={loading} onClick={() => { void submit(); }}>
               {loading ? 'Saving...' : editListing ? <>Save Changes <i className="fas fa-check"></i></> : <>Submit Profile <i className="fas fa-check"></i></>}
             </button>
