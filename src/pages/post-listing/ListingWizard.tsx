@@ -85,7 +85,8 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
       email: current.email || user.email || '',
       facebookUrl: current.facebookUrl || profile.facebookUrl,
       websiteUrl: current.websiteUrl || profile.websiteUrl,
-      xUrl: current.xUrl || profile.xUrl
+      xUrl: current.xUrl || profile.xUrl,
+      youtubeUrl: current.youtubeUrl || profile.youtubeUrl
     }));
   }, [user, editListing]);
 

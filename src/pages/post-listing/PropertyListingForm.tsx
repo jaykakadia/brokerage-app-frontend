@@ -175,7 +175,7 @@ export default function PropertyListingForm({
             <PhoneWhatsAppFields mobile={form.mobile} whatsapp={form.whatsapp} sameAsMobile={form.sameAsMobile} onChange={onChange} />
           </div>
           <FloatField label="Email ID" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => onChange({ email })} />
-          <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} onChange={onChange} />
+          <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} youtubeUrl={form.youtubeUrl} onChange={onChange} />
 
           {singlePage ? null : (
             <div className="bf-actions">

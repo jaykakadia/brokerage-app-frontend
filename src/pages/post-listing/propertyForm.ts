@@ -21,6 +21,7 @@ export interface PropertyFormState {
   facebookUrl: string;
   websiteUrl: string;
   xUrl: string;
+  youtubeUrl: string;
   posterRole: PosterRole;
   forWhat: ListingFor;
   propType: PropType | '';
@@ -71,6 +72,7 @@ export const EMPTY_PROPERTY_FORM: PropertyFormState = {
   facebookUrl: '',
   websiteUrl: '',
   xUrl: '',
+  youtubeUrl: '',
   posterRole: 'real_owner',
   forWhat: 'sale',
   propType: '',
@@ -212,7 +214,7 @@ export function validatePropertyStep(form: PropertyFormState, step: PropertyStep
   return null;
 }
 
-const SOCIAL_LINK_LABELS = { websiteUrl: 'Website', facebookUrl: 'Facebook', xUrl: 'X' } as const;
+const SOCIAL_LINK_LABELS = { websiteUrl: 'Website', facebookUrl: 'Facebook', xUrl: 'X', youtubeUrl: 'YouTube' } as const;
 type SocialLinkState = Record<keyof typeof SOCIAL_LINK_LABELS, string>;
 
 /** Returns an error message for the first invalid social link, or null when all are blank or valid. */
@@ -228,12 +230,13 @@ export function normalizedSocialLinks(form: SocialLinkState): SocialLinkState {
   return {
     facebookUrl: normalizeExternalUrl(form.facebookUrl) || '',
     websiteUrl: normalizeExternalUrl(form.websiteUrl) || '',
-    xUrl: normalizeExternalUrl(form.xUrl) || ''
+    xUrl: normalizeExternalUrl(form.xUrl) || '',
+    youtubeUrl: normalizeExternalUrl(form.youtubeUrl) || ''
   };
 }
 
 /** Contact + social defaults taken from the signed-in user's profile. */
-export function profileContactDefaults(user: { phone?: string | null; whatsapp?: string | null; facebook_url?: string | null; website_url?: string | null; x_url?: string | null }) {
+export function profileContactDefaults(user: { phone?: string | null; whatsapp?: string | null; facebook_url?: string | null; website_url?: string | null; x_url?: string | null; youtube_url?: string | null }) {
   const mobile = digitsOnly(user.phone || '', 10);
   const whatsapp = digitsOnly(user.whatsapp || '', 10);
   const sameAsMobile = !whatsapp || whatsapp === mobile;
@@ -243,7 +246,8 @@ export function profileContactDefaults(user: { phone?: string | null; whatsapp?:
     sameAsMobile,
     facebookUrl: user.facebook_url || '',
     websiteUrl: user.website_url || '',
-    xUrl: user.x_url || ''
+    xUrl: user.x_url || '',
+    youtubeUrl: user.youtube_url || ''
   };
 }
 

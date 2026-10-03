@@ -314,6 +314,7 @@ export interface ContactLinkFields {
   facebookUrl: string;
   websiteUrl: string;
   xUrl: string;
+  youtubeUrl: string;
 }
 
 const tenDigits = (value: string): string => value.replace(/\D/g, '').slice(0, 10);
@@ -371,9 +372,10 @@ export function SocialLinkFields({
   facebookUrl,
   websiteUrl,
   xUrl,
+  youtubeUrl,
   onChange
-}: Pick<ContactLinkFields, 'facebookUrl' | 'websiteUrl' | 'xUrl'> & {
-  onChange: (patch: Partial<Pick<ContactLinkFields, 'facebookUrl' | 'websiteUrl' | 'xUrl'>>) => void;
+}: Pick<ContactLinkFields, 'facebookUrl' | 'websiteUrl' | 'xUrl' | 'youtubeUrl'> & {
+  onChange: (patch: Partial<Pick<ContactLinkFields, 'facebookUrl' | 'websiteUrl' | 'xUrl' | 'youtubeUrl'>>) => void;
 }) {
   return (
     <div className="social-links-box">
@@ -383,6 +385,7 @@ export function SocialLinkFields({
       <FloatField label="Website Link" icon="fas fa-globe" inputMode="url" value={websiteUrl} onChange={(value) => onChange({ websiteUrl: value })} />
       <FloatField label="Facebook Link" icon="fab fa-facebook-f" inputMode="url" value={facebookUrl} onChange={(value) => onChange({ facebookUrl: value })} />
       <FloatField label="X (Twitter) Link" icon="fab fa-x-twitter" inputMode="url" value={xUrl} onChange={(value) => onChange({ xUrl: value })} />
+      <FloatField label="YouTube Link" icon="fab fa-youtube" inputMode="url" value={youtubeUrl} onChange={(value) => onChange({ youtubeUrl: value })} />
     </div>
   );
 }

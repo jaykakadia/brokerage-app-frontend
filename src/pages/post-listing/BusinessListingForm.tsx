@@ -31,6 +31,7 @@ interface BusinessFormState {
   facebookUrl: string;
   websiteUrl: string;
   xUrl: string;
+  youtubeUrl: string;
   selectedCategories: SelectedCategory[];
   categorySearch: string;
   description: string;
@@ -56,6 +57,7 @@ const EMPTY_BUSINESS: BusinessFormState = {
   facebookUrl: '',
   websiteUrl: '',
   xUrl: '',
+  youtubeUrl: '',
   selectedCategories: [],
   categorySearch: '',
   description: ''
@@ -64,7 +66,7 @@ const EMPTY_BUSINESS: BusinessFormState = {
 // Fields reused from the user's last business listing (not description, photos or ref code)
 const REUSABLE_FIELDS = [
   'name', 'pincode', 'plot', 'building', 'street', 'landmark', 'area', 'city', 'state',
-  'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email', 'facebookUrl', 'websiteUrl', 'xUrl'
+  'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email', 'facebookUrl', 'websiteUrl', 'xUrl', 'youtubeUrl'
 ] as const satisfies ReadonlyArray<keyof BusinessFormState>;
 
 /** Rebuilds the form from a saved business listing (edit mode). */
@@ -143,7 +145,8 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       email: current.email || user.email || '',
       facebookUrl: current.facebookUrl || profile.facebookUrl,
       websiteUrl: current.websiteUrl || profile.websiteUrl,
-      xUrl: current.xUrl || profile.xUrl
+      xUrl: current.xUrl || profile.xUrl,
+      youtubeUrl: current.youtubeUrl || profile.youtubeUrl
     }));
   }, [user]);
 
@@ -398,7 +401,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             <PhoneWhatsAppFields mobile={form.mobile} whatsapp={form.whatsapp} sameAsMobile={form.sameAsMobile} onChange={patch} />
           </div>
           <FloatField label="Email Address" icon="fas fa-envelope" required type="email" value={form.email} onChange={(email) => patch({ email })} />
-          <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} onChange={patch} />
+          <SocialLinkFields facebookUrl={form.facebookUrl} websiteUrl={form.websiteUrl} xUrl={form.xUrl} youtubeUrl={form.youtubeUrl} onChange={patch} />
           {singlePage ? null : (
             <div className="bf-actions">
               <button type="button" className="btn-premium" onClick={() => continueFrom(2)}>Next <i className="fas fa-arrow-right"></i></button>
