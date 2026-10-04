@@ -27,8 +27,12 @@ import type {
   ListingStatsResponse
 } from '../types';
 
+export const API_BASE_URL: string = (
+  import.meta.env.VITE_API_URL || 'http://localhost:8000'
+).replace(/\/+$/, '');
+
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: API_BASE_URL,
   withCredentials: true, // Send and receive HTTP-only cookies
   headers: {
     'Accept': 'application/json'
@@ -74,8 +78,7 @@ export const getImageUrl = (path?: string | null): string => {
   }
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   if (cleanPath.startsWith('/uploads')) {
-    const apiBase = import.meta.env.VITE_API_URL || '';
-    return `${apiBase}${cleanPath}`;
+    return `${API_BASE_URL}${cleanPath}`;
   }
   return cleanPath;
 };
