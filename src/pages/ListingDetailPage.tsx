@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from '../utils/formatters';
-import { getListingUniqueId } from '../utils/url';
+import { getListingUniqueId, getListingUrl } from '../utils/url';
+import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
@@ -81,6 +82,18 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
       void fetchListing();
     }
   }, [listingId]);
+
+  useEffect(() => {
+    if (!listing) return;
+    const price = formatListingPrice(listing.price);
+    const summary = [price, listing.location].filter(Boolean).join(' · ');
+    setSeo({
+      title: listing.title,
+      description: toMetaDescription(`${summary}. ${listing.description || ''} Contact the owner directly on TradeCall India, zero brokerage.`),
+      path: getListingUrl(listing),
+      image: listing.images?.[0] ? getImageUrl(listing.images[0].file_path) : undefined
+    });
+  }, [listing]);
 
   // Sync wishlist status
   useEffect(() => {

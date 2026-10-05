@@ -18,6 +18,7 @@ import BlogDetailPage from './pages/BlogDetailPage';
 import LoginPage from './pages/LoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import { parseAppRoute, getListingUrl } from './utils/url';
+import { PAGE_SEO, setSeo } from './utils/seo';
 import type { NavigateFunction } from './types';
 
 export default function App() {
@@ -88,6 +89,12 @@ export default function App() {
     window.addEventListener('popstate', handleRouteChange);
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
+
+  // Listing and blog pages set their own SEO once their content loads
+  useEffect(() => {
+    if (activePage === 'listing-detail' || activePage === 'blog-detail') return;
+    setSeo(PAGE_SEO[activePage] ?? {});
+  }, [activePage]);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;

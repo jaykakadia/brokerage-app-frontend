@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { setSeo, toMetaDescription } from '../utils/seo';
 import { getBlogDetail, getImageUrl } from '../services/api';
 import type { NavigateFunction } from '../types';
 
@@ -63,6 +64,16 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
       void fetchBlog();
     }
   }, [blogIdentifier]);
+
+  useEffect(() => {
+    if (!blog || !blogIdentifier) return;
+    setSeo({
+      title: blog.title,
+      description: toMetaDescription(blog.content),
+      path: `/blog/${blogIdentifier}`,
+      image: blog.featured_image
+    });
+  }, [blog, blogIdentifier]);
 
   if (loading) {
     return (
