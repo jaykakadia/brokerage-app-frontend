@@ -85,6 +85,7 @@ export interface ListingStatsResponse {
   active_listings: number;
   featured_listings: number;
   cities_covered: number;
+  new_this_week?: number;
   registered_users: number;
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { isBusinessListing } from '../utils/listingKind';
+import { getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
@@ -142,17 +142,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const newTodayCount = useMemo(() => {
-    const today = new Date().toDateString();
-    return listings.filter((l) => {
-      if (!l.created_at) return false;
-      try {
-        return new Date(l.created_at).toDateString() === today;
-      } catch {
-        return false;
-      }
-    }).length;
-  }, [listings]);
+  const newListingsCount = useMemo(() => listings.filter(isNewListing).length, [listings]);
 
   // Load wishlist IDs when authenticated
   useEffect(() => {
@@ -236,6 +226,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [budgetMax, setBudgetMax] = useState('');
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+  const [newOnly, setNewOnly] = useState(false);
+  const [showCitiesPanel, setShowCitiesPanel] = useState(false);
+  const citiesPanelRef = useRef<HTMLDivElement>(null);
 
   const citiesList = useMemo(() => [
     'Palwal', 'Faridabad', 'Gurugram', 'Sonipat', 'Panipat',
@@ -279,6 +272,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       }
       if (target && budgetWrapperRef.current && !budgetWrapperRef.current.contains(target)) {
         setShowBudgetDropdown(false);
+      }
+      if (target && citiesPanelRef.current && !citiesPanelRef.current.contains(target)) {
+        setShowCitiesPanel(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -482,27 +478,42 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       });
   }, []);
 
+  const markedFeaturedListings = useMemo(
+    () => listings.filter((l) => l.is_featured || l.form_data?.featured || l.form_data?.is_featured),
+    [listings]
+  );
+
+  // The carousel falls back to the latest listings when none are featured; the Featured count does not
   const featuredListings = useMemo(() => {
-    const marked = listings.filter((l) => l.is_featured || l.form_data?.featured || l.form_data?.is_featured);
-    if (marked.length > 0) return marked;
-    if (listings.length > 0) return listings.slice(0, 8);
-    return [];
-  }, [listings]);
+    if (markedFeaturedListings.length > 0) return markedFeaturedListings;
+    return listings.slice(0, 8);
+  }, [markedFeaturedListings, listings]);
 
-  const citiesFromListings = useMemo(() => {
-    const cities = new Set<string>();
+  // Cities with listing counts, from the same listings shown below so the numbers match what a click shows
+  const cityCounts = useMemo(() => {
+    const byKey = new Map<string, { name: string; count: number }>();
     listings.forEach((item) => {
-      const raw = item.form_data?.city ? String(item.form_data.city) : item.location;
-      if (!raw) return;
-      const city = raw.split(',')[0].trim();
-      if (city) cities.add(city.toLowerCase());
+      const name = getListingCity(item);
+      if (!name) return;
+      const key = name.toLowerCase();
+      const entry = byKey.get(key);
+      if (entry) entry.count += 1;
+      else byKey.set(key, { name, count: 1 });
     });
-    return cities.size;
+    return Array.from(byKey.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }, [listings]);
 
-  const activeListingsCount = stats?.active_listings ?? listings.length;
-  const featuredCount = stats?.featured_listings ?? featuredListings.length;
-  const citiesCoveredCount = stats?.cities_covered ?? citiesFromListings;
+  // Until the listings load, show the site-wide stats
+  const listingsLoaded = !loading && !error;
+  const activeListingsCount = listingsLoaded ? listings.length : (stats?.active_listings ?? 0);
+  const featuredCount = listingsLoaded ? markedFeaturedListings.length : (stats?.featured_listings ?? 0);
+  const citiesCoveredCount = listingsLoaded ? cityCounts.length : (stats?.cities_covered ?? 0);
+  const newCount = listingsLoaded ? newListingsCount : (stats?.new_this_week ?? 0);
+
+  // Waits a frame so the filtered list has rendered before scrolling to it
+  const scrollToSection = (id: string): void => {
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }));
+  };
 
   // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
   const circularListings = useMemo(() => {
@@ -581,7 +592,26 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setTypeInput('');
     setHeroKeyword('');
     setActiveCategoryTab('all');
+    setNewOnly(false);
     if (onCitySelect) onCitySelect('');
+  };
+
+  const showAllListings = (): void => {
+    handleClearFilters();
+    scrollToSection('listings');
+  };
+
+  const showNewListings = (): void => {
+    handleClearFilters();
+    setNewOnly(true);
+    scrollToSection('listings');
+  };
+
+  const showCityListings = (city: string): void => {
+    handleClearFilters();
+    handleSelectCity(city);
+    setShowCitiesPanel(false);
+    scrollToSection('listings');
   };
 
   // Filter listings
@@ -591,12 +621,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     const desc = (item.description || '').toLowerCase();
     const price = Number(item.price) || 0;
 
+    if (newOnly && !isNewListing(item)) return false;
+
     // City filter: either from selected checkboxes or heroCity
+    const city = getListingCity(item).toLowerCase();
+    const matchesCity = (c: string): boolean => loc.includes(c.toLowerCase()) || city === c.toLowerCase();
     if (selectedCities.length > 0) {
-      const match = selectedCities.some((c) => loc.includes(c.toLowerCase()));
-      if (!match) return false;
+      if (!selectedCities.some(matchesCity)) return false;
     } else if (heroCity) {
-      if (!loc.includes(heroCity.toLowerCase())) return false;
+      if (!matchesCity(heroCity)) return false;
     }
 
     // Keyword
@@ -870,40 +903,62 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
           {/* Metrics Container directly below search box */}
           <div className="container metrics-inner">
-            <div className="metric-item">
+            <button type="button" className="metric-item metric-clickable" onClick={showAllListings} title="Show all active listings">
               <span className="metric-icon"><i className="fas fa-list-ul"></i></span>
               <div>
                 <span className="metric-num">{activeListingsCount}</span>
                 <div className="metric-label">Active Listings</div>
               </div>
-            </div>
-            <div className="metric-item">
+            </button>
+            <button type="button" className="metric-item metric-clickable" onClick={() => scrollToSection('featured')} title="Show featured listings">
               <span className="metric-icon"><i className="fas fa-star" style={{ color: 'rgb(245, 158, 11)' }}></i></span>
               <div>
                 <span className="metric-num">{featuredCount}</span>
                 <div className="metric-label">Featured Listings</div>
               </div>
+            </button>
+            <div className="metric-cities-wrap" ref={citiesPanelRef}>
+              <button
+                type="button"
+                className="metric-item metric-clickable"
+                onClick={() => setShowCitiesPanel((v) => !v)}
+                title="Show cities covered"
+                aria-expanded={showCitiesPanel}
+              >
+                <span className="metric-icon"><i className="fas fa-map-marker-alt"></i></span>
+                <div>
+                  <span className="metric-num">{citiesCoveredCount}</span>
+                  <div className="metric-label">Cities Covered <i className="fas fa-chevron-down" style={{ fontSize: '9px' }}></i></div>
+                </div>
+              </button>
+              {showCitiesPanel && (
+                <ul className="metric-cities-panel">
+                  {cityCounts.length === 0 ? (
+                    <li className="metric-cities-empty">No cities yet</li>
+                  ) : cityCounts.map((c) => (
+                    <li key={c.name}>
+                      <button type="button" onClick={() => showCityListings(c.name)}>
+                        <span><i className="fas fa-map-marker-alt"></i> {c.name}</span>
+                        <span className="metric-cities-count">{c.count}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <div className="metric-item">
-              <span className="metric-icon"><i className="fas fa-map-marker-alt"></i></span>
-              <div>
-                <span className="metric-num">{citiesCoveredCount}</span>
-                <div className="metric-label">Cities Covered</div>
-              </div>
-            </div>
-            <div className="metric-item">
+            <button type="button" className="metric-item metric-clickable" onClick={showNewListings} title="Show listings posted in the last 7 days">
               <span className="metric-icon"><i className="fas fa-chart-line"></i></span>
               <div>
-                <span className="metric-num">{newTodayCount}</span>
-                <div className="metric-label">New Today</div>
+                <span className="metric-num">{newCount}</span>
+                <div className="metric-label">New This Week</div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </section>
 
       {/* Featured Listings Section */}
-      <section className="featured-section">
+      <section className="featured-section" id="featured">
         <div className="container">
           <div className="section-header">
             <div>
@@ -1045,7 +1100,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             <div className="listings-controls">
               <div className="listing-count" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span><strong>{filteredListings.length}</strong> listings found</span>
-                {(heroCity || heroType || budgetMin || budgetMax || heroKeyword || selectedCities.length > 0) && (
+                {newOnly && (
+                  <span className="listing-filter-chip">
+                    New this week
+                    <button type="button" onClick={() => setNewOnly(false)} title="Show all listings">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {(heroCity || heroType || budgetMin || budgetMax || heroKeyword || selectedCities.length > 0 || newOnly) && (
                   <button
                     type="button"
                     className="btn-clear-filter"
