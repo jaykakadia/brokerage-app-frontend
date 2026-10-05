@@ -131,6 +131,8 @@ export const DEFAULT_FEATURED_LISTINGS: Listing[] = [
 ];
 
 const LISTINGS_PER_PAGE = 8;
+// Featured cards visible at once on desktop (matches the Recent Listings row)
+const FEATURED_PER_VIEW = 4;
 
 export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
@@ -531,32 +533,32 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }));
   };
 
+  // Featured cards slide only when there are more than fit in one row; otherwise they sit still in one row
+  const featuredSlides = featuredListings.length > FEATURED_PER_VIEW;
+
   // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
   const circularListings = useMemo(() => {
-    if (featuredListings.length <= 1) return featuredListings;
+    if (!featuredSlides) return featuredListings;
     return [...featuredListings, ...featuredListings, ...featuredListings];
-  }, [featuredListings]);
+  }, [featuredListings, featuredSlides]);
 
   // Start at the beginning of the middle clone
   useEffect(() => {
-    if (featuredListings.length > 1) {
-      setCarouselIndex(featuredListings.length);
-      setWithTransition(false);
-    }
-  }, [featuredListings.length]);
+    setWithTransition(false);
+    setCarouselIndex(featuredSlides ? featuredListings.length : 0);
+  }, [featuredListings.length, featuredSlides]);
 
-  // When transition ends at outer bounds, seamlessly snap back to middle clone without transition
-  const handleTransitionEnd = (): void => {
+  // Once a slide has moved out of the middle clone, snap back into it without animation.
+  // Timed rather than tied to transitionend, which never fires in a background tab and let the index run off into blank space.
+  useEffect(() => {
     const n = featuredListings.length;
-    if (n <= 1) return;
-    if (carouselIndex >= 2 * n) {
+    if (!featuredSlides || (carouselIndex >= n && carouselIndex < 2 * n)) return;
+    const id = window.setTimeout(() => {
       setWithTransition(false);
-      setCarouselIndex((prev) => prev - n);
-    } else if (carouselIndex < n) {
-      setWithTransition(false);
-      setCarouselIndex((prev) => prev + n);
-    }
-  };
+      setCarouselIndex((prev) => (((prev - n) % n) + n) % n + n);
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [carouselIndex, featuredListings.length, featuredSlides]);
 
   // Re-enable CSS transition on the next frame after an instant snap
   useEffect(() => {
@@ -577,13 +579,14 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   // Auto slide periodically, pausing when user hovers over the carousel
   useEffect(() => {
-    if (featuredListings.length <= 1 || isCarouselHovered || hasActiveFilters) return;
+    if (!featuredSlides || isCarouselHovered || hasActiveFilters) return;
     const interval = setInterval(() => {
+      if (document.hidden) return;
       setWithTransition(true);
       setCarouselIndex((prev) => prev + 1);
     }, 4500);
     return () => clearInterval(interval);
-  }, [featuredListings.length, isCarouselHovered, hasActiveFilters]);
+  }, [featuredSlides, isCarouselHovered, hasActiveFilters]);
 
   const handleTouchStart = (e: React.TouchEvent): void => {
     touchStartX.current = e.touches[0].clientX;
@@ -592,7 +595,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const handleTouchEnd = (e: React.TouchEvent): void => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) {
+    if (featuredSlides && Math.abs(diff) > 40) {
       slideCarousel(diff > 0 ? 1 : -1);
     }
     touchStartX.current = null;
@@ -1112,7 +1115,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            {featuredListings.length > 1 && (
+            {featuredSlides && (
               <button
                 type="button"
                 className="carousel-btn prev"
@@ -1130,13 +1133,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </div>
             ) : (
             <div
-              className="carousel-track"
+              className={`carousel-track ${featuredSlides ? '' : 'static'}`}
               id="carouselTrack"
-              onTransitionEnd={handleTransitionEnd}
-              style={{
-                transform: `translateX(-${carouselIndex * 320}px)`,
+              style={featuredSlides ? {
+                // One step = one card plus the gap; the track's 4px side padding is taken off its width
+                transform: `translateX(calc(${-carouselIndex} * (100% + 12px) / var(--per-view)))`,
                 transition: withTransition ? 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
-              }}
+              } : undefined}
             >
               {circularListings.map((listing, index) => {
                 const imgSrc = getFirstImageUrl(listing);
@@ -1216,7 +1219,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             )}
             </div>
 
-            {featuredListings.length > 1 && (
+            {featuredSlides && (
               <button
                 type="button"
                 className="carousel-btn next"

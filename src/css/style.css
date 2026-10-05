@@ -723,8 +723,10 @@ ul { list-style: none; }
 .recent-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: 20px;
+  padding: 0 4px; /* same card widths as the Featured row above */
 }
+.recent-grid .listing-card { width: auto; }
 @media (max-width: 991px) { .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 479px) { .recent-grid { grid-template-columns: minmax(0, 1fr); } }
 
@@ -772,11 +774,15 @@ ul { list-style: none; }
   overflow: hidden;
 }
 .carousel-track {
+  --per-view: 4; /* keep in step with FEATURED_PER_VIEW in HomePage.tsx */
   display: flex;
   gap: 20px;
-  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
   padding: 8px 4px 16px;
 }
+/* 4 or fewer featured listings: no sliding, they wrap into rows on smaller screens */
+.carousel-track.static { flex-wrap: wrap; }
+@media (max-width: 991px) { .carousel-track { --per-view: 2; } }
+@media (max-width: 479px) { .carousel-track { --per-view: 1; } }
 .carousel-btn {
   position: absolute;
   top: 50%;
@@ -836,7 +842,7 @@ ul { list-style: none; }
   box-shadow: 0 8px 32px rgba(0,0,0,0.12);
   border-color: #c6f2e2;
 }
-.featured-card { width: 300px; }
+.featured-card { width: auto; flex: 0 0 calc((100% - (var(--per-view) - 1) * 20px) / var(--per-view)); min-width: 0; }
 .featured-card .card-img-wrap { height: 185px; }
 
 .card-img-wrap {
