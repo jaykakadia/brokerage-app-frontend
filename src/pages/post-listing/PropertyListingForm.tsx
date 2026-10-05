@@ -1,4 +1,4 @@
-import { ExistingPhotos, FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
+import { ExistingPhotos, FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SearchableSelect, SocialLinkFields, StepIndicator } from './fields';
 import { StateOptions } from '../../utils/indianStates';
 import {
   amenitiesFor,
@@ -238,11 +238,7 @@ export default function PropertyListingForm({
 
           <div className="bf-heading" style={{ marginTop: 24, fontSize: 16 }}><i className="fas fa-map-marker-alt"></i> Property Location</div>
           <div className="bf-row keep-row">
-            <FloatSelect label="City" required value={form.city} onChange={setCity}>
-              {cities.map((item) => (
-                <option key={item.city} value={item.city}>{item.city}</option>
-              ))}
-            </FloatSelect>
+            <SearchableSelect label="City" required value={form.city} options={cities.map((item) => item.city)} onChange={setCity} />
             <FloatSelect label="State" required value={form.state} onChange={(state) => onChange({ state })}>
               <StateOptions current={form.state} />
             </FloatSelect>

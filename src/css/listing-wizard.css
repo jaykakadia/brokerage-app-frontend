@@ -356,7 +356,20 @@
   font-weight: 600;
   box-shadow: 0 0 0 4px rgba(12, 98, 83, 0.12);
 }
+.listing-choice-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.listing-choice-summary span { padding: 4px 10px; border-radius: 999px; background: #e6f4ef; color: #0c6253; font-weight: 600; }
+.listing-choice-summary span.is-type { background: none; padding-left: 0; color: #475569; }
+.listing-choice-summary button { margin-left: auto; border: none; background: none; color: #0c6253; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .listing-type-hint { font-size: 12.5px; font-weight: 600; color: #c2410c; margin: 2px 0 8px; }
 @media (max-width: 768px) {
   .post-card-head { margin: -18px -16px 18px; padding: 16px; }
 }
+
+/* Searchable dropdown (City) */
+.searchable-select input { padding-right: 38px; }
+.searchable-select-chevron { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px; pointer-events: none; }
+.searchable-select-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); max-height: 240px; overflow-y: auto; }
+.searchable-select-menu button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 14px; border: none; border-bottom: 1px solid #f1f5f9; background: #fff; text-align: left; font-family: inherit; font-size: 14px; color: #111827; cursor: pointer; }
+.searchable-select-menu button.is-active { background: #f0faf7; }
+.searchable-select-menu button.is-selected { font-weight: 600; color: #0c6253; }
+.searchable-select-empty { padding: 10px 14px; font-size: 13px; color: #6b7280; }

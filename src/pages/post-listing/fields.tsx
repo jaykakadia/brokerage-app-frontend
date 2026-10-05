@@ -82,6 +82,123 @@ export function FloatSelect({
   );
 }
 
+/**
+ * Dropdown you can type into to filter a long list (e.g. cities). Focusing it starts a fresh search;
+ * only a value from the list can be picked, and leaving without picking keeps the current choice.
+ */
+export function SearchableSelect({
+  label,
+  value,
+  options,
+  onChange,
+  required = false,
+  icon
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  required?: boolean;
+  icon?: string;
+}) {
+  const [query, setQuery] = useState(value);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) setQuery(value);
+  }, [value, open]);
+
+  const q = query.trim().toLowerCase();
+  const matches = q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+
+  useEffect(() => {
+    listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' });
+  }, [active]);
+
+  const choose = (option: string) => {
+    onChange(option);
+    setQuery(option);
+    setOpen(false);
+    setActive(-1);
+  };
+
+  const close = () => {
+    const exact = options.find((o) => o.toLowerCase() === q);
+    if (exact) {
+      if (exact !== value) onChange(exact);
+      setQuery(exact);
+    } else {
+      setQuery(value);
+    }
+    setOpen(false);
+    setActive(-1);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setOpen(true);
+      setActive((i) => (matches.length ? (i + 1) % matches.length : -1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive((i) => (i <= 0 ? matches.length - 1 : i - 1));
+    } else if (e.key === 'Enter' && open) {
+      e.preventDefault();
+      const pick = matches[active >= 0 ? active : 0];
+      if (pick) choose(pick);
+    } else if (e.key === 'Escape') {
+      close();
+    }
+  };
+
+  return (
+    <div className="premium-float searchable-select">
+      <input
+        type="text"
+        placeholder={value || ' '}
+        value={query}
+        required={required}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        onFocus={() => { setQuery(''); setOpen(true); }}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); setActive(-1); }}
+        onBlur={close}
+        onKeyDown={onKeyDown}
+      />
+      <label>
+        {label}
+        {required ? <span style={{ color: '#dc2626' }}> *</span> : null}
+      </label>
+      {icon ? <i className={`${icon} field-icon`} /> : null}
+      <i className="fas fa-chevron-down searchable-select-chevron" />
+      {open && (
+        <div className="searchable-select-menu" role="listbox" ref={listRef}>
+          {matches.length === 0 ? (
+            <div className="searchable-select-empty">No match for "{query.trim()}"</div>
+          ) : matches.map((option, i) => (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={option === value}
+              className={`${i === active ? 'is-active' : ''}${option === value ? ' is-selected' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => setActive(i)}
+              onClick={() => choose(option)}
+            >
+              {option}
+              {option === value ? <i className="fas fa-check" /> : null}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Pills<T extends string>({
   label,
   value,

@@ -232,6 +232,16 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
     : (role === 'business' ? businessStep : step) > 1;
   const typeChanged = editListing !== null && role !== '' && role !== listingRoleOf(editListing);
 
+  // Choices made on step 2, repeated on the later steps so the user doesn't lose track of them
+  const choiceSummary = (role === 'owner' || role === 'buyer') && !singlePage && step > 2
+    ? [
+        role === 'buyer' ? 'Property - Buyer / Renter' : 'Property - Seller / Landlord',
+        { real_buyer: 'User', real_owner: 'Real Owner', agent: 'Agent', builder: 'Builder' }[form.posterRole],
+        form.forWhat === 'rent' ? 'Rent/Lease' : role === 'buyer' ? 'Buy' : 'Sale',
+        { flat: 'Flat / House / Villa', house: 'Flat / House / Villa', plot: 'Plot', agriculture: 'Agriculture Land', commercial: 'Commercial', pg: 'PG / Guest House' }[form.propType as string]
+      ].filter(Boolean)
+    : null;
+
   return (
     <>
       <div className={`form-group listing-type-box ${role ? '' : 'needs-choice'}`}>
@@ -278,6 +288,16 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
           <option value="buyer">Property - Buyer / Renter</option>
           <option value="owner">Property - Seller / Landlord</option>
         </select>
+        {choiceSummary && (
+          <div className="listing-choice-summary">
+            {choiceSummary.map((item, i) => (
+              <span key={i} className={i === 0 ? 'is-type' : undefined}>{item}</span>
+            ))}
+            <button type="button" onClick={() => goToStep(2)}>
+              <i className="fas fa-pen"></i> Change
+            </button>
+          </div>
+        )}
         {typeChanged && (
           <div style={{ fontSize: 12, color: '#b45309', marginTop: 6 }}>
             <i className="fas fa-info-circle"></i> The listing type changes when you click Save Changes. Fill in any required fields for the new type.
