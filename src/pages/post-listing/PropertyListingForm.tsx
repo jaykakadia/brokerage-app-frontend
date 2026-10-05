@@ -305,16 +305,15 @@ export default function PropertyListingForm({
               {frontRoadField}
               {facingPills}
               <div className="bf-row keep-row">
-                <div style={{ flex: 2 }}><FloatField label="Built-up Area / Area" inputMode="decimal" value={form.area} onChange={(value) => changeLand({ area: value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') })} /></div>
+                <div style={{ flex: 2 }}><FloatField label="Built-up Area / Area" inputMode="decimal" value={form.area} onChange={(value) => onChange({ area: value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1') })} /></div>
                 <div style={{ flex: 1 }}>
-                  <FloatSelect label="Unit" value={form.unit} onChange={(unit) => changeLand({ unit })}>
+                  <FloatSelect label="Unit" value={form.unit} onChange={(unit) => onChange({ unit })}>
                     <option value="Sq.Ft">Sq.Ft</option>
                     <option value="Sq.Yd">Sq.Yd</option>
                     <option value="Sq.Mtr">Sq.Mtr</option>
                   </FloatSelect>
                 </div>
               </div>
-              {rateField(form.unit)}
             </>
           )}
 

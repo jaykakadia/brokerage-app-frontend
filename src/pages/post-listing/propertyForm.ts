@@ -255,14 +255,13 @@ const inrNumber = (value: string): number => Number(value.replace(/[^\d]/g, ''))
 
 /** Area and unit that a per-unit rate applies to, for property types priced as area x rate. */
 export function landAreaFor(form: Pick<PropertyFormState, 'propType' | 'area' | 'unit' | 'plotArea' | 'plotUnit' | 'agriArea' | 'agriUnit'>): { area: number; unit: string } | null {
-  if (form.propType === 'flat' || form.propType === 'house') return { area: Number(form.area) || 0, unit: form.unit };
   if (form.propType === 'plot') return { area: Number(form.plotArea) || 0, unit: form.plotUnit };
   if (form.propType === 'agriculture') return { area: Number(form.agriArea) || 0, unit: form.agriUnit };
   return null;
 }
 
 /**
- * Applies a change to an area-priced form (flat/house, plot, agriculture) and recalculates price = area x rate.
+ * Applies a change to an area-priced form (plot, agriculture) and recalculates price = area x rate.
  * Leaves price alone when area or rate is missing, so a manually typed price survives.
  */
 export function withAutoPrice(form: PropertyFormState, patch: Partial<PropertyFormState>): Partial<PropertyFormState> {
