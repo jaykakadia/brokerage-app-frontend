@@ -177,7 +177,6 @@ ul { list-style: none; }
 .hero {
   position: relative;
   background: linear-gradient(135deg, #0a2e25 0%, #0d7a5f 40%, #14a37a 100%);
-  min-height: 440px;
   display: flex;
   align-items: center;
   
@@ -197,7 +196,7 @@ ul { list-style: none; }
 .hero-content {
   position: relative;
   z-index: 2;
-  padding: 60px 20px;
+  padding: 28px 20px 24px;
   width: 100%;
   text-align: center;
 }
@@ -205,7 +204,7 @@ ul { list-style: none; }
   font-size: clamp(24px, 4vw, 42px);
   font-weight: 800;
   color: #fff;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
   line-height: 1.2;
 }
 
@@ -624,7 +623,7 @@ ul { list-style: none; }
 
 /* When metrics-inner is placed inside hero-content below search box */
 .hero-content .metrics-inner {
-  margin-top: 32px;
+  margin-top: 18px;
   padding: 0;
   gap: 48px;
 }
@@ -718,14 +717,14 @@ ul { list-style: none; }
 
 /* ===================== FEATURED SECTION ===================== */
 .featured-section {
-  padding: 50px 0 30px;
+  padding: 24px 0 20px;
   background: #f4f6f9;
 }
 .section-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -754,6 +753,9 @@ ul { list-style: none; }
 /* ===================== CAROUSEL ===================== */
 .carousel-wrapper {
   position: relative;
+}
+/* Only the sliding track is clipped, so the arrows can sit in the side gutter uncut */
+.carousel-viewport {
   overflow: hidden;
 }
 .carousel-track {
@@ -782,8 +784,12 @@ ul { list-style: none; }
   transition: all 0.2s;
 }
 .carousel-btn:hover { background: #0d7a5f; color: #fff; transform: translateY(-50%) scale(1.05); }
-.carousel-btn.prev { left: -6px; }
-.carousel-btn.next { right: -6px; }
+.carousel-btn.prev { left: -24px; }
+.carousel-btn.next { right: -24px; }
+@media (max-width: 768px) {
+  .carousel-btn.prev { left: -8px; }
+  .carousel-btn.next { right: -8px; }
+}
 
 .carousel-dots {
   display: flex;
@@ -818,6 +824,7 @@ ul { list-style: none; }
   border-color: #c6f2e2;
 }
 .featured-card { width: 300px; }
+.featured-card .card-img-wrap { height: 185px; }
 
 .card-img-wrap {
   position: relative;

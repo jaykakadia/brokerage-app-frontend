@@ -495,16 +495,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       });
   }, []);
 
-  const markedFeaturedListings = useMemo(
-    () => listings.filter((l) => l.is_featured || l.form_data?.featured || l.form_data?.is_featured),
-    [listings]
-  );
-
-  // The carousel falls back to the latest listings when none are featured; the Featured count does not
-  const featuredListings = useMemo(() => {
-    if (markedFeaturedListings.length > 0) return markedFeaturedListings;
-    return listings.slice(0, 8);
-  }, [markedFeaturedListings, listings]);
+  // Only listings featured by the server (paid featured plan or admin) — never a fallback to the latest ones
+  const featuredListings = useMemo(() => listings.filter((l) => l.is_featured), [listings]);
 
   // Cities with listing counts, from the same listings shown below so the numbers match what a click shows
   const cityCounts = useMemo(() => {
@@ -523,7 +515,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   // Until the listings load, show the site-wide stats
   const listingsLoaded = !loading && !error;
   const activeListingsCount = listingsLoaded ? listings.length : (stats?.active_listings ?? 0);
-  const featuredCount = listingsLoaded ? markedFeaturedListings.length : (stats?.featured_listings ?? 0);
+  const featuredCount = listingsLoaded ? featuredListings.length : (stats?.featured_listings ?? 0);
   const citiesCoveredCount = listingsLoaded ? cityCounts.length : (stats?.cities_covered ?? 0);
   const newCount = listingsLoaded ? newListingsCount : 0;
 
@@ -1019,6 +1011,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </button>
             )}
 
+            <div className="carousel-viewport">
             {featuredListings.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', width: '100%' }}>
                 No featured listings yet
@@ -1109,6 +1102,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               })}
             </div>
             )}
+            </div>
 
             {featuredListings.length > 1 && (
               <button

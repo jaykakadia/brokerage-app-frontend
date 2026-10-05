@@ -132,14 +132,22 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Render login page completely standalone (no header/footer)
+  // Login page keeps the site header (no footer)
   if (activePage === 'login') {
     return (
-      <LoginPage
-        initialTab={loginTab}
-        onNavigate={navigateTo}
-        onLoginSuccess={() => navigateTo('home')}
-      />
+      <div className="tradecall-app">
+        <Header
+          activeCity={activeCity}
+          onCitySelect={setActiveCity}
+          onNavigate={navigateTo}
+          activePage={activePage}
+        />
+        <LoginPage
+          initialTab={loginTab}
+          onNavigate={navigateTo}
+          onLoginSuccess={() => navigateTo('home')}
+        />
+      </div>
     );
   }
 

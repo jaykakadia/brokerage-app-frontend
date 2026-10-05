@@ -13,6 +13,8 @@ export interface HeaderProps {
 export default function Header({ onNavigate, activePage }: HeaderProps) {
   const { user, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // The sign-in page is already where these buttons lead
+  const onAuthPage = activePage === 'login';
 
   return (
     <>
@@ -94,15 +96,17 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
           </a>
 
           <div className="header-right">
-            <button
-              type="button"
-              className="btn-post-free"
-              onClick={() => onNavigate('post-listing')}
-            >
-              <i className="fas fa-plus-circle"></i> Post Free
-            </button>
+            {!onAuthPage && (
+              <button
+                type="button"
+                className="btn-post-free"
+                onClick={() => onNavigate('post-listing')}
+              >
+                <i className="fas fa-plus-circle"></i> Post Free
+              </button>
+            )}
 
-            {user ? (
+            {onAuthPage ? null : user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
@@ -167,7 +171,9 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
               <a href="/blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
               <a href="/about" className={`drawer-nav-item ${activePage === 'about' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('about'); setDrawerOpen(false); }}>About Us</a>
               <a href="/contact" className={`drawer-nav-item ${activePage === 'contact' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('contact'); setDrawerOpen(false); }}>Contact Us</a>
-              <a href="/post-listing" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); setDrawerOpen(false); }}>Post Free Listing</a>
+              {!onAuthPage && (
+                <a href="/post-listing" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); setDrawerOpen(false); }}>Post Free Listing</a>
+              )}
               {user && (
                 <a href="/account" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('account'); setDrawerOpen(false); }}>My Account ({user.name})</a>
               )}
@@ -178,7 +184,7 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
             <div className="drawer-footer">
               {user ? (
                 <button className="btn-primary" style={{ width: '100%' }} onClick={() => { void logout(); setDrawerOpen(false); }}>Sign Out</button>
-              ) : (
+              ) : !onAuthPage && (
                 <button className="btn-drawer-signin" onClick={() => { onNavigate('login'); setDrawerOpen(false); }}>
                   <i className="fas fa-sign-in-alt"></i> Sign-In / Register
                 </button>
