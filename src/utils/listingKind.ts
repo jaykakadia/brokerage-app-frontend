@@ -22,3 +22,19 @@ export const isNewListing = (listing: Pick<Listing, 'created_at'>): boolean => {
   const created = new Date(listing.created_at);
   return !Number.isNaN(created.getTime()) && created.toDateString() === new Date().toDateString();
 };
+
+export type ListingDeal = 'sale' | 'rent' | 'buy';
+
+/**
+ * What a property listing is for: a buyer's requirement ("buy"), or an owner/agent offer for sale or rent.
+ * Wizard listings store `kind` + `forWhat`; older ones used `listingType`/`purpose` or a description tag.
+ */
+export const getListingDeal = (listing: Pick<Listing, 'form_data' | 'description'>): ListingDeal => {
+  const fd = listing.form_data || {};
+  if (fd.kind === 'buyer') return 'buy';
+  const legacy = String(fd.forWhat || fd.listingType || fd.purpose || '').toLowerCase();
+  if (legacy.includes('rent') || legacy.includes('lease')) return 'rent';
+  if (legacy.includes('buy')) return 'buy';
+  if ((listing.description || '').toLowerCase().includes('[listing_type: rent]')) return 'rent';
+  return 'sale';
+};

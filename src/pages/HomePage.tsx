@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
+import { getListingCity, getListingDeal, isBusinessListing, isNewListing } from '../utils/listingKind';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
@@ -130,6 +130,8 @@ export const DEFAULT_FEATURED_LISTINGS: Listing[] = [
   }
 ];
 
+const LISTINGS_PER_PAGE = 8;
+
 export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
@@ -221,13 +223,14 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const budgetWrapperRef = useRef<HTMLDivElement>(null);
 
   const [heroKeyword, setHeroKeyword] = useState('');
-  const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'verified'>('all');
+  const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'buy' | 'verified'>('all');
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
   const [newOnly, setNewOnly] = useState(false);
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
 
   const citiesList = useMemo(() => [
@@ -656,15 +659,11 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       if (!matches) return false;
     }
 
-    // Category Tabs: all, sale, rent, verified
-    if (activeCategoryTab === 'sale') {
-      const isRent = desc.includes('[listing_type: rent]') || (item.form_data?.listingType === 'rent');
-      if (isRent) return false;
-    } else if (activeCategoryTab === 'rent') {
-      const isRent = desc.includes('[listing_type: rent]') || (item.form_data?.listingType === 'rent');
-      if (!isRent) return false;
-    } else if (activeCategoryTab === 'verified') {
-      if (item.verified !== 1) return false;
+    // Category Tabs: all, sale, rent, buy, verified
+    if (activeCategoryTab === 'verified') {
+      if (Number(item.verified) !== 1) return false;
+    } else if (activeCategoryTab !== 'all') {
+      if (getListingDeal(item) !== activeCategoryTab) return false;
     }
 
     // Budget
@@ -674,6 +673,20 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
     return true;
   });
+
+  // Back to the first page whenever the filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [newOnly, selectedCities, heroCity, heroKeyword, heroType, activeCategoryTab, budgetMin, budgetMax]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredListings.length / LISTINGS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const pagedListings = filteredListings.slice((page - 1) * LISTINGS_PER_PAGE, page * LISTINGS_PER_PAGE);
+
+  const goToPage = (next: number): void => {
+    setCurrentPage(next);
+    scrollToSection('listings');
+  };
 
   return (
     <div className="home-page">
@@ -1108,7 +1121,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     </button>
                   </span>
                 )}
-                {(heroCity || heroType || budgetMin || budgetMax || heroKeyword || selectedCities.length > 0 || newOnly) && (
+                {(heroCity || heroType || budgetMin || budgetMax || heroKeyword || selectedCities.length > 0 || newOnly || activeCategoryTab !== 'all') && (
                   <button
                     type="button"
                     className="btn-clear-filter"
@@ -1141,6 +1154,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     onClick={() => setActiveCategoryTab('rent')}
                   >
                     For Rent
+                  </button>
+                  <button
+                    type="button"
+                    className={`cat-tab ${activeCategoryTab === 'buy' ? 'active' : ''}`}
+                    onClick={() => setActiveCategoryTab('buy')}
+                  >
+                    For Buy
                   </button>
                   <button
                     type="button"
@@ -1219,7 +1239,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 id="listingsGrid"
                 style={{ gridTemplateColumns: viewType === 'list' ? '1fr' : '' }}
               >
-                {filteredListings.map((listing) => {
+                {pagedListings.map((listing) => {
                   const imgSrc = getFirstImageUrl(listing);
                   const priceStr = formatListingPrice(listing.price);
                   const pType = listing.form_data?.propType || 'Property';
@@ -1323,6 +1343,26 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {!loading && !error && totalPages > 1 && (
+              <div className="pagination">
+                <button type="button" className="page-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>
+                  <i className="fas fa-chevron-left"></i> Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`page-btn ${n === page ? 'active' : ''}`}
+                    onClick={() => goToPage(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button type="button" className="page-btn" disabled={page === totalPages} onClick={() => goToPage(page + 1)}>
+                  Next <i className="fas fa-chevron-right"></i>
+                </button>
               </div>
             )}
           </div>
