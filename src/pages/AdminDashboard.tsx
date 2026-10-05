@@ -4,8 +4,9 @@ import api, {
   createPlan,
   updatePlan,
   deletePlan,
-  getRazorpaySettings,
-  saveRazorpaySettings,
+  getCashfreeSettings,
+  saveCashfreeSettings,
+  API_BASE_URL,
   getRoleLimits,
   saveRoleLimits,
   getEmployees,
@@ -142,13 +143,11 @@ interface CredFormState {
   newPassword: string;
 }
 
-interface RzpSettingsState {
-  key_id: string;
-  key_secret: string;
-  webhook_secret: string;
-  test_mode: boolean;
+interface CashfreeSettingsState {
+  app_id: string;
+  secret_key: string;
+  sandbox: boolean;
   has_secret: boolean;
-  has_webhook_secret: boolean;
 }
 
 type AdminModule =
@@ -162,7 +161,7 @@ type AdminModule =
   | 'blogs'
   | 'enquiries'
   | 'settings'
-  | 'razorpay';
+  | 'cashfree';
 
 const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'listings', label: 'Listings Management', icon: 'fas fa-building' },
@@ -175,7 +174,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
   { key: 'settings', label: 'Settings', icon: 'fas fa-cog' },
-  { key: 'razorpay', label: 'Razorpay Settings', icon: 'fas fa-credit-card' }
+  { key: 'cashfree', label: 'Cashfree Settings', icon: 'fas fa-credit-card' }
 ];
 
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
@@ -296,17 +295,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   });
   const [credSaving, setCredSaving] = useState<boolean>(false);
 
-  // === RAZORPAY SETTINGS STATE ===
-  const [rzpSettings, setRzpSettings] = useState<RzpSettingsState>({
-    key_id: '',
-    key_secret: '',
-    webhook_secret: '',
-    test_mode: true,
-    has_secret: false,
-    has_webhook_secret: false
+  // === CASHFREE SETTINGS STATE ===
+  const [cfSettings, setCfSettings] = useState<CashfreeSettingsState>({
+    app_id: '',
+    secret_key: '',
+    sandbox: true,
+    has_secret: false
   });
-  const [rzpLoading, setRzpLoading] = useState<boolean>(false);
-  const [rzpSaving, setRzpSaving] = useState<boolean>(false);
+  const [cfLoading, setCfLoading] = useState<boolean>(false);
+  const [cfSaving, setCfSaving] = useState<boolean>(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -757,45 +754,41 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  // --- RAZORPAY SETTINGS HANDLERS ---
-  const fetchRazorpaySettings = async () => {
-    setRzpLoading(true);
+  // --- CASHFREE SETTINGS HANDLERS ---
+  const fetchCashfreeSettings = async () => {
+    setCfLoading(true);
     try {
-      const res = await getRazorpaySettings();
+      const res = await getCashfreeSettings();
       if (res.data?.data) {
-        setRzpSettings({
-          key_id: res.data.data.key_id || '',
-          key_secret: '',
-          webhook_secret: '',
-          test_mode: res.data.data.test_mode !== false,
-          has_secret: res.data.data.has_secret || false,
-          has_webhook_secret: res.data.data.has_webhook_secret || false
+        setCfSettings({
+          app_id: res.data.data.app_id || '',
+          secret_key: '',
+          sandbox: res.data.data.environment !== 'production',
+          has_secret: res.data.data.has_secret || false
         });
       }
     } catch {
-      showToast('Failed to fetch Razorpay settings', 'error');
+      showToast('Failed to fetch Cashfree settings', 'error');
     } finally {
-      setRzpLoading(false);
+      setCfLoading(false);
     }
   };
 
-  const handleSaveRazorpaySettings = async (e: React.FormEvent) => {
+  const handleSaveCashfreeSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRzpSaving(true);
+    setCfSaving(true);
     try {
-      const payload = {
-        key_id: rzpSettings.key_id.trim() || undefined,
-        key_secret: rzpSettings.key_secret.trim() || undefined,
-        webhook_secret: rzpSettings.webhook_secret.trim() || undefined,
-        test_mode: rzpSettings.test_mode
-      };
-      await saveRazorpaySettings(payload);
-      showToast('Razorpay settings saved successfully!');
-      fetchRazorpaySettings();
+      await saveCashfreeSettings({
+        app_id: cfSettings.app_id.trim() || undefined,
+        secret_key: cfSettings.secret_key.trim() || undefined,
+        environment: cfSettings.sandbox ? 'sandbox' : 'production'
+      });
+      showToast('Cashfree settings saved successfully!');
+      fetchCashfreeSettings();
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err) || 'Failed to save settings', 'error');
     } finally {
-      setRzpSaving(false);
+      setCfSaving(false);
     }
   };
 
@@ -1110,9 +1103,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     } else if (activeModule === 'settings') {
       fetchMailSettings();
       fetchSignupGuide();
-      fetchRazorpaySettings();
-    } else if (activeModule === 'razorpay') {
-      fetchRazorpaySettings();
+      fetchCashfreeSettings();
+    } else if (activeModule === 'cashfree') {
+      fetchCashfreeSettings();
     }
   }, [activeModule, listingTab]);
 
@@ -2227,79 +2220,71 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         )}
 
         {/* ======================================================== */}
-        {/* MODULE 6: RAZORPAY GATEWAY CONFIGURATION */}
+        {/* MODULE 6: CASHFREE GATEWAY CONFIGURATION */}
         {/* ======================================================== */}
-        {activeModule === 'razorpay' && (
+        {activeModule === 'cashfree' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', maxWidth: '640px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
               <i className="fas fa-credit-card" style={{ color: '#0c6253', fontSize: '24px' }}></i>
               <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                Razorpay Payment Gateway Settings
+                Cashfree Payment Gateway Settings
               </h2>
             </div>
             <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '24px' }}>
               Configure your API keys for payment processing and automated lead credit. Settings saved here dynamically override environment defaults with zero downtime.
             </p>
 
-            {rzpLoading ? (
+            {cfLoading ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
                 <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
-                <div>Loading Razorpay settings...</div>
+                <div>Loading Cashfree settings...</div>
               </div>
             ) : (
-              <form onSubmit={handleSaveRazorpaySettings}>
+              <form onSubmit={handleSaveCashfreeSettings}>
                 <div className="form-group full" style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 600 }}>Razorpay Key ID</label>
+                  <label style={{ fontSize: '13px', fontWeight: 600 }}>Cashfree App ID</label>
                   <input
                     type="text"
-                    placeholder="rzp_test_... or rzp_live_..."
-                    value={rzpSettings.key_id}
-                    onChange={(e) => setRzpSettings({ ...rzpSettings, key_id: e.target.value })}
+                    placeholder="Client ID / App ID"
+                    value={cfSettings.app_id}
+                    onChange={(e) => setCfSettings({ ...cfSettings, app_id: e.target.value })}
                   />
                   <small style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                    Publishable Key ID provided in your Razorpay Dashboard.
+                    From Cashfree Merchant Dashboard → Developers → API Keys.
                   </small>
                 </div>
 
                 <div className="form-group full" style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '13px', fontWeight: 600 }}>
-                    Razorpay Key Secret {rzpSettings.has_secret && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
+                    Cashfree Secret Key {cfSettings.has_secret && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
                   </label>
                   <input
                     type="password"
-                    placeholder={rzpSettings.has_secret ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Razorpay Key Secret'}
-                    value={rzpSettings.key_secret}
-                    onChange={(e) => setRzpSettings({ ...rzpSettings, key_secret: e.target.value })}
+                    placeholder={cfSettings.has_secret ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Cashfree Secret Key'}
+                    value={cfSettings.secret_key}
+                    onChange={(e) => setCfSettings({ ...cfSettings, secret_key: e.target.value })}
                   />
                   <small style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                    Used for HMAC-SHA256 server-side signature verification. Never revealed in the browser.
+                    Used server-side to create orders and verify webhook signatures. Stored encrypted and never revealed in the browser.
                   </small>
                 </div>
 
-                <div className="form-group full" style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 600 }}>
-                    Razorpay Webhook Secret {rzpSettings.has_webhook_secret && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
-                  </label>
-                  <input
-                    type="password"
-                    placeholder={rzpSettings.has_webhook_secret ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Webhook Secret'}
-                    value={rzpSettings.webhook_secret}
-                    onChange={(e) => setRzpSettings({ ...rzpSettings, webhook_secret: e.target.value })}
-                  />
-                  <small style={{ color: '#64748b', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                    Used for verifying asynchronous payment webhook events from Razorpay.
-                  </small>
+                <div style={{ marginBottom: '16px', padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', color: '#475569' }}>
+                  <strong>Webhook URL</strong> (add in Cashfree Dashboard → Developers → Webhooks, Payment events):
+                  <code style={{ display: 'block', marginTop: '6px', wordBreak: 'break-all' }}>
+                    {`${API_BASE_URL || window.location.origin}/api/v1/payments/webhook`}
+                  </code>
                 </div>
 
                 <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <input
                     type="checkbox"
-                    id="rzpTestMode"
-                    checked={rzpSettings.test_mode}
-                    onChange={(e) => setRzpSettings({ ...rzpSettings, test_mode: e.target.checked })}
+                    id="cfSandboxMode"
+                    checked={cfSettings.sandbox}
+                    onChange={(e) => setCfSettings({ ...cfSettings, sandbox: e.target.checked })}
                     style={{ width: '18px', height: '18px', accentColor: '#0c6253' }}
                   />
-                  <label htmlFor="rzpTestMode" style={{ fontSize: '14px', fontWeight: 600, color: '#111827', cursor: 'pointer' }}>
+                  <label htmlFor="cfSandboxMode" style={{ fontSize: '14px', fontWeight: 600, color: '#111827', cursor: 'pointer' }}>
                     Enable Sandbox / Test Mode
                   </label>
                 </div>
@@ -2308,15 +2293,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   type="submit"
                   className="btn-primary"
                   style={{ width: '100%', padding: '12px' }}
-                  disabled={rzpSaving}
+                  disabled={cfSaving}
                 >
-                  {rzpSaving ? (
+                  {cfSaving ? (
                     <>
                       <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> Saving Settings...
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-save" style={{ marginRight: '6px' }}></i> Save Razorpay Settings
+                      <i className="fas fa-save" style={{ marginRight: '6px' }}></i> Save Cashfree Settings
                     </>
                   )}
                 </button>

@@ -37,9 +37,9 @@ TradeCall India is a responsive real-estate directory experience backed by the T
 - Browse and filter approved listings by location, category, keyword, and budget; view listing photos and property details.
 - Submit property or business listings through a multi-step form with photo selection and Field Associate reference-code lookup.
 - Register and sign in, manage account details and listings, save properties to a wishlist, and review plan and lead balances.
-- Reveal seller contact details using lead credits and purchase plans through the Razorpay checkout integration.
+- Reveal seller contact details using lead credits and purchase plans through the Cashfree checkout integration.
 - Administer listing moderation, users, categories, locations, role limits, plans, Field Associates, and blog content.
-- Configure SMTP and Razorpay settings in the admin interface and send a test email.
+- Configure SMTP and Cashfree settings in the admin interface and send a test email.
 - Read public blogs and company/legal pages, contact TradeCall, or open the WhatsApp contact link.
 
 ## Technology

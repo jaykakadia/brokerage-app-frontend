@@ -13,8 +13,8 @@ import type {
   CreateOrderResponse,
   VerifyPaymentRequest,
   VerifyPaymentResponse,
-  RazorpaySettings,
-  RazorpaySettingsUpdate,
+  CashfreeSettings,
+  CashfreeSettingsUpdate,
   RoleLimitsMap,
   RoleLimit,
   Employee,
@@ -176,17 +176,17 @@ export const getLeadStatus = (): Promise<AxiosResponse<LeadStatusResponse>> =>
 export const revealContact = (listingId: number): Promise<AxiosResponse<RevealContactResponse>> =>
   api.post('/api/v1/leads/reveal', { listing_id: listingId });
 
-// Payments & Razorpay
+// Payments & Cashfree
 export const createPaymentOrder = (planId: number, listingId?: number): Promise<AxiosResponse<CreateOrderResponse>> =>
   api.post('/api/v1/payments/create-order', { plan_id: planId, listing_id: listingId });
 
 export const verifyPayment = (payload: VerifyPaymentRequest): Promise<AxiosResponse<VerifyPaymentResponse>> =>
   api.post('/api/v1/payments/verify', payload);
 
-export const getRazorpaySettings = (): Promise<AxiosResponse<ApiResponse<RazorpaySettings>>> =>
+export const getCashfreeSettings = (): Promise<AxiosResponse<ApiResponse<CashfreeSettings>>> =>
   api.get('/api/v1/payments/admin/settings');
 
-export const saveRazorpaySettings = (payload: RazorpaySettingsUpdate): Promise<AxiosResponse<ApiResponse<RazorpaySettings>>> =>
+export const saveCashfreeSettings = (payload: CashfreeSettingsUpdate): Promise<AxiosResponse<ApiResponse<CashfreeSettings>>> =>
   api.post('/api/v1/payments/admin/settings', payload);
 
 // --- Phase 3 API Endpoints ---

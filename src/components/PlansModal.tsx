@@ -16,7 +16,7 @@ export interface PlansModalProps {
 
 export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'leads', listing = null, noLeads = false }: PlansModalProps) {
   const isFeatured = planType === 'featured';
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
@@ -56,77 +56,34 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
 
     try {
       const res = await createPaymentOrder(selectedPlanId, isFeatured ? listing?.id : undefined);
-      const orderData = res.data;
-      const { order_id, key_id, amount, currency, prefill } = orderData;
+      const { order_id, payment_session_id, environment } = res.data;
 
-      // Check if Razorpay checkout script is loaded and key is valid
-      const hasRealRazorpay = typeof window.Razorpay === 'function' && key_id && !key_id.includes('dummy');
-
-      if (hasRealRazorpay && window.Razorpay) {
-        const options = {
-          key: key_id,
-          amount: amount,
-          currency: currency,
-          name: 'TradeCall Real Estate',
-          description: isFeatured
-            ? `Featured Listing: ${orderData.plan?.name || 'Featured Plan'}`
-            : `Subscription: ${orderData.plan?.name || 'Lead Plan'}`,
-          order_id: order_id,
-          prefill: {
-            name: prefill?.name || user?.name || '',
-            email: prefill?.email || user?.email || '',
-            contact: prefill?.contact || user?.phone || ''
-          },
-          theme: { color: '#0c6253' },
-          handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-            try {
-              await verifyPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                plan_id: selectedPlanId
-              });
-              setSuccessMsg(isFeatured
-                ? 'Payment successful! Your listing is now featured.'
-                : 'Payment successful! Your leads balance and plan have been credited.');
-              await refreshUser();
-              if (onSuccess) onSuccess();
-              setTimeout(() => {
-                onClose();
-              }, 2000);
-            } catch (vErr: unknown) {
-              setErrorMsg(getApiErrorMessage(vErr, 'Payment verification failed.'));
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              setProcessing(false);
-            }
-          }
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-        setProcessing(false);
-      } else {
-        // Test / Sandbox simulation mode
-        const mockPaymentId = `pay_mock_${Date.now()}`;
-        await verifyPayment({
-          razorpay_order_id: order_id,
-          razorpay_payment_id: mockPaymentId,
-          razorpay_signature: 'mock_test_signature_valid',
-          plan_id: selectedPlanId
-        });
-
-        setSuccessMsg(isFeatured
-          ? 'Payment successful (Test Mode)! Your listing is now featured.'
-          : 'Payment successful (Test Mode)! Your leads balance and plan have been activated.');
-        await refreshUser();
-        if (onSuccess) onSuccess();
-        setTimeout(() => {
-          onClose();
-        }, 1800);
+      // In mock mode (local dev / tests) the backend treats the order as paid, so skip checkout.
+      if (environment !== 'mock') {
+        if (typeof window.Cashfree !== 'function') {
+          throw new Error('Payment gateway failed to load. Please refresh the page and try again.');
+        }
+        const cashfree = window.Cashfree({ mode: environment });
+        const result = await cashfree.checkout({ paymentSessionId: payment_session_id, redirectTarget: '_modal' });
+        if (result.error) {
+          // Closing the checkout popup also lands here
+          setErrorMsg(result.error.message || 'Payment was not completed.');
+          setProcessing(false);
+          return;
+        }
       }
+
+      // The backend confirms the payment with Cashfree before crediting anything.
+      await verifyPayment({ order_id });
+      setSuccessMsg(isFeatured
+        ? 'Payment successful! Your listing is now featured.'
+        : 'Payment successful! Your leads balance and plan have been credited.');
+      await refreshUser();
+      if (onSuccess) onSuccess();
+      setProcessing(false);
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     } catch (err: unknown) {
       console.error('Order creation error:', err);
       setErrorMsg(getApiErrorMessage(err, 'Unable to initiate payment.'));
@@ -362,7 +319,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#475569' }}>
               <i className="fas fa-shield-alt" style={{ color: '#0c6253', fontSize: '20px' }}></i>
-              <span>100% Secure Payments via Razorpay (UPI, Cards, NetBanking)</span>
+              <span>100% Secure Payments via Cashfree (UPI, Cards, NetBanking)</span>
             </div>
             <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Zero Brokerage</span>
           </div>

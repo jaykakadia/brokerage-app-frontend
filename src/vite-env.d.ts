@@ -11,37 +11,19 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
-interface RazorpayOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description?: string;
-  order_id: string;
-  prefill?: {
-    name?: string;
-    email?: string;
-    contact?: string;
-  };
-  notes?: Record<string, string>;
-  theme?: {
-    color?: string;
-  };
-  handler?: (response: {
-    razorpay_payment_id: string;
-    razorpay_order_id: string;
-    razorpay_signature: string;
-  }) => void;
-  modal?: {
-    ondismiss?: () => void;
-  };
+interface CashfreeCheckoutResult {
+  error?: { message?: string };
+  redirect?: boolean;
+  paymentDetails?: { paymentMessage?: string };
 }
 
-interface RazorpayInstance {
-  open(): void;
-  on(event: string, handler: (response: unknown) => void): void;
+interface CashfreeInstance {
+  checkout(options: {
+    paymentSessionId: string;
+    redirectTarget?: '_self' | '_blank' | '_top' | '_modal' | HTMLElement;
+  }): Promise<CashfreeCheckoutResult>;
 }
 
 interface Window {
-  Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  Cashfree?: (options: { mode: 'sandbox' | 'production' }) => CashfreeInstance;
 }

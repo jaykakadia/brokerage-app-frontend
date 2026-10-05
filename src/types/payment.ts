@@ -6,25 +6,20 @@ export interface CreateOrderRequest {
   idempotency_key?: string;
 }
 
+export type CashfreeMode = 'sandbox' | 'production';
+
 export interface CreateOrderResponse {
   status: string;
-  key_id: string;
-  amount: number; // in paise
-  currency: string;
   order_id: string;
+  payment_session_id: string;
+  environment: CashfreeMode | 'mock';
+  amount: number; // in rupees
+  currency: string;
   plan: Plan;
-  prefill?: {
-    name?: string;
-    email?: string;
-    contact?: string;
-  };
 }
 
 export interface VerifyPaymentRequest {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-  plan_id?: number;
+  order_id: string;
 }
 
 export interface VerifyPaymentResponse {
@@ -44,27 +39,22 @@ export interface Order {
   id: number;
   user_id?: number | null;
   plan_id?: number | null;
-  razorpay_order_id: string;
-  razorpay_payment_id?: string | null;
+  cashfree_order_id: string;
+  cashfree_payment_id?: string | null;
   amount: number;
   currency: string;
   status: string;
   created_at: string;
 }
 
-export interface RazorpaySettings {
-  razorpay_key_id?: string;
-  key_id?: string;
+export interface CashfreeSettings {
+  app_id?: string;
   has_secret?: boolean;
-  has_webhook_secret?: boolean;
-  test_mode?: boolean;
+  environment?: CashfreeMode;
 }
 
-export interface RazorpaySettingsUpdate {
-  razorpay_key_id?: string;
-  razorpay_key_secret?: string;
-  key_id?: string;
-  key_secret?: string;
-  webhook_secret?: string;
-  test_mode?: boolean;
+export interface CashfreeSettingsUpdate {
+  app_id?: string;
+  secret_key?: string;
+  environment?: CashfreeMode;
 }
