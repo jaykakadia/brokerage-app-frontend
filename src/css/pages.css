@@ -357,6 +357,16 @@
 .account-add-link { display: inline-flex; align-items: center; gap: 6px; background: #f0faf6; color: #0c6253; border: 1px dashed #0c6253; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
 .account-add-link:hover { background: #dcfce7; }
 
+/* ===== Account: website + social links in profile header ===== */
+.profile-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.profile-website { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; margin-right: 4px; color: #0c6253; font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-website:hover { text-decoration: underline; }
+.profile-website i { font-size: 12px; color: #6b7280; }
+.profile-social { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e5e7eb; background: #fff; color: var(--brand); font-size: 15px; text-decoration: none; transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s; }
+.profile-social:hover, .profile-social:focus-visible { background: var(--brand); border-color: var(--brand); color: #fff; transform: translateY(-1px); }
+.profile-links-add { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 0; background: none; border: none; color: #0c6253; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.profile-links-add:hover { text-decoration: underline; }
+
 /* ===== Admin listings table ===== */
 .admin-listing-title { display: block; background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: #111827; text-align: left; cursor: pointer; }
 .admin-listing-title:hover { color: #0c6253; text-decoration: underline; }

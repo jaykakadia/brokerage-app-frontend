@@ -6,11 +6,11 @@ import PlansModal from '../components/PlansModal';
 import EditProfileModal from '../components/EditProfileModal';
 import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
 
-// Website is the primary link, so it is listed first.
-const PROFILE_LINKS = [
-  { key: 'website_url', label: 'Website', icon: 'fas fa-globe', color: '#0c6253' },
+// Website shows as a domain link; social profiles show as brand icon buttons.
+const SOCIAL_LINKS = [
   { key: 'facebook_url', label: 'Facebook', icon: 'fab fa-facebook-f', color: '#1877f2' },
-  { key: 'x_url', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827' }
+  { key: 'x_url', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827' },
+  { key: 'youtube_url', label: 'YouTube', icon: 'fab fa-youtube', color: '#ff0000' }
 ] as const;
 
 const displayUrl = (url: string): string => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '');
@@ -242,6 +242,33 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                   {user.role}
                 </span>
               </div>
+              {user.website_url || SOCIAL_LINKS.some(({ key }) => user[key]) ? (
+                <nav className="profile-links" aria-label="Website and social links">
+                  {user.website_url && (
+                    <a className="profile-website" href={user.website_url} target="_blank" rel="noopener noreferrer">
+                      <i className="fas fa-link"></i>{displayUrl(user.website_url)}
+                    </a>
+                  )}
+                  {SOCIAL_LINKS.filter(({ key }) => user[key]).map(({ key, label, icon, color }) => (
+                    <a
+                      key={key}
+                      className="profile-social"
+                      href={user[key] || ''}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={label}
+                      aria-label={label}
+                      style={{ '--brand': color } as React.CSSProperties}
+                    >
+                      <i className={icon}></i>
+                    </a>
+                  ))}
+                </nav>
+              ) : (
+                <button type="button" className="profile-links-add" onClick={openEdit}>
+                  <i className="fas fa-plus"></i> Add website & social links
+                </button>
+              )}
             </div>
           </div>
 
@@ -281,7 +308,6 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                 value: user.business_name || 'Not added',
                 tone: user.business_name ? '#111827' : '#9ca3af'
               },
-              { label: 'Social Links', value: '', tone: '#111827' },
               {
                 label: 'Current Plan',
                 value: !user.plan_id
@@ -313,22 +339,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                 }}
               >
                 <span style={{ color: '#6b7280', fontWeight: 600 }}>{row.label}</span>
-                {row.label === 'Social Links' ? (
-                  PROFILE_LINKS.some(({ key }) => user[key]) ? (
-                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                      {PROFILE_LINKS.filter(({ key }) => user[key]).map(({ key, label, icon, color }) => (
-                        <a key={key} href={user[key] || ''} target="_blank" rel="noopener noreferrer" title={label}
-                          style={{ color: '#111827', fontWeight: 700, textDecoration: 'none', wordBreak: 'break-all' }}>
-                          <i className={icon} style={{ color, marginRight: '6px' }}></i>{displayUrl(user[key] || '')}
-                        </a>
-                      ))}
-                    </span>
-                  ) : (
-                    <button type="button" className="account-add-link" onClick={openEdit}>
-                      <i className="fas fa-plus"></i> Add Website / Social Links
-                    </button>
-                  )
-                ) : row.label === 'Business Name' && !user.business_name ? (
+                {row.label === 'Business Name' && !user.business_name ? (
                   <button type="button" className="account-add-link" onClick={openEdit}>
                     <i className="fas fa-plus"></i> Add Business Name
                   </button>

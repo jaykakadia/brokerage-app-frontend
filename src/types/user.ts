@@ -21,6 +21,7 @@ export interface User {
   facebook_url?: string | null;
   website_url?: string | null;
   x_url?: string | null;
+  youtube_url?: string | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ export interface UserProfileUpdate {
   facebook_url?: string;
   website_url?: string;
   x_url?: string;
+  youtube_url?: string;
 }
 
 export interface ChangePasswordRequest {

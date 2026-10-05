@@ -21,15 +21,17 @@ interface ProfileForm {
   websiteUrl: string;
   facebookUrl: string;
   xUrl: string;
+  youtubeUrl: string;
 }
 
-type SocialKey = 'websiteUrl' | 'facebookUrl' | 'xUrl';
+type SocialKey = 'websiteUrl' | 'facebookUrl' | 'xUrl' | 'youtubeUrl';
 
 // Website is the primary link, so it comes first.
 const SOCIAL_FIELDS: Array<{ key: SocialKey; label: string; icon: string; color: string; placeholder: string }> = [
   { key: 'websiteUrl', label: 'Website', icon: 'fas fa-globe', color: '#0c6253', placeholder: 'yourwebsite.com' },
   { key: 'facebookUrl', label: 'Facebook', icon: 'fab fa-facebook-f', color: '#1877f2', placeholder: 'facebook.com/yourpage' },
-  { key: 'xUrl', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827', placeholder: 'x.com/yourhandle' }
+  { key: 'xUrl', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827', placeholder: 'x.com/yourhandle' },
+  { key: 'youtubeUrl', label: 'YouTube', icon: 'fab fa-youtube', color: '#ff0000', placeholder: 'youtube.com/@yourchannel' }
 ];
 
 function formFromUser(user: User): ProfileForm {
@@ -43,7 +45,8 @@ function formFromUser(user: User): ProfileForm {
     whatsappSameAsPhone: !whatsapp || whatsapp === user.phone,
     websiteUrl: user.website_url || '',
     facebookUrl: user.facebook_url || '',
-    xUrl: user.x_url || ''
+    xUrl: user.x_url || '',
+    youtubeUrl: user.youtube_url || ''
   };
 }
 
@@ -54,12 +57,15 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
   const [sending, setSending] = useState(false);
   const cooldown = useResendCooldown();
   const [saving, setSaving] = useState(false);
+  // Required-field stars stay hidden until the user tries to submit.
+  const [attempted, setAttempted] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     setForm(formFromUser(user));
     setOtp('');
     setMessage(null);
+    setAttempted(false);
   }, [isOpen, user]);
 
   if (!isOpen) return null;
@@ -72,6 +78,8 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
   const identityChanged = emailChanged
     || form.name.trim() !== user.name
     || form.phone.trim() !== (user.phone || '');
+
+  const missingMark = (value: string) => (attempted && !value.trim() ? <span className="req"> *</span> : null);
 
   const sendOtp = async () => {
     const target = form.email.trim();
@@ -131,7 +139,8 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
       whatsapp,
       website_url: links.websiteUrl,
       facebook_url: links.facebookUrl,
-      x_url: links.xUrl
+      x_url: links.xUrl,
+      youtube_url: links.youtubeUrl
     };
     if (identityChanged) payload.otp = otp.trim();
 
@@ -192,7 +201,7 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
           ) : null}
 
           <div className="form-group full">
-            <label>Client Name</label>
+            <label>Client Name{missingMark(form.name)}</label>
             <input type="text" value={form.name} onChange={(e) => set('name', e.target.value)} required />
           </div>
           <div className="form-group full">
@@ -208,7 +217,7 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
           </div>
           <div className="profile-phone-row">
             <div className="form-group">
-              <label><i className="fas fa-phone" style={{ color: '#0c6253', marginRight: 6 }}></i>Mobile No</label>
+              <label><i className="fas fa-phone" style={{ color: '#0c6253', marginRight: 6 }}></i>Mobile No{missingMark(form.phone)}</label>
               <input
                 type="tel"
                 inputMode="numeric"
@@ -239,18 +248,17 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
             WhatsApp number same as mobile number
           </label>
           <div className="form-group full">
-            <label><i className="fas fa-envelope" style={{ color: '#0c6253', marginRight: 6 }}></i>Email ID</label>
+            <label><i className="fas fa-envelope" style={{ color: '#0c6253', marginRight: 6 }}></i>Email ID{missingMark(form.email)}</label>
             <input type="email" value={form.email} onChange={(e) => { set('email', e.target.value); cooldown.reset(); }} required />
           </div>
 
           <div className="form-group full" style={{ marginBottom: 6 }}>
-            <label><i className="fas fa-share-alt" style={{ color: '#0c6253', marginRight: 6 }}></i>Social Links <span style={{ color: '#9ca3af', fontWeight: 500 }}>(optional)</span></label>
+            <label><i className="fas fa-share-alt" style={{ color: '#0c6253', marginRight: 6 }}></i>Social Links</label>
           </div>
           {SOCIAL_FIELDS.map(({ key, label, icon, color, placeholder }) => (
             <div className="form-group full" key={key}>
               <label style={{ fontWeight: 600 }}>
                 <i className={icon} style={{ color, marginRight: 6, width: 14, textAlign: 'center' }}></i>{label}
-                {key === 'websiteUrl' ? <span style={{ color: '#0c6253', fontWeight: 600, fontSize: 12, marginLeft: 6 }}>Primary</span> : null}
               </label>
               <input type="text" inputMode="url" placeholder={placeholder} value={form[key]} onChange={(e) => set(key, e.target.value)} />
             </div>
@@ -258,7 +266,7 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
 
           {identityChanged && (
             <div className="form-group full">
-              <label>OTP Verification <span className="req">*</span></label>
+              <label>OTP Verification{missingMark(otp)}</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"
@@ -282,7 +290,7 @@ export default function EditProfileModal({ isOpen, user, onClose, onSaved }: Edi
             </div>
           )}
 
-          <button type="submit" className="btn-primary" disabled={saving} style={{ width: '100%', marginTop: 8 }}>
+          <button type="submit" className="btn-primary" disabled={saving} onClick={() => setAttempted(true)} style={{ width: '100%', marginTop: 8 }}>
             {saving ? 'Saving...' : identityChanged ? 'Verify OTP & Save' : 'Save Details'}
           </button>
         </form>
