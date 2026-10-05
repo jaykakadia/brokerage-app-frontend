@@ -3,6 +3,7 @@ import { StateOptions } from '../../utils/indianStates';
 import {
   amenitiesFor,
   formatInr,
+  inrInWords,
   landAreaFor,
   withAutoPrice,
   stateForCity,
@@ -72,6 +73,10 @@ export default function PropertyListingForm({
   singlePage = false
 }: PropertyListingFormProps) {
   const show = (s: PropertyStep): boolean => singlePage || step === s;
+  const amountInWords = (value: string) => {
+    const words = inrInWords(value);
+    return words ? <div className="amount-words">₹ {words}</div> : null;
+  };
   // Plot and agriculture prices follow area x rate
   const changeLand = (patch: Partial<PropertyFormState>) => onChange(withAutoPrice(form, patch));
   const land = landAreaFor(form);
@@ -85,6 +90,7 @@ export default function PropertyListingForm({
         value={form.rate}
         onChange={(value) => changeLand({ rate: formatInr(value) })}
       />
+      {amountInWords(form.rate)}
       {land && land.area > 0 && rateNumber > 0 ? (
         <div className="rate-calc">
           <i className="fas fa-calculator"></i>
@@ -98,6 +104,7 @@ export default function PropertyListingForm({
         value={form.price}
         onChange={(value) => onChange({ price: formatInr(value) })}
       />
+      {amountInWords(form.price)}
       <div className="rate-hint">Auto-calculated from area × rate. You can still edit it.</div>
     </>
   );
@@ -121,6 +128,7 @@ export default function PropertyListingForm({
         value={form.price}
         onChange={(value) => onChange({ price: formatInr(value) })}
       />
+      {amountInWords(form.price)}
     </div>
   );
 
@@ -194,8 +202,9 @@ export default function PropertyListingForm({
             onChange={(posterRole) => onChange({ posterRole })}
             options={variant === 'buyer'
               ? [
-                  { value: 'real_buyer', label: 'Real Buyer/Renter' },
-                  { value: 'agent', label: 'Agent' }
+                  { value: 'real_buyer', label: 'User' },
+                  { value: 'agent', label: 'Agent' },
+                  { value: 'builder', label: 'Builder' }
                 ]
               : [
                   { value: 'real_owner', label: 'Real Owner' },

@@ -312,6 +312,7 @@
 /* Plot / agriculture: area x rate = price */
 .rate-calc { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -6px 0 16px; padding: 10px 12px; background: #f0faf6; border: 1px solid #c6f2e2; border-radius: 10px; color: #0c6253; font-size: 13px; }
 .rate-calc strong { font-size: 14px; }
+.amount-words { margin: -8px 0 16px; padding-left: 4px; font-size: 13px; font-weight: 600; color: #0c6253; }
 .rate-hint { margin: -8px 0 18px; font-size: 12px; color: #64748b; }
 
 /* Amenities multi-select */

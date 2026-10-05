@@ -253,6 +253,16 @@ export function profileContactDefaults(user: { phone?: string | null; whatsapp?:
 
 const inrNumber = (value: string): number => Number(value.replace(/[^\d]/g, '')) || 0;
 
+/** Reads a rupee amount the Indian way, e.g. "1,25,00,000" -> "1.25 Crore". Empty below one thousand. */
+export function inrInWords(value: string): string {
+  const amount = inrNumber(value);
+  const scales: [number, string][] = [[1e7, 'Crore'], [1e5, 'Lakh'], [1e3, 'Thousand']];
+  for (const [size, name] of scales) {
+    if (amount >= size) return `${Number((amount / size).toFixed(2))} ${name}`;
+  }
+  return '';
+}
+
 /** Area and unit that a per-unit rate applies to, for property types priced as area x rate. */
 export function landAreaFor(form: Pick<PropertyFormState, 'propType' | 'area' | 'unit' | 'plotArea' | 'plotUnit' | 'agriArea' | 'agriUnit'>): { area: number; unit: string } | null {
   if (form.propType === 'plot') return { area: Number(form.plotArea) || 0, unit: form.plotUnit };
