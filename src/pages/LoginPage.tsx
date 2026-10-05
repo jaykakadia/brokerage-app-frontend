@@ -191,10 +191,8 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
   useEffect(() => {
     api.get<ListingStatsResponse>('/api/v1/listings/stats')
       .then(r => setSiteStats(r.data))
-      .catch(() => {/* keep static fallback */});
+      .catch(() => {/* numbers stay as a dash */});
   }, []);
-
-  const fmt = (val: number | undefined, fallback: number): number => (val && val >= fallback ? val : fallback);
 
   const [siEmail, setSiEmail] = useState('');
   const [siPass, setSiPass]   = useState('');
@@ -480,14 +478,14 @@ export default function LoginPage({ initialTab = 'signin', onNavigate, onLoginSu
           </div>
           <div className="ll-stats">
             {([
-              { key: 'active_listings',   fallback: 61,  suffix: '+', lbl: 'Active Listings' },
-              { key: 'cities_covered',    fallback: 16,  suffix: '',  lbl: 'Cities Covered' },
-              { key: 'featured_listings', fallback: 8,   suffix: '',  lbl: 'Featured Listings' },
-              { key: 'registered_users',  fallback: 12,  suffix: '+', lbl: 'Registered Users' },
-            ] as const satisfies Array<{ key: keyof ListingStatsResponse; fallback: number; suffix: string; lbl: string }>).map(s => (
+              { key: 'active_listings',   lbl: 'Active Listings' },
+              { key: 'cities_covered',    lbl: 'Cities Covered' },
+              { key: 'featured_listings', lbl: 'Featured Listings' },
+              { key: 'registered_users',  lbl: 'Registered Users' },
+            ] as const satisfies Array<{ key: keyof ListingStatsResponse; lbl: string }>).map(s => (
               <div key={s.lbl} className="ll-stat">
                 <div className="num">
-                  {fmt(siteStats[s.key], s.fallback)}{s.suffix}
+                  {siteStats[s.key] ?? '–'}
                 </div>
                 <div className="lbl">{s.lbl}</div>
               </div>

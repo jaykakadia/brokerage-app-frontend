@@ -165,6 +165,8 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
         setContactData(contactDataFromReveal(res.data, listing, user.leads_balance));
         setContactModalOpen(true);
         await refreshUser();
+      } else if (res.data?.code === 'no_leads') {
+        setPlansModalOpen(true);
       } else {
         const msg = res.data?.message;
         if (msg) showToast(msg, 'error');
@@ -513,6 +515,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
       <PlansModal
         isOpen={plansModalOpen}
+        noLeads
         onClose={() => setPlansModalOpen(false)}
         onSuccess={() => {
           void handleContactOwner();

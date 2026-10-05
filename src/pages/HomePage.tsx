@@ -231,7 +231,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [newOnly, setNewOnly] = useState(false);
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  // Set when the user explicitly picks the "All …" / "Any …" option, so the box shows it instead of the placeholder
+  const [allCitiesPicked, setAllCitiesPicked] = useState(false);
+  const [allTypesPicked, setAllTypesPicked] = useState(false);
+  const [anyBudgetPicked, setAnyBudgetPicked] = useState(false);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
+
+  // Featured Listings are hidden while the user is filtering or searching
+  const hasActiveFilters = !!(heroCity || heroType || budgetMin || budgetMax || heroKeyword.trim()
+    || selectedCities.length > 0 || newOnly || activeCategoryTab !== 'all');
 
   const citiesList = useMemo(() => [
     'Palwal', 'Faridabad', 'Gurugram', 'Sonipat', 'Panipat',
@@ -304,6 +312,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   }, [cityInput, citiesList, listings]);
 
   const handleSelectCity = (city: string): void => {
+    setAllCitiesPicked(city === 'All Cities');
     if (city === 'All Cities') {
       setCityInput('');
       setHeroCity('');
@@ -320,7 +329,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   };
 
   const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const val = e.target.value;
+    const val = allCitiesPicked ? e.target.value.replace(/^All Cities/, '') : e.target.value;
+    setAllCitiesPicked(false);
     setCityInput(val);
     setHeroCity(val.trim());
     if (!val.trim()) {
@@ -370,6 +380,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   }, [typeInput, heroType]);
 
   const handleSelectType = (typeObj: PropertyTypeOption | null): void => {
+    setAllTypesPicked(!!typeObj && !typeObj.value);
     if (!typeObj || !typeObj.value) {
       setHeroType('');
       setTypeInput('');
@@ -382,7 +393,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   };
 
   const handleTypeInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const val = e.target.value;
+    const val = allTypesPicked ? e.target.value.replace(/^All Property Types/, '') : e.target.value;
+    setAllTypesPicked(false);
     setTypeInput(val);
     if (!val.trim()) {
       setHeroType('');
@@ -439,6 +451,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const handleSelectBudgetPreset = (preset: BudgetPreset): void => {
     setBudgetMin(preset.min);
     setBudgetMax(preset.max);
+    setAnyBudgetPicked(false);
     setShowBudgetDropdown(false);
   };
 
@@ -446,6 +459,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     e.stopPropagation();
     setBudgetMin('');
     setBudgetMax('');
+    setAnyBudgetPicked(false);
   };
 
   // Fetch approved listings from backend
@@ -564,13 +578,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   // Auto slide periodically, pausing when user hovers over the carousel
   useEffect(() => {
-    if (featuredListings.length <= 1 || isCarouselHovered) return;
+    if (featuredListings.length <= 1 || isCarouselHovered || hasActiveFilters) return;
     const interval = setInterval(() => {
       setWithTransition(true);
       setCarouselIndex((prev) => prev + 1);
     }, 4500);
     return () => clearInterval(interval);
-  }, [featuredListings.length, isCarouselHovered]);
+  }, [featuredListings.length, isCarouselHovered, hasActiveFilters]);
 
   const handleTouchStart = (e: React.TouchEvent): void => {
     touchStartX.current = e.touches[0].clientX;
@@ -596,6 +610,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setHeroKeyword('');
     setActiveCategoryTab('all');
     setNewOnly(false);
+    setAllCitiesPicked(false);
+    setAllTypesPicked(false);
+    setAnyBudgetPicked(false);
     if (onCitySelect) onCitySelect('');
   };
 
@@ -706,17 +723,17 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     id="heroCityInput"
                     className="city-autocomplete-input"
                     placeholder="Select City / Locality"
-                    value={cityInput}
+                    value={cityInput || (allCitiesPicked ? 'All Cities' : '')}
                     onChange={handleCityInputChange}
-                    onFocus={() => setShowCitySuggestions(true)}
+                    onFocus={(e) => { if (allCitiesPicked) e.target.select(); setShowCitySuggestions(true); }}
                     onKeyDown={handleCityKeyDown}
                     autoComplete="off"
                   />
-                  {cityInput ? (
+                  {cityInput || allCitiesPicked ? (
                     <button
                       type="button"
                       className="city-autocomplete-clear"
-                      onClick={() => handleSelectCity('All Cities')}
+                      onClick={() => { handleSelectCity('All Cities'); setAllCitiesPicked(false); }}
                       title="Clear city"
                     >
                       <i className="fas fa-times"></i>
@@ -765,13 +782,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     id="heroTypeInput"
                     className="type-autocomplete-input"
                     placeholder="Select Property Type"
-                    value={typeInput}
+                    value={typeInput || (allTypesPicked ? 'All Property Types' : '')}
                     onChange={handleTypeInputChange}
-                    onFocus={() => setShowTypeSuggestions(true)}
+                    onFocus={(e) => { if (allTypesPicked) e.target.select(); setShowTypeSuggestions(true); }}
                     onKeyDown={handleTypeKeyDown}
                     autoComplete="off"
                   />
-                  {heroType ? (
+                  {heroType || allTypesPicked ? (
                     <button
                       type="button"
                       className="type-autocomplete-clear"
@@ -818,10 +835,10 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     id="heroBudgetInput"
                     className="budget-input"
                     placeholder="Select Budget"
-                    value={getBudgetLabel()}
+                    value={getBudgetLabel() || (anyBudgetPicked ? 'Any Budget' : '')}
                     readOnly
                   />
-                  {(budgetMin || budgetMax) ? (
+                  {(budgetMin || budgetMax || anyBudgetPicked) ? (
                     <button
                       type="button"
                       className="budget-clear"
@@ -869,7 +886,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                       <button
                         type="button"
                         className={`budget-preset-item ${(!budgetMin && !budgetMax) ? 'active' : ''}`}
-                        onClick={() => { setBudgetMin(''); setBudgetMax(''); setShowBudgetDropdown(false); }}
+                        onClick={() => { setBudgetMin(''); setBudgetMax(''); setAnyBudgetPicked(true); setShowBudgetDropdown(false); }}
                       >
                         <span>Any Budget</span>
                         {(!budgetMin && !budgetMax) && <i className="fas fa-check"></i>}
@@ -923,7 +940,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 <div className="metric-label">Active Listings</div>
               </div>
             </button>
-            <button type="button" className="metric-item metric-clickable" onClick={() => scrollToSection('featured')} title="Show featured listings">
+            <button type="button" className="metric-item metric-clickable" onClick={() => { handleClearFilters(); scrollToSection('featured'); }} title="Show featured listings">
               <span className="metric-icon"><i className="fas fa-star" style={{ color: 'rgb(245, 158, 11)' }}></i></span>
               <div>
                 <span className="metric-num">{featuredCount}</span>
@@ -971,6 +988,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       </section>
 
       {/* Featured Listings Section */}
+      {!hasActiveFilters && (
       <section className="featured-section" id="featured">
         <div className="container">
           <div className="section-header">
@@ -1105,6 +1123,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           </div>
         </div>
       </section>
+      )}
 
       {/* Listings Section */}
       <section className="listings-section" id="listings">
@@ -1121,7 +1140,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     </button>
                   </span>
                 )}
-                {(heroCity || heroType || budgetMin || budgetMax || heroKeyword || selectedCities.length > 0 || newOnly || activeCategoryTab !== 'all') && (
+                {hasActiveFilters && (
                   <button
                     type="button"
                     className="btn-clear-filter"

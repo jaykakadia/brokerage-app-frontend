@@ -56,6 +56,7 @@ export function useContactUnlock(onOpenAuth?: (options?: AuthModalOptions) => vo
       />
       <PlansModal
         isOpen={pending !== null}
+        noLeads
         onClose={() => setPending(null)}
         onSuccess={() => {
           const next = pending;

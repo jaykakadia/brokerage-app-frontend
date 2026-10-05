@@ -10,9 +10,11 @@ export interface PlansModalProps {
   /** 'featured' shows Featured Listing plans and features `listing` on payment. */
   planType?: PlanType;
   listing?: Pick<Listing, 'id' | 'title'> | null;
+  /** Opened because the user ran out of leads while unlocking a contact. */
+  noLeads?: boolean;
 }
 
-export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'leads', listing = null }: PlansModalProps) {
+export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'leads', listing = null, noLeads = false }: PlansModalProps) {
   const isFeatured = planType === 'featured';
   const { user, refreshUser } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -34,7 +36,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
     setLoading(true);
     try {
       const res = await getPlans(false, planType);
-      const list = res.data?.data || [];
+      const list = [...(res.data?.data || [])].sort((a, b) => Number(a.price) - Number(b.price));
       setPlans(list);
       if (list.length > 0) {
         setSelectedPlanId(list[0].id);
@@ -210,6 +212,24 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
 
         {/* Content */}
         <div style={{ padding: '24px 28px' }}>
+          {noLeads && !successMsg && (
+            <div
+              style={{
+                background: '#fff7ed',
+                color: '#9a3412',
+                border: '1px solid #fed7aa',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                fontSize: '14px',
+                fontWeight: 600,
+                marginBottom: '18px'
+              }}
+            >
+              <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+              You have no leads left. Buy a plan below to keep viewing owner contacts.
+            </div>
+          )}
+
           {errorMsg && (
             <div
               style={{
