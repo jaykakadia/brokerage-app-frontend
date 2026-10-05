@@ -514,3 +514,29 @@ div.signup-video-box .signup-video-close { position: absolute; top: -44px; right
 @media (max-width: 768px) {
   .business-dir-filters { grid-template-columns: 1fr; }
 }
+
+/* ===== Admin: cities grouped by state ===== */
+.admin-loc-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.admin-loc-head h2 { font-size: 18px; font-weight: 800; color: #111827; margin: 0; }
+.admin-loc-head h2 span { font-size: 13px; font-weight: 600; color: #6b7280; }
+.admin-loc-tools { display: flex; gap: 8px; }
+.admin-loc-tools input { padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-family: inherit; min-width: 220px; }
+.admin-loc-tools .btn-outline { padding: 7px 12px; font-size: 12px; white-space: nowrap; }
+.admin-loc-empty { text-align: center; padding: 30px; color: #6b7280; }
+.admin-loc-states { display: flex; flex-direction: column; gap: 8px; }
+.admin-loc-state { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+.admin-loc-state.is-open { border-color: #c6f2e2; }
+.admin-loc-state-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: #f8fafc; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.admin-loc-state.is-open .admin-loc-state-head { background: #f0faf6; }
+.admin-loc-state-head > i { width: 12px; color: #64748b; font-size: 11px; }
+.admin-loc-state-name { flex: 1; font-size: 14px; font-weight: 700; color: #111827; }
+.admin-loc-state-name em { margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: #e0e7ff; color: #4338ca; font-size: 10px; font-style: normal; font-weight: 700; vertical-align: middle; }
+.admin-loc-state-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #6b7280; }
+.admin-loc-state-meta strong { padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-weight: 700; }
+.admin-loc-state-meta strong.has-listings, .admin-loc-count.has-listings { background: #dcfce7; color: #15803d; }
+.admin-loc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-loc-table th { padding: 8px 14px; background: #fff; border-bottom: 1px solid #e5e7eb; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: #64748b; }
+.admin-loc-table td { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; }
+.admin-loc-table tr:last-child td { border-bottom: none; }
+.admin-loc-count { display: inline-block; min-width: 28px; padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #94a3b8; font-weight: 700; }
+.admin-loc-table .admin-loc-delete { padding: 4px 8px; font-size: 11px; line-height: 1; color: #dc2626; border-color: #fca5a5; display: inline-flex; }

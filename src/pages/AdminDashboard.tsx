@@ -25,6 +25,8 @@ import api, {
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
+import AdminLocationsByState from '../components/AdminLocationsByState';
+import { getListingCity } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
@@ -205,6 +207,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   // === LOCATIONS MODULE STATE ===
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsLoading, setLocationsLoading] = useState<boolean>(false);
+  const [cityListingCounts, setCityListingCounts] = useState<Map<string, number>>(new Map());
   const [newCityName, setNewCityName] = useState<string>('');
   const [newState, setNewState] = useState<string>('Haryana');
   const [newLocCategory, setNewLocCategory] = useState<string>('city');
@@ -404,10 +407,21 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const fetchLocations = async () => {
     setLocationsLoading(true);
     try {
-      const res = await api.get('/api/v1/locations');
+      const [res, live] = await Promise.all([
+        api.get('/api/v1/locations'),
+        // Live (approved) listings, counted per city for the state-wise list
+        api.get('/api/v1/listings', { params: { status: 'approved' } }).catch(() => null)
+      ]);
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setLocations(res.data.data);
       }
+      const counts = new Map<string, number>();
+      const liveListings: Listing[] = Array.isArray(live?.data?.data) ? live.data.data : [];
+      liveListings.forEach((l) => {
+        const city = getListingCity(l).toLowerCase();
+        if (city) counts.set(city, (counts.get(city) ?? 0) + 1);
+      });
+      setCityListingCounts(counts);
     } catch {
       showToast('Failed to load locations', 'error');
     } finally {
@@ -1534,52 +1548,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 onAddPlace={(place) => void handleAddFromMap(place)}
               />
 
-            {/* Locations List */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#111827' }}>
-                Active Cities &amp; Regions ({locations.length})
-              </h2>
-
-              {locationsLoading ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  <i className="fas fa-spinner fa-spin"></i> Loading locations...
-                </div>
-              ) : locations.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  No locations configured yet.
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '10px' }}>City Name</th>
-                      <th style={{ padding: '10px' }}>State</th>
-                      <th style={{ padding: '10px' }}>Category</th>
-                      <th style={{ padding: '10px', width: '88px', textAlign: 'center' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {locations.map((loc) => (
-                      <tr key={loc.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '10px', fontWeight: 700 }}>{loc.city_name}</td>
-                        <td style={{ padding: '10px', color: '#6b7280' }}>{loc.state || 'Haryana'}</td>
-                        <td style={{ padding: '10px', textTransform: 'capitalize' }}>{loc.category || 'city'}</td>
-                        <td style={{ padding: '10px', width: '88px', textAlign: 'center', verticalAlign: 'middle' }}>
-                          <button
-                            type="button"
-                            className="btn-outline"
-                            style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5', display: 'inline-flex' }}
-                            onClick={() => handleDeleteLocation(loc.id)}
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+            <AdminLocationsByState
+              locations={locations}
+              listingCounts={cityListingCounts}
+              loading={locationsLoading}
+              onDelete={(id) => void handleDeleteLocation(id)}
+            />
             </div>
           </div>
         )}
