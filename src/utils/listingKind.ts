@@ -16,11 +16,9 @@ export const getListingCity = (listing: Pick<Listing, 'form_data' | 'location'>)
   return parts.length >= 3 ? parts[parts.length - 2] : parts[0];
 };
 
-const NEW_LISTING_DAYS = 7;
-
-/** Listings posted in the last 7 days. */
+/** Listings posted today. */
 export const isNewListing = (listing: Pick<Listing, 'created_at'>): boolean => {
   if (!listing.created_at) return false;
-  const created = new Date(listing.created_at).getTime();
-  return !Number.isNaN(created) && Date.now() - created <= NEW_LISTING_DAYS * 24 * 60 * 60 * 1000;
+  const created = new Date(listing.created_at);
+  return !Number.isNaN(created.getTime()) && created.toDateString() === new Date().toDateString();
 };

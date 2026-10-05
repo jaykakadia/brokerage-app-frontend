@@ -508,7 +508,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const activeListingsCount = listingsLoaded ? listings.length : (stats?.active_listings ?? 0);
   const featuredCount = listingsLoaded ? markedFeaturedListings.length : (stats?.featured_listings ?? 0);
   const citiesCoveredCount = listingsLoaded ? cityCounts.length : (stats?.cities_covered ?? 0);
-  const newCount = listingsLoaded ? newListingsCount : (stats?.new_this_week ?? 0);
+  const newCount = listingsLoaded ? newListingsCount : 0;
 
   // Waits a frame so the filtered list has rendered before scrolling to it
   const scrollToSection = (id: string): void => {
@@ -946,11 +946,11 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 </ul>
               )}
             </div>
-            <button type="button" className="metric-item metric-clickable" onClick={showNewListings} title="Show listings posted in the last 7 days">
+            <button type="button" className="metric-item metric-clickable" onClick={showNewListings} title="Show listings posted today">
               <span className="metric-icon"><i className="fas fa-chart-line"></i></span>
               <div>
                 <span className="metric-num">{newCount}</span>
-                <div className="metric-label">New This Week</div>
+                <div className="metric-label">New Today</div>
               </div>
             </button>
           </div>
@@ -1102,7 +1102,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 <span><strong>{filteredListings.length}</strong> listings found</span>
                 {newOnly && (
                   <span className="listing-filter-chip">
-                    New this week
+                    New today
                     <button type="button" onClick={() => setNewOnly(false)} title="Show all listings">
                       <i className="fas fa-times"></i>
                     </button>
