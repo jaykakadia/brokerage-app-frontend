@@ -5,6 +5,7 @@ import { formatListingPrice } from '../utils/formatters';
 import { getListingUniqueId, getListingUrl } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
+import { getListingDescription } from '../utils/listingKind';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
@@ -85,11 +86,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
   useEffect(() => {
     if (!listing) return;
-    const price = formatListingPrice(listing.price);
+    // Business listings have no price
+    const price = Number(listing.price) > 0 ? formatListingPrice(listing.price) : '';
     const summary = [price, listing.location].filter(Boolean).join(' · ');
     setSeo({
       title: listing.title,
-      description: toMetaDescription(`${summary}. ${listing.description || ''} Contact the owner directly on TradeCall India, zero brokerage.`),
+      description: toMetaDescription(`${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`),
       path: getListingUrl(listing),
       image: listing.images?.[0] ? getImageUrl(listing.images[0].file_path) : undefined
     });
@@ -416,10 +418,10 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                 </>
               )}
 
-              {listing.description && (
+              {getListingDescription(listing) && (
                 <>
                   <div className="ld-section-title">Description</div>
-                  <div className="ld-desc">{listing.description}</div>
+                  <div className="ld-desc">{getListingDescription(listing)}</div>
                 </>
               )}
             </div>

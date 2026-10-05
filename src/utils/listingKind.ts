@@ -5,6 +5,17 @@ export const isBusinessListing = (listing: Pick<Listing, 'form_data'>): boolean 
   listing.form_data?.kind === 'business';
 
 /**
+ * Description to show on a listing page. Business listings save a summary block (categories, address,
+ * contact…) as the description, which the page already shows elsewhere; only the owner's own text is shown.
+ */
+export const getListingDescription = (listing: Pick<Listing, 'form_data' | 'description'>): string => {
+  if (!isBusinessListing(listing)) return listing.description || '';
+  const own = listing.form_data?.description;
+  if (typeof own === 'string') return own.trim();
+  return listing.description?.match(/^Description: ([\s\S]*)$/m)?.[1].trim() ?? '';
+};
+
+/**
  * City of a listing: the wizard's city field, else the city part of a "Locality, City, State" location.
  * Keeps "Palwal", "Palwal, Haryana" and "Omaxe City, Palwal, Haryana" counted as one city.
  */
