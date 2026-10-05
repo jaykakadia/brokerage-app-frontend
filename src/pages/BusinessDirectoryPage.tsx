@@ -172,7 +172,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               {visible.map((b) => {
                 const info = businessInfo(b);
                 return (
-                  <div key={b.id} className="listing-card">
+                  <div key={b.id} className="listing-card business-dir-card">
                     <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
                       <img
                         src={getFirstImageUrl(b)}

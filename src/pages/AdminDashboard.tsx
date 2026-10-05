@@ -688,7 +688,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     setPlansLoading(true);
     try {
       const res = await getPlans(true, planType);
-      setPlans(res.data?.data || []);
+      // Cheapest first, the same order the plans popup shows them in
+      setPlans([...(res.data?.data || [])].sort((a, b) => Number(a.price) - Number(b.price)));
     } catch {
       showToast('Failed to fetch plans', 'error');
     } finally {
@@ -2029,7 +2030,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 )}
               </div>
 
-              <form onSubmit={handleSavePlan}>
+              <form onSubmit={handleSavePlan} className="plan-form">
                 <div className="form-group full" style={{ marginBottom: '12px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 600 }}>Plan Name *</label>
                   <input
@@ -2054,7 +2055,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </div>
 
                 {planType === 'leads' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '10px', marginBottom: '12px' }}>
                     <div className="form-group">
                       <label style={{ fontSize: '12px', fontWeight: 600 }}>Owner Leads *</label>
                       <input
@@ -2079,7 +2080,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '10px', marginBottom: '12px' }}>
                   <div className="form-group">
                     <label style={{ fontSize: '12px', fontWeight: 600 }}>
                       {planType === 'featured' ? 'Featured For (Days) *' : 'Validity (Days) *'}
@@ -2098,7 +2099,6 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <select
                       value={planForm.status}
                       onChange={(e) => setPlanForm({ ...planForm, status: e.target.value })}
-                      style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', width: '100%', fontSize: '13px' }}
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -2113,7 +2113,6 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     placeholder="Short description of plan features..."
                     value={planForm.description}
                     onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px' }}
                   />
                 </div>
 
