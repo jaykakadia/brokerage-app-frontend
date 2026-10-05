@@ -5,7 +5,7 @@ import { formatListingPrice } from '../utils/formatters';
 import { getListingUniqueId, getListingUrl } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
-import { getListingDescription } from '../utils/listingKind';
+import { getBusinessCategories, getListingDescription } from '../utils/listingKind';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
@@ -389,7 +389,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <i className="fas fa-check-circle"></i> Verified
                 </div>
               )}
-              <h1 className="ld-title">{listing.title}</h1>
+              <h1 className="ld-title">
+                {listing.title}
+                {isBusiness && getBusinessCategories(listing)[0] && (
+                  <> <span className="title-category">-&nbsp;{getBusinessCategories(listing)[0]}</span></>
+                )}
+              </h1>
               {showPrice && <div className="ld-price">{formatListingPrice(listing.price)}</div>}
               <div className="ld-loc"><i className="fas fa-map-marker-alt"></i>{listing.location}</div>
 

@@ -4,6 +4,17 @@ import type { Listing } from '../types';
 export const isBusinessListing = (listing: Pick<Listing, 'form_data'>): boolean =>
   listing.form_data?.kind === 'business';
 
+/** Categories a business picked, in the order chosen (older listings saved them as one comma list). */
+export const getBusinessCategories = (listing: Pick<Listing, 'form_data'>): string[] => {
+  const data = listing.form_data || {};
+  const selected = Array.isArray(data.selectedCategories) ? data.selectedCategories as Array<{ name?: string }> : [];
+  const categories = selected.map((c) => c.name || '').filter(Boolean);
+  if (!categories.length && typeof data.categoryName === 'string' && data.categoryName) {
+    categories.push(...data.categoryName.split(',').map((c) => c.trim()).filter(Boolean));
+  }
+  return categories;
+};
+
 /**
  * Description to show on a listing page. Business listings save a summary block (categories, address,
  * contact…) as the description, which the page already shows elsewhere; only the owner's own text is shown.

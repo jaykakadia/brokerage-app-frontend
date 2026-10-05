@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage, getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
-import { isBusinessListing } from '../utils/listingKind';
+import { getBusinessCategories, isBusinessListing } from '../utils/listingKind';
 import { useContactUnlock } from '../hooks/useContactUnlock';
 import type { AuthModalOptions } from './ListingDetailPage';
 import type { Listing, NavigateFunction } from '../types';
@@ -19,13 +19,8 @@ interface BusinessInfo {
 
 function businessInfo(listing: Listing): BusinessInfo {
   const data = listing.form_data || {};
-  const selected = Array.isArray(data.selectedCategories) ? data.selectedCategories as Array<{ name?: string }> : [];
-  const categories = selected.map((c) => c.name || '').filter(Boolean);
-  if (!categories.length && typeof data.categoryName === 'string' && data.categoryName) {
-    categories.push(...data.categoryName.split(',').map((c) => c.trim()).filter(Boolean));
-  }
   return {
-    categories,
+    categories: getBusinessCategories(listing),
     city: (typeof data.city === 'string' && data.city) || listing.location.split(',').pop()?.trim() || ''
   };
 }
@@ -190,13 +185,10 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                       )}
                     </div>
                     <div className="card-body">
-                      <h3 className="card-title">{b.title}</h3>
-                      {info.categories.length > 0 && (
-                        <div className="business-dir-tags">
-                          {info.categories.slice(0, 3).map((c) => <span key={c}>{c}</span>)}
-                          {info.categories.length > 3 && <span>+{info.categories.length - 3}</span>}
-                        </div>
-                      )}
+                      <h3 className="card-title business-dir-title">
+                        {b.title}
+                        {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
+                      </h3>
                       <div className="card-location"><i className="fas fa-map-marker-alt"></i> {b.location}</div>
                       <div className="business-dir-actions">
                         <button type="button" className="btn-outline" disabled={contact.unlockingId === b.id} onClick={() => void contact.unlock(b)}>
