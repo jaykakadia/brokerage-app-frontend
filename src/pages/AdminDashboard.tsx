@@ -187,6 +187,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   // === LISTINGS MODULE STATE ===
   const [listings, setListings] = useState<Listing[]>([]);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  // Listing being featured from the admin, with the number of days typed in ('' = no expiry)
+  const [featuringListing, setFeaturingListing] = useState<Listing | null>(null);
+  const [featureDays, setFeatureDays] = useState<string>('7');
   const [newEnquiryCount, setNewEnquiryCount] = useState(0);
   const [listingCounts, setListingCounts] = useState<ListingCounts>({
     pending: 0,
@@ -359,6 +362,33 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err) || 'Action failed', 'error');
     }
+  };
+
+  const handleSetFeatured = async (id: number, featured: boolean, days?: number) => {
+    try {
+      await api.post(`/api/v1/listings/${id}/feature`, { featured, days });
+      showToast(
+        featured
+          ? `Listing #${id} featured ${days ? `for ${days} day${days === 1 ? '' : 's'}` : 'with no expiry'}`
+          : `Listing #${id} is no longer featured`
+      );
+      setFeaturingListing(null);
+      fetchAdminListings();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Action failed', 'error');
+    }
+  };
+
+  const handleSubmitFeature = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!featuringListing) return;
+    const trimmed = featureDays.trim();
+    const days = trimmed ? parseInt(trimmed, 10) : undefined;
+    if (days !== undefined && (!Number.isInteger(days) || days < 1 || days > 3650)) {
+      showToast('Enter a number of days between 1 and 3650, or leave it empty for no expiry', 'error');
+      return;
+    }
+    void handleSetFeatured(featuringListing.id, true, days);
   };
 
   const handleDeleteListing = async (id: number) => {
@@ -1281,6 +1311,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       <th style={{ padding: '12px 14px' }}>Owner</th>
                       <th style={{ padding: '12px 14px' }}>Status</th>
                       <th style={{ padding: '12px 14px' }}>Stamp</th>
+                      <th style={{ padding: '12px 14px' }}>Featured</th>
                       <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
@@ -1339,6 +1370,51 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             >
                               <i className="fas fa-stamp"></i> Verify
                             </button>
+                          )}
+                        </td>
+                        <td data-label="Featured" style={{ padding: '12px 14px' }}>
+                          {l.is_featured ? (
+                            <div>
+                              <span style={{ color: '#b45309', fontWeight: 700 }}>
+                                <i className="fas fa-star"></i> Featured
+                              </span>
+                              <div style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 4px' }}>
+                                {l.featured_until
+                                  ? `Until ${new Date(l.featured_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                  : 'No expiry'}
+                              </div>
+                              <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '2px 6px', fontSize: '10px' }}
+                                  onClick={() => { setFeatureDays('7'); setFeaturingListing(l); }}
+                                >
+                                  Change
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '2px 6px', fontSize: '10px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                  onClick={() => {
+                                    if (window.confirm(`Remove featured from listing #${l.id}?`)) void handleSetFeatured(l.id, false);
+                                  }}
+                                >
+                                  Unfeature
+                                </button>
+                              </div>
+                            </div>
+                          ) : l.status === 'approved' ? (
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#d97706', color: '#b45309' }}
+                              onClick={() => { setFeatureDays('7'); setFeaturingListing(l); }}
+                            >
+                              <i className="far fa-star"></i> Feature
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Approve first</span>
                           )}
                         </td>
                         <td data-label="Actions" style={{ padding: '12px 14px', textAlign: 'right' }}>
@@ -2940,6 +3016,64 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     {userSaving
                       ? <><i className="fas fa-spinner fa-spin"></i> Saving...</>
                       : (userForm.id ? 'Save Changes' : 'Create User')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Feature a listing for N days */}
+        {featuringListing && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}>
+            <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '420px', width: '100%', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  {featuringListing.is_featured ? 'Change Featured Period' : 'Feature Listing'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setFeaturingListing(null)}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <p style={{ fontSize: '13px', color: '#475569', margin: '0 0 16px' }}>
+                #{featuringListing.id} · {featuringListing.title}
+              </p>
+
+              <form onSubmit={handleSubmitFeature}>
+                <div style={{ marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    Feature For (Days)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={3650}
+                    placeholder="Leave empty for no expiry"
+                    value={featureDays}
+                    onChange={(e) => setFeatureDays(e.target.value)}
+                    autoFocus
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+                  />
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '20px' }}>
+                  Counted from today. Leave empty to keep it featured until you remove it.
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn-outline" onClick={() => setFeaturingListing(null)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    <i className="fas fa-star"></i> {featuringListing.is_featured ? 'Update' : 'Feature'}
                   </button>
                 </div>
               </form>

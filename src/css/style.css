@@ -715,6 +715,19 @@ ul { list-style: none; }
   padding: 2px 4px;
 }
 
+/* ===================== RECENT SECTION ===================== */
+.recent-section {
+  padding: 8px 0 20px;
+  background: #f4f6f9;
+}
+.recent-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+@media (max-width: 991px) { .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .recent-grid { grid-template-columns: minmax(0, 1fr); } }
+
 /* ===================== FEATURED SECTION ===================== */
 .featured-section {
   padding: 24px 0 20px;

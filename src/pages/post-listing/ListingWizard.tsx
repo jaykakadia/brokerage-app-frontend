@@ -56,9 +56,11 @@ export interface ListingWizardProps {
   onRequireAuth?: () => void;
   /** Show every section of the form on one page (admin edit) */
   singlePage?: boolean;
+  /** Let the listing type of a saved listing be changed (admin edit) */
+  allowTypeChange?: boolean;
 }
 
-export default function ListingWizard({ editListing = null, onSaved, onRequireAuth, singlePage = false }: ListingWizardProps) {
+export default function ListingWizard({ editListing = null, onSaved, onRequireAuth, singlePage = false, allowTypeChange = false }: ListingWizardProps) {
   const { user } = useAuth();
   const [role, setRole] = useState<ListingRole | ''>(() => (editListing ? listingRoleOf(editListing) : ''));
   const [step, setStep] = useState<PropertyStep>(1);
@@ -224,8 +226,11 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
     }
   };
 
-  // A saved listing keeps its type; only listings saved without one let the type be picked
-  const roleLocked = (editListing !== null && listingRoleOf(editListing) !== '') || (role === 'business' ? businessStep : step) > 1;
+  // A saved listing keeps its type (unless an admin is editing); only listings saved without one let the type be picked
+  const roleLocked = editListing !== null
+    ? !allowTypeChange && listingRoleOf(editListing) !== ''
+    : (role === 'business' ? businessStep : step) > 1;
+  const typeChanged = editListing !== null && role !== '' && role !== listingRoleOf(editListing);
 
   return (
     <>
@@ -273,6 +278,11 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
           <option value="buyer">Property - Buyer / Renter</option>
           <option value="owner">Property - Seller / Landlord</option>
         </select>
+        {typeChanged && (
+          <div style={{ fontSize: 12, color: '#b45309', marginTop: 6 }}>
+            <i className="fas fa-info-circle"></i> The listing type changes when you click Save Changes. Fill in any required fields for the new type.
+          </div>
+        )}
       </div>
 
       {(role === 'owner' || role === 'buyer') && (

@@ -497,6 +497,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   // Only listings featured by the server (paid featured plan or admin) — never a fallback to the latest ones
   const featuredListings = useMemo(() => listings.filter((l) => l.is_featured), [listings]);
+  // The 4 newest listings, shown in one row just after Featured Listings
+  const recentListings = useMemo(
+    () => [...listings]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime() || b.id - a.id)
+      .slice(0, 4),
+    [listings]
+  );
 
   // Cities with listing counts, from the same listings shown below so the numbers match what a click shows
   const cityCounts = useMemo(() => {
@@ -695,6 +702,111 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const goToPage = (next: number): void => {
     setCurrentPage(next);
     scrollToSection('listings');
+  };
+
+  const renderListingCard = (listing: Listing, asList = false) => {
+    const imgSrc = getFirstImageUrl(listing);
+    const priceStr = formatListingPrice(listing.price);
+    const pType = listing.form_data?.propType || 'Property';
+
+    return (
+      <div
+        key={listing.id}
+        className="listing-card"
+        style={asList ? { display: 'flex', flexDirection: 'row' } : {}}
+      >
+        <div
+          className="card-img-wrap"
+          style={{ ...cardImageBackdrop(imgSrc), ...(asList ? { width: '280px', flexShrink: 0 } : {}) }}
+        >
+          <img
+            src={imgSrc}
+            alt={listing.title}
+            className="card-img"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = '/placeholder-property.svg';
+            }}
+          />
+          {listing.verified === 1 && (
+            <span className="badge-verified">
+              <i className="fas fa-check-circle"></i> Verified
+            </span>
+          )}
+          <span
+            className="badge-featured"
+            style={{
+              top: '12px',
+              left: '12px',
+              background: 'rgba(0,0,0,0.65)',
+              color: '#fff',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              textTransform: 'capitalize'
+            }}
+          >
+            {pType}
+          </span>
+
+          <button
+            type="button"
+            onClick={(e) => void handleToggleWishlist(e, listing.id)}
+            title={wishlistIds.has(listing.id) ? 'Remove from Wishlist' : 'Save to Wishlist'}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '34px',
+              height: '34px',
+              borderRadius: '50%',
+              background: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: wishlistIds.has(listing.id) ? '#dc2626' : '#9ca3af',
+              fontSize: '15px',
+              zIndex: 2,
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <i className={wishlistIds.has(listing.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+          </button>
+        </div>
+
+        <div className="card-body" style={{ flex: 1 }}>
+          <div className="card-price">{priceStr}</div>
+          <h3 className="card-title">{listing.title}</h3>
+          <div className="card-location">
+            <i className="fas fa-map-marker-alt"></i> {listing.location}
+          </div>
+          <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+            Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
+          </div>
+          <div className="card-footer card-footer-actions">
+            <button
+              type="button"
+              className="btn-view"
+              onClick={() => onNavigate('listing-detail', listing)}
+            >
+              <i className="fas fa-info-circle"></i> Details
+            </button>
+            <button
+              type="button"
+              className={`btn-wishlist ${wishlistIds.has(listing.id) ? 'active' : ''}`}
+              onClick={(e) => void handleToggleWishlist(e, listing.id)}
+            >
+              <i className={wishlistIds.has(listing.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+              <span>Wishlist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1119,6 +1231,26 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       </section>
       )}
 
+      {/* Recent Listings Section */}
+      {!hasActiveFilters && recentListings.length > 0 && (
+      <section className="recent-section" id="recent">
+        <div className="container">
+          <div className="section-header">
+            <div>
+              <h2>
+                <i className="fas fa-clock" style={{ color: '#0d7a5f', marginRight: '8px' }}></i>
+                Recent Listings
+              </h2>
+              <p>Latest properties posted on TradeCall</p>
+            </div>
+          </div>
+          <div className="recent-grid">
+            {recentListings.map((listing) => renderListingCard(listing))}
+          </div>
+        </div>
+      </section>
+      )}
+
       {/* Listings Section */}
       <section className="listings-section" id="listings">
         <div className="container">
@@ -1252,110 +1384,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 id="listingsGrid"
                 style={{ gridTemplateColumns: viewType === 'list' ? '1fr' : '' }}
               >
-                {pagedListings.map((listing) => {
-                  const imgSrc = getFirstImageUrl(listing);
-                  const priceStr = formatListingPrice(listing.price);
-                  const pType = listing.form_data?.propType || 'Property';
-
-                  return (
-                    <div
-                      key={listing.id}
-                      className="listing-card"
-                      style={viewType === 'list' ? { display: 'flex', flexDirection: 'row' } : {}}
-                    >
-                      <div
-                        className="card-img-wrap"
-                        style={{ ...cardImageBackdrop(imgSrc), ...(viewType === 'list' ? { width: '280px', flexShrink: 0 } : {}) }}
-                      >
-                        <img
-                          src={imgSrc}
-                          alt={listing.title}
-                          className="card-img"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            target.onerror = null;
-                            target.src = '/placeholder-property.svg';
-                          }}
-                        />
-                        {listing.verified === 1 && (
-                          <span className="badge-verified">
-                            <i className="fas fa-check-circle"></i> Verified
-                          </span>
-                        )}
-                        <span
-                          className="badge-featured"
-                          style={{
-                            top: '12px',
-                            left: '12px',
-                            background: 'rgba(0,0,0,0.65)',
-                            color: '#fff',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            fontSize: '11px',
-                            textTransform: 'capitalize'
-                          }}
-                        >
-                          {pType}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={(e) => void handleToggleWishlist(e, listing.id)}
-                          title={wishlistIds.has(listing.id) ? 'Remove from Wishlist' : 'Save to Wishlist'}
-                          style={{
-                            position: 'absolute',
-                            top: '12px',
-                            right: '12px',
-                            width: '34px',
-                            height: '34px',
-                            borderRadius: '50%',
-                            background: '#fff',
-                            border: 'none',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: wishlistIds.has(listing.id) ? '#dc2626' : '#9ca3af',
-                            fontSize: '15px',
-                            zIndex: 2,
-                            transition: 'transform 0.15s ease'
-                          }}
-                        >
-                          <i className={wishlistIds.has(listing.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
-                        </button>
-                      </div>
-
-                      <div className="card-body" style={{ flex: 1 }}>
-                        <div className="card-price">{priceStr}</div>
-                        <h3 className="card-title">{listing.title}</h3>
-                        <div className="card-location">
-                          <i className="fas fa-map-marker-alt"></i> {listing.location}
-                        </div>
-                        <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-                          Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
-                        </div>
-                        <div className="card-footer card-footer-actions">
-                          <button
-                            type="button"
-                            className="btn-view"
-                            onClick={() => onNavigate('listing-detail', listing)}
-                          >
-                            <i className="fas fa-info-circle"></i> Details
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn-wishlist ${wishlistIds.has(listing.id) ? 'active' : ''}`}
-                            onClick={(e) => void handleToggleWishlist(e, listing.id)}
-                          >
-                            <i className={wishlistIds.has(listing.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
-                            <span>Wishlist</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {pagedListings.map((listing) => renderListingCard(listing, viewType === 'list'))}
               </div>
             )}
             {!loading && !error && totalPages > 1 && (

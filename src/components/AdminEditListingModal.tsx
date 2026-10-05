@@ -97,6 +97,7 @@ export default function AdminEditListingModal({ listing, onClose, onSaved, onVie
             key={listing.id}
             editListing={listing}
             singlePage
+            allowTypeChange
             onSaved={() => {
               onSaved(`Listing #${listing.id} updated`);
               onClose();
