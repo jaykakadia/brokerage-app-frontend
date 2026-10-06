@@ -28,6 +28,7 @@ import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
+import { normalizeExternalUrl } from '../utils/url';
 import {
   Listing,
   ListingCounts,
@@ -37,6 +38,7 @@ import {
   RoleLimitsMap,
   RoleLimit,
   Plan,
+  PlanType,
   Employee,
   Blog,
   NavigateFunction
@@ -61,6 +63,16 @@ interface PlanFormState {
   status: string;
 }
 
+const EMPTY_PLAN_FORM: PlanFormState = {
+  name: '',
+  price: '',
+  listing_limit: 10,
+  leads_count: 10,
+  duration_days: 90,
+  description: '',
+  status: 'active'
+};
+
 interface UserFormState {
   id: number | null; // null = creating a new user
   name: string;
@@ -69,9 +81,32 @@ interface UserFormState {
   password: string;
   role: 'Owner' | 'Agent' | 'Builder' | 'Admin';
   status: string;
+  business_name: string;
+  whatsapp: string;
+  whatsappSameAsPhone: boolean;
+  website_url: string;
+  facebook_url: string;
+  x_url: string;
+  youtube_url: string;
 }
 
-const EMPTY_USER_FORM: UserFormState = { id: null, name: '', email: '', phone: '', password: '', role: 'Owner', status: 'active' };
+const EMPTY_USER_FORM: UserFormState = {
+  id: null, name: '', email: '', phone: '', password: '', role: 'Owner', status: 'active',
+  business_name: '', whatsapp: '', whatsappSameAsPhone: true,
+  website_url: '', facebook_url: '', x_url: '', youtube_url: ''
+};
+
+type UserLinkKey = 'website_url' | 'facebook_url' | 'x_url' | 'youtube_url';
+
+const USER_LINK_FIELDS: Array<{ key: UserLinkKey; label: string; icon: string; color: string; placeholder: string }> = [
+  { key: 'website_url', label: 'Website', icon: 'fas fa-globe', color: '#0c6253', placeholder: 'yourwebsite.com' },
+  { key: 'facebook_url', label: 'Facebook', icon: 'fab fa-facebook-f', color: '#1877f2', placeholder: 'facebook.com/yourpage' },
+  { key: 'x_url', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#111827', placeholder: 'x.com/yourhandle' },
+  { key: 'youtube_url', label: 'YouTube', icon: 'fab fa-youtube', color: '#ff0000', placeholder: 'youtube.com/@yourchannel' }
+];
+
+const USER_FIELD_LABEL: React.CSSProperties = { display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' };
+const USER_FIELD_INPUT: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' };
 
 interface EmployeeFormState {
   id: number;
@@ -122,6 +157,7 @@ type AdminModule =
   | 'categories'
   | 'users'
   | 'plans'
+  | 'featured-plans'
   | 'tracker'
   | 'blogs'
   | 'enquiries'
@@ -134,6 +170,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'categories', label: 'Category Management', icon: 'fas fa-tags' },
   { key: 'users', label: 'User Management', icon: 'fas fa-users' },
   { key: 'plans', label: 'Plans & Pricing', icon: 'fas fa-gem' },
+  { key: 'featured-plans', label: 'Featured Listing Plans', icon: 'fas fa-star' },
   { key: 'tracker', label: 'Business Associates', icon: 'fas fa-chart-line' },
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
@@ -201,15 +238,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState<boolean>(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
-  const [planForm, setPlanForm] = useState<PlanFormState>({
-    name: '',
-    price: '',
-    listing_limit: 10,
-    leads_count: 10,
-    duration_days: 90,
-    description: '',
-    status: 'active'
-  });
+  const [planForm, setPlanForm] = useState<PlanFormState>(EMPTY_PLAN_FORM);
+  // Plans & Pricing and Featured Listing Plans share one form/table, filtered by plan type.
+  const planType: PlanType = activeModule === 'featured-plans' ? 'featured' : 'leads';
   const [planSaving, setPlanSaving] = useState<boolean>(false);
 
   // === TRACKER / BUSINESS ASSOCIATES STATE ===
@@ -533,7 +564,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       phone: target.phone || '',
       password: '',
       role: target.role as UserFormState['role'],
-      status: target.status
+      status: target.status,
+      business_name: target.business_name || '',
+      whatsapp: target.whatsapp || '',
+      whatsappSameAsPhone: !target.whatsapp || target.whatsapp === target.phone,
+      website_url: target.website_url || '',
+      facebook_url: target.facebook_url || '',
+      x_url: target.x_url || '',
+      youtube_url: target.youtube_url || ''
     } : EMPTY_USER_FORM);
     setShowUserPassword(false);
     setUserModalOpen(true);
@@ -547,12 +585,29 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       showToast('Password must be at least 6 characters', 'error');
       return;
     }
+    const whatsapp = userForm.whatsappSameAsPhone ? userForm.phone.trim() : userForm.whatsapp.trim();
+    if (whatsapp && !/^\+?\d{10,13}$/.test(whatsapp)) {
+      showToast('Enter a valid WhatsApp number', 'error');
+      return;
+    }
+    const links: Partial<Record<UserLinkKey, string>> = {};
+    for (const { key, label } of USER_LINK_FIELDS) {
+      const url = normalizeExternalUrl(userForm[key]);
+      if (url === null) {
+        showToast(`Enter a valid ${label} link`, 'error');
+        return;
+      }
+      links[key] = url;
+    }
     const payload = {
       name: userForm.name.trim(),
       email: userForm.email.trim(),
       phone: userForm.phone.trim(),
       role: userForm.role,
       status: userForm.status,
+      business_name: userForm.business_name.trim(),
+      whatsapp,
+      ...links,
       ...(userForm.password ? { password: userForm.password } : {})
     };
     setUserSaving(true);
@@ -605,7 +660,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const fetchPlans = async () => {
     setPlansLoading(true);
     try {
-      const res = await getPlans(true);
+      const res = await getPlans(true, planType);
       setPlans(res.data?.data || []);
     } catch {
       showToast('Failed to fetch plans', 'error');
@@ -618,11 +673,13 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     e.preventDefault();
     setPlanSaving(true);
     try {
+      const isFeatured = planType === 'featured';
       const payload = {
         name: planForm.name.trim(),
+        plan_type: planType,
         price: parseFloat(String(planForm.price)) || 0,
-        listing_limit: parseInt(String(planForm.listing_limit), 10) || 1,
-        leads_count: parseInt(String(planForm.leads_count), 10) || 0,
+        listing_limit: isFeatured ? 0 : parseInt(String(planForm.listing_limit), 10) || 1,
+        leads_count: isFeatured ? 0 : parseInt(String(planForm.leads_count), 10) || 0,
         duration_days: parseInt(String(planForm.duration_days), 10) || 30,
         description: planForm.description.trim() || undefined,
         status: planForm.status
@@ -637,15 +694,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       }
 
       setEditingPlanId(null);
-      setPlanForm({
-        name: '',
-        price: '',
-        listing_limit: 10,
-        leads_count: 10,
-        duration_days: 90,
-        description: '',
-        status: 'active'
-      });
+      setPlanForm(EMPTY_PLAN_FORM);
       fetchPlans();
     } catch (err: unknown) {
       showToast(getApiErrorMessage(err) || 'Failed to save plan', 'error');
@@ -1020,7 +1069,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     } else if (activeModule === 'users') {
       fetchUsers();
       fetchRoleLimits();
-    } else if (activeModule === 'plans') {
+    } else if (activeModule === 'plans' || activeModule === 'featured-plans') {
+      setEditingPlanId(null);
+      setPlanForm(EMPTY_PLAN_FORM);
       fetchPlans();
     } else if (activeModule === 'tracker') {
       fetchEmployees();
@@ -1099,14 +1150,16 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => onNavigate('post-listing')}
-            style={{ fontSize: '13px', padding: '8px 16px' }}
-          >
-            <i className="fas fa-plus"></i> Post Property as Admin
-          </button>
+          {activeModule === 'listings' && (
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => onNavigate('post-listing')}
+              style={{ fontSize: '13px', padding: '8px 16px' }}
+            >
+              <i className="fas fa-plus"></i> Post Property as Admin
+            </button>
+          )}
         </div>
 
         <div className="admin-layout">
@@ -1882,13 +1935,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {/* ======================================================== */}
         {/* MODULE 5: PLANS & PRICING MANAGEMENT */}
         {/* ======================================================== */}
-        {activeModule === 'plans' && (
+        {(activeModule === 'plans' || activeModule === 'featured-plans') && (
           <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '24px', alignItems: 'start' }}>
             {/* Create / Edit Plan Form */}
             <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  {editingPlanId ? `Edit Plan #${editingPlanId}` : 'Add New Membership Plan'}
+                  {editingPlanId
+                    ? `Edit Plan #${editingPlanId}`
+                    : planType === 'featured' ? 'Add Featured Listing Plan' : 'Add New Membership Plan'}
                 </h2>
                 {editingPlanId && (
                   <button
@@ -1897,15 +1952,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     style={{ fontSize: '11px', padding: '2px 8px' }}
                     onClick={() => {
                       setEditingPlanId(null);
-                      setPlanForm({
-                        name: '',
-                        price: '',
-                        listing_limit: 10,
-                        leads_count: 10,
-                        duration_days: 90,
-                        description: '',
-                        status: 'active'
-                      });
+                      setPlanForm(EMPTY_PLAN_FORM);
                     }}
                   >
                     Cancel
@@ -1918,7 +1965,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <label style={{ fontSize: '12px', fontWeight: 600 }}>Plan Name *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Gold Unlimited"
+                    placeholder={planType === 'featured' ? 'e.g. Featured 15 Days' : 'e.g. Gold Unlimited'}
                     value={planForm.name}
                     onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
                     required
@@ -1937,33 +1984,37 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   />
                 </div>
 
+                {planType === 'leads' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="form-group">
+                      <label style={{ fontSize: '12px', fontWeight: 600 }}>Owner Leads *</label>
+                      <input
+                        type="number"
+                        placeholder="10"
+                        value={planForm.leads_count}
+                        onChange={(e) => setPlanForm({ ...planForm, leads_count: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label style={{ fontSize: '12px', fontWeight: 600 }}>Listing Limit *</label>
+                      <input
+                        type="number"
+                        placeholder="5"
+                        value={planForm.listing_limit}
+                        onChange={(e) => setPlanForm({ ...planForm, listing_limit: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                   <div className="form-group">
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Owner Leads *</label>
-                    <input
-                      type="number"
-                      placeholder="10"
-                      value={planForm.leads_count}
-                      onChange={(e) => setPlanForm({ ...planForm, leads_count: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Listing Limit *</label>
-                    <input
-                      type="number"
-                      placeholder="5"
-                      value={planForm.listing_limit}
-                      onChange={(e) => setPlanForm({ ...planForm, listing_limit: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Validity (Days) *</label>
+                    <label style={{ fontSize: '12px', fontWeight: 600 }}>
+                      {planType === 'featured' ? 'Featured For (Days) *' : 'Validity (Days) *'}
+                    </label>
                     <input
                       type="number"
                       placeholder="90"
@@ -2011,7 +2062,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             {/* Plans List Table */}
             <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '16px', color: '#111827' }}>
-                Existing Plans ({plans.length})
+                {planType === 'featured' ? 'Featured Listing Plans' : 'Existing Plans'} ({plans.length})
               </h2>
 
               {plansLoading ? (
@@ -2020,7 +2071,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </div>
               ) : plans.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  No plans configured. Create your first plan on the left!
+                  {planType === 'featured'
+                    ? 'No featured listing plans yet. Create your first one on the left!'
+                    : 'No plans configured. Create your first plan on the left!'}
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -2029,8 +2082,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       <th style={{ padding: '10px' }}>ID</th>
                       <th style={{ padding: '10px' }}>Plan Name</th>
                       <th style={{ padding: '10px' }}>Price</th>
-                      <th style={{ padding: '10px' }}>Leads</th>
-                      <th style={{ padding: '10px' }}>Post Limit</th>
+                      {planType === 'leads' && (
+                        <>
+                          <th style={{ padding: '10px' }}>Leads</th>
+                          <th style={{ padding: '10px' }}>Post Limit</th>
+                        </>
+                      )}
                       <th style={{ padding: '10px' }}>Duration</th>
                       <th style={{ padding: '10px' }}>Status</th>
                       <th style={{ padding: '10px', textAlign: 'right' }}>Actions</th>
@@ -2044,8 +2101,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <td style={{ padding: '10px', fontWeight: 700, color: '#0c6253' }}>
                           ₹{Number(p.price).toLocaleString('en-IN')}
                         </td>
-                        <td style={{ padding: '10px' }}>{p.leads_count}</td>
-                        <td style={{ padding: '10px' }}>{p.listing_limit}</td>
+                        {planType === 'leads' && (
+                          <>
+                            <td style={{ padding: '10px' }}>{p.leads_count}</td>
+                            <td style={{ padding: '10px' }}>{p.listing_limit}</td>
+                          </>
+                        )}
                         <td style={{ padding: '10px' }}>{p.duration_days} days</td>
                         <td style={{ padding: '10px' }}>
                           <span
@@ -2702,6 +2763,18 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>
+                  <label style={USER_FIELD_LABEL}>Business Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Sharma Properties"
+                    maxLength={150}
+                    value={userForm.business_name}
+                    onChange={(e) => setUserForm({ ...userForm, business_name: e.target.value })}
+                    style={USER_FIELD_INPUT}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                     Email Address
                   </label>
@@ -2730,6 +2803,29 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     maxLength={13}
                     required
                   />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={USER_FIELD_LABEL}>
+                    <i className="fab fa-whatsapp" style={{ color: '#25d366', marginRight: '6px' }}></i>WhatsApp Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="10-digit WhatsApp number"
+                    value={userForm.whatsappSameAsPhone ? userForm.phone : userForm.whatsapp}
+                    onChange={(e) => setUserForm({ ...userForm, whatsapp: e.target.value.replace(/[^\d+]/g, '') })}
+                    disabled={userForm.whatsappSameAsPhone}
+                    maxLength={13}
+                    style={{ ...USER_FIELD_INPUT, ...(userForm.whatsappSameAsPhone ? { background: '#f8fafc' } : {}) }}
+                  />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', marginTop: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={userForm.whatsappSameAsPhone}
+                      onChange={(e) => setUserForm({ ...userForm, whatsappSameAsPhone: e.target.checked })}
+                    />
+                    Same as mobile number
+                  </label>
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>
@@ -2763,7 +2859,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: userForm.id !== null ? '16px' : '24px' }}>
+                <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                     Role
                   </label>
@@ -2786,7 +2882,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </div>
 
                 {userForm.id !== null && (
-                  <div style={{ marginBottom: '24px' }}>
+                  <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                       Status
                     </label>
@@ -2806,6 +2902,25 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     )}
                   </div>
                 )}
+
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: '4px 0 12px' }}>
+                  <i className="fas fa-share-alt" style={{ color: '#0c6253', marginRight: '6px' }}></i>Website &amp; Social Links
+                </div>
+                {USER_LINK_FIELDS.map(({ key, label, icon, color, placeholder }, i) => (
+                  <div key={key} style={{ marginBottom: i === USER_LINK_FIELDS.length - 1 ? '24px' : '16px' }}>
+                    <label style={USER_FIELD_LABEL}>
+                      <i className={icon} style={{ color, marginRight: '6px', width: '14px', textAlign: 'center' }}></i>{label}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="url"
+                      placeholder={placeholder}
+                      value={userForm[key]}
+                      onChange={(e) => setUserForm({ ...userForm, [key]: e.target.value })}
+                      style={USER_FIELD_INPUT}
+                    />
+                  </div>
+                ))}
 
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button

@@ -240,7 +240,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
             Logged in as {user.name}. Submit for approval.
           </p>
           <div className="form-group">
-            <label>Select Role</label>
+            <label>Select Listing Type</label>
             <select
               required
               disabled={(role === 'business' ? businessStep : step) > 1}
@@ -277,7 +277,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
                 cursor: (role === 'business' ? businessStep : step) > 1 ? 'not-allowed' : 'pointer'
               }}
             >
-              <option value="" disabled>Select Role</option>
+              <option value="" disabled>Select Listing Type</option>
               <option value="business">Business Owner</option>
               <option value="buyer">Property - Buyer / Renter</option>
               <option value="owner">Property - Seller / Landlord</option>
