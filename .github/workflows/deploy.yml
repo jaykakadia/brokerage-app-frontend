@@ -68,7 +68,10 @@ jobs:
           rsync -az -e "$RSYNC_SSH" dist/assets/ "deploy@$VPS_HOST:/var/www/tradecall/assets/"
           rsync -az --delete-after --delay-updates -e "$RSYNC_SSH" dist/ "deploy@$VPS_HOST:/var/www/tradecall/"
 
+      # nginx only serves the site under its domain (the bare IP returns the
+      # default 404), so check the public URL and confirm it references the
+      # bundle we just uploaded rather than a stale one.
       - name: Smoke test
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: curl -fsSL "http://$VPS_HOST/" | grep -q "<div id=\"root\">"
+        run: |
+          BUNDLE=$(grep -oE '/assets/index-[^"]+\.js' dist/index.html | head -1)
+          curl -fsSL https://tradecall.in/ | grep -qF "$BUNDLE"
