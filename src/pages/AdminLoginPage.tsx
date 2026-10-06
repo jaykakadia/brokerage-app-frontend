@@ -28,7 +28,7 @@ export default function AdminLoginPage({ onNavigate }: AdminLoginPageProps) {
       setError('Enter the admin username and password.');
       return;
     }
-    const email = typed.toLowerCase() === 'admin' ? 'admin@tradecall.in' : typed;
+    const email = typed.toLowerCase() === 'adminpanel' ? 'admin@tradecall.in' : typed;
 
     setSubmitting(true);
     setError('');
