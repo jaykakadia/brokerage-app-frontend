@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { ExistingPhotos, FloatField, scrollFormToTop, FloatSelect, PhoneWhatsAppFields, RefCodeSearch, SearchableSelect, SocialLinkFields, StepIndicator } from './fields';
+import { ExistingPhotos, FloatField, scrollFormToTop, FloatSelect, PhoneWhatsAppFields, RefCodeSearch, SearchableSelect, SocialLinkFields, StepIndicator, cityPicker, parseCityKey } from './fields';
 import { StateOptions } from '../../utils/indianStates';
 import { digitsOnly, normalizedSocialLinks, profileContactDefaults, socialLinkError, stateForCity, type CityOption } from './propertyForm';
 import type { ApiResponse, Category, Listing, RefCodeItem } from '../../types';
@@ -429,7 +429,12 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
           </div>
           <FloatField label="Area" icon="fas fa-map" value={form.area} onChange={(area) => patch({ area })} />
           <div className="bf-row keep-row">
-            <SearchableSelect label="City" required value={form.city} options={cities.map((item) => item.city)} onChange={(city) => patch({ city, state: stateForCity(city, cities) })} />
+            <SearchableSelect
+              label="City"
+              required
+              {...cityPicker(cities, form.city, form.state)}
+              onChange={(key) => patch(parseCityKey(key))}
+            />
             <FloatSelect label="State" required value={form.state} onChange={(state) => patch({ state })}>
               <StateOptions current={form.state} />
             </FloatSelect>

@@ -100,7 +100,9 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
         const next = rows
           .filter((row) => row.city_name)
           .map((row) => ({ city: row.city_name, state: row.state || stateForCity(row.city_name, FALLBACK_CITIES) }));
-        const unique = Array.from(new Map(next.map((item) => [item.city, item])).values());
+        // Same-named towns in different states are kept apart; A-Z for the City picker
+        const unique = Array.from(new Map(next.map((item) => [`${item.city.toLowerCase()}|${item.state}`, item])).values())
+          .sort((a, b) => a.city.localeCompare(b.city, 'en', { sensitivity: 'base' }) || a.state.localeCompare(b.state));
         if (unique.length > 0) setCities(unique);
       })
       .catch(() => {});

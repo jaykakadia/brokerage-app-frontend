@@ -372,4 +372,5 @@
 .searchable-select-menu button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px 14px; border: none; border-bottom: 1px solid #f1f5f9; background: #fff; text-align: left; font-family: inherit; font-size: 14px; color: #111827; cursor: pointer; }
 .searchable-select-menu button.is-active { background: #f0faf7; }
 .searchable-select-menu button.is-selected { font-weight: 600; color: #0c6253; }
+.searchable-select-menu button small { margin-left: 6px; font-size: 12px; font-weight: 400; color: #94a3b8; }
 .searchable-select-empty { padding: 10px 14px; font-size: 13px; color: #6b7280; }

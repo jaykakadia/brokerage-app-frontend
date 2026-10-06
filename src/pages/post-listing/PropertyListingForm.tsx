@@ -1,4 +1,4 @@
-import { ExistingPhotos, FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SearchableSelect, SocialLinkFields, StepIndicator } from './fields';
+import { ExistingPhotos, FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SearchableSelect, SocialLinkFields, StepIndicator, cityPicker, parseCityKey } from './fields';
 import { StateOptions } from '../../utils/indianStates';
 import {
   amenitiesFor,
@@ -6,7 +6,6 @@ import {
   inrInWords,
   landAreaFor,
   withAutoPrice,
-  stateForCity,
   type CityOption,
   type PropertyFormState,
   type PropType,
@@ -159,10 +158,6 @@ export default function PropertyListingForm({
     ]} />
   );
 
-  const setCity = (city: string) => {
-    onChange({ city, state: stateForCity(city, cities) });
-  };
-
   return (
     <div className="business-premium-box">
       {singlePage ? null : <StepIndicator steps={PROPERTY_STEPS} current={step} />}
@@ -238,7 +233,12 @@ export default function PropertyListingForm({
 
           <div className="bf-heading" style={{ marginTop: 24, fontSize: 16 }}><i className="fas fa-map-marker-alt"></i> Property Location</div>
           <div className="bf-row keep-row">
-            <SearchableSelect label="City" required value={form.city} options={cities.map((item) => item.city)} onChange={setCity} />
+            <SearchableSelect
+              label="City"
+              required
+              {...cityPicker(cities, form.city, form.state)}
+              onChange={(key) => onChange(parseCityKey(key))}
+            />
             <FloatSelect label="State" required value={form.state} onChange={(state) => onChange({ state })}>
               <StateOptions current={form.state} />
             </FloatSelect>

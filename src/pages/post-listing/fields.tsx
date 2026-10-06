@@ -82,9 +82,21 @@ export function FloatSelect({
   );
 }
 
+const MAX_SHOWN = 200;
+
+export interface SearchableOption {
+  /** What is passed to onChange; must be unique. */
+  value: string;
+  /** Text shown in the box and the list. */
+  label: string;
+  /** Grey text after the label, e.g. the state of a city whose name exists in several states. */
+  hint?: string;
+}
+
 /**
- * Dropdown you can type into to filter a long list (e.g. cities). Focusing it starts a fresh search;
- * only a value from the list can be picked, and leaving without picking keeps the current choice.
+ * Dropdown you can type into to filter a long list (e.g. cities). Focusing it starts a fresh search
+ * (label and hint both match); only an option from the list can be picked, and leaving without
+ * picking keeps the current choice.
  */
 export function SearchableSelect({
   label,
@@ -96,41 +108,48 @@ export function SearchableSelect({
 }: {
   label: string;
   value: string;
-  options: string[];
+  options: SearchableOption[];
   onChange: (value: string) => void;
   required?: boolean;
   icon?: string;
 }) {
-  const [query, setQuery] = useState(value);
+  const current = options.find((o) => o.value === value);
+  const shown = current?.label ?? '';
+  const [query, setQuery] = useState(shown);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) setQuery(value);
-  }, [value, open]);
+    if (!open) setQuery(shown);
+  }, [shown, open]);
 
   const q = query.trim().toLowerCase();
-  const matches = q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+  const allMatches = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q) || (o.hint ?? '').toLowerCase().includes(q))
+    : options;
+  // Thousands of cities: only the first few hundred are drawn, typing narrows the rest
+  const matches = allMatches.slice(0, MAX_SHOWN);
 
   useEffect(() => {
     listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' });
   }, [active]);
 
-  const choose = (option: string) => {
-    onChange(option);
-    setQuery(option);
+  const choose = (option: SearchableOption) => {
+    onChange(option.value);
+    setQuery(option.label);
     setOpen(false);
     setActive(-1);
   };
 
   const close = () => {
-    const exact = options.find((o) => o.toLowerCase() === q);
-    if (exact) {
-      if (exact !== value) onChange(exact);
-      setQuery(exact);
+    // Typed text that names exactly one option picks it; anything else keeps the current choice
+    const exact = options.filter((o) => o.label.toLowerCase() === q);
+    if (exact.length === 1) {
+      if (exact[0].value !== value) onChange(exact[0].value);
+      setQuery(exact[0].label);
     } else {
-      setQuery(value);
+      setQuery(shown);
     }
     setOpen(false);
     setActive(-1);
@@ -157,7 +176,7 @@ export function SearchableSelect({
     <div className="premium-float searchable-select">
       <input
         type="text"
-        placeholder={value || ' '}
+        placeholder={shown || ' '}
         value={query}
         required={required}
         autoComplete="off"
@@ -180,24 +199,54 @@ export function SearchableSelect({
             <div className="searchable-select-empty">No match for "{query.trim()}"</div>
           ) : matches.map((option, i) => (
             <button
-              key={option}
+              key={option.value}
               type="button"
               role="option"
-              aria-selected={option === value}
-              className={`${i === active ? 'is-active' : ''}${option === value ? ' is-selected' : ''}`}
+              aria-selected={option.value === value}
+              className={`${i === active ? 'is-active' : ''}${option.value === value ? ' is-selected' : ''}`}
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setActive(i)}
               onClick={() => choose(option)}
             >
-              {option}
-              {option === value ? <i className="fas fa-check" /> : null}
+              <span>
+                {option.label}
+                {option.hint ? <small> {option.hint}</small> : null}
+              </span>
+              {option.value === value ? <i className="fas fa-check" /> : null}
             </button>
           ))}
+          {allMatches.length > MAX_SHOWN && (
+            <div className="searchable-select-empty">
+              Showing {MAX_SHOWN} of {allMatches.length} — type more to narrow down
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+/**
+ * Options and current value for a City picker: one option per city and state, with the state shown so
+ * same-named towns (Aurangabad in Bihar, Maharashtra…) can be told apart. A saved city that is no longer
+ * in the list is kept as an option so editing an older listing doesn't blank the field.
+ */
+export function cityPicker(cities: { city: string; state: string }[], city: string, state: string): { options: SearchableOption[]; value: string } {
+  const options = cities.map((c) => ({ value: cityKey(c.city, c.state), label: c.city, hint: c.state }));
+  if (!city) return { options, value: '' };
+  const exact = cityKey(city, state);
+  if (options.some((o) => o.value === exact)) return { options, value: exact };
+  const sameName = options.find((o) => o.label.toLowerCase() === city.toLowerCase());
+  if (sameName && !state) return { options, value: sameName.value };
+  return { options: [{ value: exact, label: city, hint: state || undefined }, ...options], value: exact };
+}
+
+/** Option value for a city in a state; split it back with parseCityKey. */
+export const cityKey = (city: string, state: string): string => `${city}|${state}`;
+export const parseCityKey = (key: string): { city: string; state: string } => {
+  const [city, state = ''] = key.split('|');
+  return { city, state };
+};
 
 export function Pills<T extends string>({
   label,
