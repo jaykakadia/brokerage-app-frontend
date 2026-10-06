@@ -5,6 +5,7 @@ import type {
   ApiErrorResponse,
   Listing,
   Plan,
+  PlanType,
   PlanCreate,
   PlanUpdate,
   LeadStatusResponse,
@@ -156,8 +157,8 @@ export const toggleWishlist = (listingId: number): Promise<AxiosResponse<ToggleW
   api.post('/api/v1/wishlist/toggle', { listing_id: listingId });
 
 // Plans
-export const getPlans = (all = false): Promise<AxiosResponse<ApiResponse<Plan[]>>> =>
-  api.get('/api/v1/plans', { params: { all: all ? 1 : 0 } });
+export const getPlans = (all = false, type: PlanType = 'leads'): Promise<AxiosResponse<ApiResponse<Plan[]>>> =>
+  api.get('/api/v1/plans', { params: { all: all ? 1 : 0, type } });
 
 export const createPlan = (planData: PlanCreate): Promise<AxiosResponse<ApiResponse<Plan>>> =>
   api.post('/api/v1/plans', planData);
@@ -176,8 +177,8 @@ export const revealContact = (listingId: number): Promise<AxiosResponse<RevealCo
   api.post('/api/v1/leads/reveal', { listing_id: listingId });
 
 // Payments & Razorpay
-export const createPaymentOrder = (planId: number): Promise<AxiosResponse<CreateOrderResponse>> =>
-  api.post('/api/v1/payments/create-order', { plan_id: planId });
+export const createPaymentOrder = (planId: number, listingId?: number): Promise<AxiosResponse<CreateOrderResponse>> =>
+  api.post('/api/v1/payments/create-order', { plan_id: planId, listing_id: listingId });
 
 export const verifyPayment = (payload: VerifyPaymentRequest): Promise<AxiosResponse<VerifyPaymentResponse>> =>
   api.post('/api/v1/payments/verify', payload);

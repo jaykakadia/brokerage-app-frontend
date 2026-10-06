@@ -2,6 +2,7 @@ import { Plan } from './plan';
 
 export interface CreateOrderRequest {
   plan_id: number;
+  listing_id?: number; // required for featured plans
   idempotency_key?: string;
 }
 

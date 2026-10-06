@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { getPlans, createPaymentOrder, verifyPayment, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { Plan } from '../types';
+import type { Listing, Plan, PlanType } from '../types';
 
 export interface PlansModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** 'featured' shows Featured Listing plans and features `listing` on payment. */
+  planType?: PlanType;
+  listing?: Pick<Listing, 'id' | 'title'> | null;
 }
 
-export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalProps) {
+export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'leads', listing = null }: PlansModalProps) {
+  const isFeatured = planType === 'featured';
   const { user, refreshUser } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -24,12 +28,12 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
       setSuccessMsg(null);
       void loadPlans();
     }
-  }, [isOpen]);
+  }, [isOpen, planType]);
 
   const loadPlans = async (): Promise<void> => {
     setLoading(true);
     try {
-      const res = await getPlans(false);
+      const res = await getPlans(false, planType);
       const list = res.data?.data || [];
       setPlans(list);
       if (list.length > 0) {
@@ -49,7 +53,7 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
     setProcessing(true);
 
     try {
-      const res = await createPaymentOrder(selectedPlanId);
+      const res = await createPaymentOrder(selectedPlanId, isFeatured ? listing?.id : undefined);
       const orderData = res.data;
       const { order_id, key_id, amount, currency, prefill } = orderData;
 
@@ -62,7 +66,9 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
           amount: amount,
           currency: currency,
           name: 'TradeCall Real Estate',
-          description: `Subscription: ${orderData.plan?.name || 'Lead Plan'}`,
+          description: isFeatured
+            ? `Featured Listing: ${orderData.plan?.name || 'Featured Plan'}`
+            : `Subscription: ${orderData.plan?.name || 'Lead Plan'}`,
           order_id: order_id,
           prefill: {
             name: prefill?.name || user?.name || '',
@@ -78,7 +84,9 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
                 razorpay_signature: response.razorpay_signature,
                 plan_id: selectedPlanId
               });
-              setSuccessMsg('Payment successful! Your leads balance and plan have been credited.');
+              setSuccessMsg(isFeatured
+                ? 'Payment successful! Your listing is now featured.'
+                : 'Payment successful! Your leads balance and plan have been credited.');
               await refreshUser();
               if (onSuccess) onSuccess();
               setTimeout(() => {
@@ -108,7 +116,9 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
           plan_id: selectedPlanId
         });
 
-        setSuccessMsg('Payment successful (Test Mode)! Your leads balance and plan have been activated.');
+        setSuccessMsg(isFeatured
+          ? 'Payment successful (Test Mode)! Your listing is now featured.'
+          : 'Payment successful (Test Mode)! Your leads balance and plan have been activated.');
         await refreshUser();
         if (onSuccess) onSuccess();
         setTimeout(() => {
@@ -168,10 +178,12 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
         >
           <div>
             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#111827' }}>
-              Select a Membership Plan
+              {isFeatured ? 'Feature Your Listing' : 'Select a Membership Plan'}
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6b7280' }}>
-              Unlock direct contact details of genuine property owners with Zero Brokerage.
+              {isFeatured
+                ? <>Show <strong>{listing?.title || 'your listing'}</strong> in Featured Listings on the home page.</>
+                : 'Unlock direct contact details of genuine property owners with Zero Brokerage.'}
             </p>
           </div>
           <button
@@ -236,12 +248,12 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
               <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
-              <div>Loading membership plans...</div>
+              <div>{isFeatured ? 'Loading featured plans...' : 'Loading membership plans...'}</div>
             </div>
           ) : plans.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
               <i className="fas fa-box-open fa-2x" style={{ color: '#9ca3af', marginBottom: '10px' }}></i>
-              <div>No subscription plans currently available. Please contact support.</div>
+              <div>{isFeatured ? 'No featured listing plans' : 'No subscription plans'} currently available. Please contact support.</div>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -290,9 +302,18 @@ export default function PlansModal({ isOpen, onClose, onSuccess }: PlansModalPro
                         ₹{Number(plan.price).toLocaleString('en-IN')}
                       </div>
                       <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.6' }}>
-                        <div><i className="fas fa-phone-alt" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.leads_count}</strong> Owner Contacts</div>
-                        <div><i className="fas fa-home" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.listing_limit}</strong> Property Posts</div>
-                        <div><i className="fas fa-clock" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.duration_days}</strong> Days Validity</div>
+                        {isFeatured ? (
+                          <>
+                            <div><i className="fas fa-star" style={{ color: '#0c6253', width: '18px' }}></i> <strong>1</strong> Featured Listing</div>
+                            <div><i className="fas fa-clock" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.duration_days}</strong> Days Featured</div>
+                          </>
+                        ) : (
+                          <>
+                            <div><i className="fas fa-phone-alt" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.leads_count}</strong> Owner Contacts</div>
+                            <div><i className="fas fa-home" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.listing_limit}</strong> Property Posts</div>
+                            <div><i className="fas fa-clock" style={{ color: '#0c6253', width: '18px' }}></i> <strong>{plan.duration_days}</strong> Days Validity</div>
+                          </>
+                        )}
                       </div>
                       {plan.description && (
                         <p style={{ fontSize: '12px', color: '#6b7280', margin: '10px 0 0' }}>

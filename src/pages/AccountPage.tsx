@@ -39,6 +39,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
 
   const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'password'>('my-listings');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
+  const [featureListing, setFeatureListing] = useState<Listing | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Password Change State
@@ -475,6 +476,22 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                             >
                               {listing.status}
                             </span>
+                            {listing.is_featured && (
+                              <span
+                                title={listing.featured_until ? `Featured until ${formatPlanExpiry(listing.featured_until)}` : 'Featured'}
+                                style={{
+                                  background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+                                  color: '#fff',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: '4px'
+                                }}
+                              >
+                                <i className="fas fa-star"></i> Featured
+                                {listing.featured_until ? ` till ${formatPlanExpiry(listing.featured_until)}` : ''}
+                              </span>
+                            )}
                             <span style={{ fontWeight: 800, color: '#0c6253', fontSize: '14px' }}>
                               {formatListingPrice(listing.price)}
                             </span>
@@ -489,6 +506,17 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                       </div>
 
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* Admin-featured listings (no end date) need no paid featuring. */}
+                        {listing.status?.toLowerCase() === 'approved' && !(listing.is_featured && !listing.featured_until) && (
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ padding: '8px 14px', fontSize: '12px', color: '#c2410c', borderColor: '#fdba74' }}
+                            onClick={() => setFeatureListing(listing)}
+                          >
+                            <i className="fas fa-star"></i> {listing.is_featured ? 'Extend Featured' : 'Feature'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn-outline"
@@ -691,6 +719,13 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
         isOpen={plansModalOpen}
         onClose={() => setPlansModalOpen(false)}
         onSuccess={() => void refreshUser()}
+      />
+      <PlansModal
+        isOpen={featureListing !== null}
+        planType="featured"
+        listing={featureListing}
+        onClose={() => setFeatureListing(null)}
+        onSuccess={() => void fetchMyListings()}
       />
       <EditProfileModal
         isOpen={editModalOpen}

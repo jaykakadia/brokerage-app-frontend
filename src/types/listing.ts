@@ -61,6 +61,7 @@ export interface Listing {
   status: 'pending' | 'approved' | 'suspended' | 'sold' | 'rented' | 'deleted' | string;
   verified: number;
   is_featured?: boolean;
+  featured_until?: string | null;
   created_at: string;
   images: ListingImage[];
 }
