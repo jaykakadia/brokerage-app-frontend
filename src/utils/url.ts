@@ -10,14 +10,18 @@ export function slugify(text?: string | null): string {
 }
 
 /**
- * Generates Justdial-style unique ID for listings/businesses
- * e.g. TC011P-12 or uses existing reference_code if present
+ * Generates Justdial-style unique ID for listings/businesses, e.g. TC011P-12.
+ * Always derived from the listing id: reference_code is the associate's code and
+ * is shared by every listing that associate posts, so it cannot identify one.
  */
-export function getListingUniqueId(listing: { id: number | string; reference_code?: string | null }): string {
-  if (listing.reference_code && listing.reference_code.trim()) {
-    return listing.reference_code.trim().toUpperCase();
-  }
+export function getListingUniqueId(listing: { id: number | string }): string {
   return `TC011P-${listing.id}`;
+}
+
+/** True when a listing URL id is an old associate-code link (e.g. KPSKC6) rather than a listing id. */
+export function isLegacyListingCode(id: string | number | null): boolean {
+  if (id === null) return false;
+  return !/^\d+$/.test(String(id).replace(/^(TC011P-|TC-)/i, ''));
 }
 
 /**
@@ -29,7 +33,6 @@ export function getListingUrl(listing: {
   id: number | string;
   title?: string;
   location?: string;
-  reference_code?: string | null;
   form_data?: any;
 }): string {
   const city = slugify(listing.location?.split(',')[0] || listing.form_data?.city || 'NCR') || 'ncr';

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from '../utils/formatters';
-import { getListingUniqueId, getListingUrl } from '../utils/url';
+import { getListingUniqueId, getListingUrl, isLegacyListingCode, slugify } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
 import { getBusinessCategories, getListingDescription } from '../utils/listingKind';
@@ -40,6 +40,21 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [contactLoading, setContactLoading] = useState(false);
 
+  // Old links ended in the associate code, which every listing from that associate
+  // shares, so pick the listing whose title matches the slug in the URL.
+  const resolveLegacyListing = async (code: string): Promise<Listing | null> => {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    const titleSlug = parts.length >= 3 ? parts[parts.length - 2].toLowerCase() : '';
+    if (!titleSlug) return null;
+    try {
+      const res = await api.get<ApiResponse<Listing[]>>('/api/v1/listings', { params: { ref_code: code.toUpperCase() } });
+      const candidates = Array.isArray(res.data?.data) ? res.data.data : [];
+      return candidates.find((l) => slugify(l.title) === titleSlug) ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchListing = async (): Promise<void> => {
     if (!listingId) {
       setLoading(false);
@@ -49,6 +64,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     setLoading(true);
     setError(null);
     try {
+      const legacyMatch = isLegacyListingCode(listingId) ? await resolveLegacyListing(String(listingId)) : null;
+      if (legacyMatch) {
+        setListing(legacyMatch);
+        window.history.replaceState(null, '', getListingUrl(legacyMatch));
+        return;
+      }
       const res = await api.get<ApiResponse<Listing>>(`/api/v1/listings/${listingId}`);
       if (res.data?.status === 'success' && res.data?.data) {
         setListing(res.data.data);
@@ -99,19 +120,19 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
   // Sync wishlist status
   useEffect(() => {
-    if (user && listingId) {
+    if (user && listing) {
       getWishlist(true)
         .then((res) => {
           const arr = res.data?.data;
           if (Array.isArray(arr)) {
-            setIsWishlisted(arr.includes(Number(listingId)));
+            setIsWishlisted(arr.includes(Number(listing.id)));
           }
         })
         .catch(() => {});
     } else {
       setIsWishlisted(false);
     }
-  }, [user, listingId]);
+  }, [user, listing?.id]);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success'): void => {
     setToast({ msg, type });
@@ -127,7 +148,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           icon: 'fa-heart',
           onSuccess: async () => {
             try {
-              const res = await toggleWishlist(Number(listingId));
+              const res = await toggleWishlist(Number(listing?.id));
               const action = res.data?.action;
               setIsWishlisted(action === 'added');
               showToast(action === 'added' ? 'Added to your wishlist!' : 'Removed from your wishlist.');
@@ -142,7 +163,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
       return;
     }
     try {
-      const res = await toggleWishlist(Number(listingId));
+      const res = await toggleWishlist(Number(listing?.id));
       const action = res.data?.action;
       setIsWishlisted(action === 'added');
       showToast(action === 'added' ? 'Added to your wishlist!' : 'Removed from your wishlist.');
@@ -175,7 +196,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
     setContactLoading(true);
     try {
-      const res = await revealContact(Number(listingId));
+      const res = await revealContact(Number(listing?.id));
       if (res.data?.status === 'success') {
         setContactData(contactDataFromReveal(res.data, listing, user.leads_balance));
         setContactModalOpen(true);
@@ -201,7 +222,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
   const handleStatusChange = async (action: string): Promise<void> => {
     setActionLoading(true);
     try {
-      await api.post<MessageResponse>(`/api/v1/listings/${listingId}/status`, { action });
+      await api.post<MessageResponse>(`/api/v1/listings/${listing?.id}/status`, { action });
       showToast(`Listing updated: ${action}`, 'success');
       await fetchListing();
     } catch (err: unknown) {
@@ -215,7 +236,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     if (!window.confirm('Are you sure you want to permanently delete this listing?')) return;
     setActionLoading(true);
     try {
-      await api.delete<MessageResponse>(`/api/v1/listings/${listingId}`);
+      await api.delete<MessageResponse>(`/api/v1/listings/${listing?.id}`);
       alert('Listing deleted successfully.');
       onNavigate('home');
     } catch (err: unknown) {
