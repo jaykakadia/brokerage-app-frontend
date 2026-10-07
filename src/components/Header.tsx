@@ -18,6 +18,7 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
     <>
       <header className="site-header" id="siteHeader">
         <div className="header-container">
+          <div className="header-start">
           <div className="header-left">
             <a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
               <div className="logo-icon">
@@ -82,6 +83,15 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
               </a>
             )}
           </nav>
+          </div>
+
+          <a
+            href="/business-directory"
+            className={`btn-business-directory ${activePage === 'business-directory' ? 'active' : ''}`}
+            onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}
+          >
+            <i className="fas fa-store"></i> Business Directory
+          </a>
 
           <div className="header-right">
             <button
@@ -152,6 +162,7 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
             </div>
             <nav className="drawer-nav">
               <a href="/home" className={`drawer-nav-item ${activePage === 'home' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+              <a href="/business-directory" className={`drawer-nav-item ${activePage === 'business-directory' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); setDrawerOpen(false); }}>Business Directory</a>
               <a href="/advertise" className={`drawer-nav-item ${activePage === 'advertise' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('advertise'); setDrawerOpen(false); }}>Advertise</a>
               <a href="/blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
               <a href="/about" className={`drawer-nav-item ${activePage === 'about' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('about'); setDrawerOpen(false); }}>About Us</a>

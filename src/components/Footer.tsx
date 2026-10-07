@@ -60,6 +60,7 @@ export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
           <h4>Quick Links</h4>
           <ul>
             <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
+            <li><a href="/business-directory" onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}>Business Directory</a></li>
             <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Blog</a></li>
             <li><a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>
             <li><a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }}>About Us</a></li>

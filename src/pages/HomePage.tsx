@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
+import { isBusinessListing } from '../utils/listingKind';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
@@ -48,15 +49,14 @@ const ALL_CITIES = [
   'Thane', 'Thiruvananthapuram', 'Udaipur', 'Ujjain', 'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam'
 ];
 
+// Same types (values and labels) as "Select Property Type" in the Post Listing form.
 const PROPERTY_TYPES: PropertyTypeOption[] = [
   { value: '', label: 'All Property Types', icon: 'fa-shapes' },
-  { value: 'flat', label: 'Flat / Apartment', icon: 'fa-building' },
-  { value: 'house', label: 'House / Villa / Kothi', icon: 'fa-house' },
-  { value: 'plot', label: 'Plot / Land', icon: 'fa-vector-square' },
-  { value: 'floor', label: 'Builder Floor', icon: 'fa-layer-group' },
-  { value: 'commercial', label: 'Commercial - Shop / Office', icon: 'fa-store' },
-  { value: 'agriculture', label: 'Agricultural Land / Farm House', icon: 'fa-seedling' },
-  { value: 'pg', label: 'PG / Guest House', icon: 'fa-bed' }
+  { value: 'flat', label: 'Flat / Builder Floor / House / Villa', icon: 'fa-building' },
+  { value: 'plot', label: 'Plot', icon: 'fa-vector-square' },
+  { value: 'agriculture', label: 'Agriculture Land', icon: 'fa-seedling' },
+  { value: 'commercial', label: 'Commercial - Shop/ Showroom/ Warehouse', icon: 'fa-store' },
+  { value: 'pg', label: 'PG/ Guest House', icon: 'fa-bed' }
 ];
 
 const BUDGET_PRESETS: BudgetPreset[] = [
@@ -458,7 +458,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         params: { status: 'approved' }
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
-        setListings(res.data.data);
+        // Business listings are shown only in the Business Directory
+        setListings(res.data.data.filter((l) => !isBusinessListing(l)));
       } else {
         setListings([]);
       }
@@ -611,8 +612,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       const formType = item.form_data?.propType?.toLowerCase() || '';
       const text = (title + ' ' + desc).toLowerCase();
       let matches = formType.includes(heroType.toLowerCase()) || text.includes(heroType.toLowerCase());
+      if (!matches && heroType === 'flat') {
+        // Older listings used a separate "house" type
+        matches = formType === 'house';
+      }
       if (!matches && heroType === 'commercial') {
-        matches = text.includes('shop') || text.includes('office') || text.includes('retail');
+        matches = text.includes('shop') || text.includes('office') || text.includes('retail')
+          || text.includes('showroom') || text.includes('warehouse');
       }
       if (!matches) return false;
     }
@@ -1031,41 +1037,6 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           </div>
         </div>
       </section>
-
-      {/* City Quick Pills */}
-      <div className="container" style={{ margin: '24px auto', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <button
-          type="button"
-          className="city-pill"
-          style={{ background: (!selectedCities.length && !heroCity) ? '#0c6253' : '#fff', color: (!selectedCities.length && !heroCity) ? '#fff' : '#1f2937' }}
-          onClick={() => handleClearFilters()}
-        >
-          All Cities
-        </button>
-        {citiesList.map((c) => {
-          const isActive = selectedCities.includes(c) || heroCity === c;
-          return (
-            <button
-              key={c}
-              type="button"
-              className="city-pill"
-              style={{ background: isActive ? '#0c6253' : '#fff', color: isActive ? '#fff' : '#1f2937' }}
-              onClick={() => {
-                if (isActive) {
-                  setSelectedCities(selectedCities.filter((item) => item !== c));
-                  if (heroCity === c) setHeroCity('');
-                } else {
-                  setSelectedCities([c]);
-                  setHeroCity(c);
-                }
-              }}
-            >
-              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: isActive ? '#fff' : '#0c6253' }}></i>
-              {c}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Listings Section */}
       <section className="listings-section" id="listings">

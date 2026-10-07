@@ -93,7 +93,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: 1;
+  flex: 0 1 auto;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -121,6 +121,44 @@
   color: #fff;
 }
 .nav-item.active:hover { background: #0f766e; color: #fff; }
+
+/* ---- BUSINESS DIRECTORY (exact centre of the header) ---- */
+/* Side columns share the width equally, so the middle button sits in the exact centre;
+   if the nav is too long to fit, its column grows and the button shifts right instead of overlapping.
+   Below 1280px there isn't room for that, so it sits just before the right-hand buttons. */
+@media (min-width: 1280px) {
+  .header-container {
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  }
+  .header-right { justify-self: end; }
+}
+.header-start {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.btn-business-directory + .header-right { margin-left: 0; }
+.btn-business-directory {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border: 1.5px solid #0c6253;
+  border-radius: 999px;
+  background: #f0faf6;
+  color: #0c6253;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-business-directory:hover,
+.btn-business-directory.active { background: #0c6253; color: #fff; }
 
 /* ---- HEADER RIGHT BUTTONS ---- */
 .header-right {
@@ -343,6 +381,7 @@
 
 @media (max-width: 900px) {
   .main-nav { display: none; }
+  .btn-business-directory { display: none; }
   .btn-header-ghost { display: none; }
   .hamburger-btn { display: flex; }
   .btn-mobile-post { display: flex; }

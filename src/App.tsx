@@ -10,6 +10,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import AdvertisePage from './pages/AdvertisePage';
+import BusinessDirectoryPage from './pages/BusinessDirectoryPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import BlogPage from './pages/BlogPage';
@@ -210,6 +211,12 @@ export default function App() {
           <AdvertisePage
             onNavigate={navigateTo}
             onOpenAuth={openAuthModal}
+          />
+        )}
+
+        {activePage === 'business-directory' && (
+          <BusinessDirectoryPage
+            onNavigate={navigateTo}
           />
         )}
 

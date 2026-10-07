@@ -62,7 +62,7 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     if (['admin-login', 'admin-login.php'].includes(cleanHash.toLowerCase())) {
       return { page: 'admin-login', param: null };
     }
-    if (['home', 'advertise', 'blog', 'about', 'contact', 'post-listing', 'account', 'admin', 'login'].includes(cleanHash)) {
+    if (['home', 'business-directory', 'advertise', 'blog', 'about', 'contact', 'post-listing', 'account', 'admin', 'login'].includes(cleanHash)) {
       return { page: cleanHash, param: null };
     }
   }
@@ -95,6 +95,8 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
   // Direct single routes
   const singleRoutes: Record<string, string> = {
     'advertise': 'advertise',
+    'business-directory': 'business-directory',
+    'businesses': 'business-directory',
     'blog': 'blog',
     'about': 'about',
     'about-us': 'about',
