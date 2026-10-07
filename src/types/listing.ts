@@ -62,6 +62,8 @@ export interface Listing {
   verified: number;
   is_featured?: boolean;
   featured_until?: string | null;
+  /** Admin only: email the listing is held for until that user signs up */
+  assigned_email?: string | null;
   created_at: string;
   images: ListingImage[];
 }

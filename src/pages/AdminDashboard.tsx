@@ -1347,6 +1347,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         </td>
                         <td data-label="Owner" style={{ padding: '12px 14px' }}>
                           <div style={{ fontWeight: 600 }}>{l.owner_name}</div>
+                          {l.assigned_email && (
+                            <div style={{ fontSize: 11, color: '#b45309' }} title="Moves to this user when they sign up">
+                              <i className="fas fa-clock"></i> For {l.assigned_email}
+                            </div>
+                          )}
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{l.owner_role}</div>
                         </td>
                         <td data-label="Status" style={{ padding: '12px 14px' }}>
