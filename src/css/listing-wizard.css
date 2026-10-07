@@ -171,7 +171,7 @@
 
     .cat-search-wrap { position: relative; z-index: 5; }
     .cat-suggestions {
-      position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20;
+      margin: -8px 0 16px;
       background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12); max-height: 220px; overflow-y: auto;
     }

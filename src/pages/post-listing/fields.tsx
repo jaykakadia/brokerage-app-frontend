@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import api from '../../services/api';
-import type { ApiResponse, RefCodeItem } from '../../types';
+import api, { getImageUrl } from '../../services/api';
+import type { ApiResponse, ListingImage, RefCodeItem } from '../../types';
 
 export function FloatField({
   label,
@@ -385,4 +385,42 @@ export function SocialLinkFields({
       <FloatField label="X (Twitter) Link" icon="fab fa-x-twitter" inputMode="url" value={xUrl} onChange={(value) => onChange({ xUrl: value })} />
     </div>
   );
+}
+
+/** Photos already saved on a listing being edited; removing one marks it for deletion on save. */
+export function ExistingPhotos({
+  images,
+  removedIds,
+  onRemove
+}: {
+  images: ListingImage[];
+  removedIds: number[];
+  onRemove: (id: number) => void;
+}) {
+  const kept = images.filter((img) => !removedIds.includes(img.id));
+  if (kept.length === 0) return null;
+  return (
+    <>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>Current photos</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+        {kept.map((img) => (
+          <div key={img.id} style={{ position: 'relative', width: 84, height: 84 }}>
+            <img src={getImageUrl(img.file_path)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+            <button type="button" aria-label="Remove photo" onClick={() => onRemove(img.id)} style={{ position: 'absolute', top: 4, right: 4, border: 'none', borderRadius: '50%', width: 20, height: 20, background: '#dc2626', color: '#fff', cursor: 'pointer' }}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** Brings the top of the listing form back into view after a step change (matters most on phones). */
+export function scrollFormToTop(): void {
+  const wrap = document.querySelector('.post-wrap');
+  if (!wrap) return;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Inside the admin edit popup the form scrolls within its own box
+  if (wrap.scrollHeight > wrap.clientHeight) wrap.scrollTo({ top: 0, behavior: 'smooth' });
 }

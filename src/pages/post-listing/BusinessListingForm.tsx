@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { FloatField, FloatSelect, PhoneWhatsAppFields, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
+import { ExistingPhotos, FloatField, scrollFormToTop, FloatSelect, PhoneWhatsAppFields, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
 import { StateOptions } from '../../utils/indianStates';
 import { digitsOnly, normalizedSocialLinks, profileContactDefaults, socialLinkError, stateForCity, type CityOption } from './propertyForm';
 import type { ApiResponse, Category, Listing, RefCodeItem } from '../../types';
@@ -67,6 +67,28 @@ const REUSABLE_FIELDS = [
   'person', 'mobile', 'whatsapp', 'sameAsMobile', 'email', 'facebookUrl', 'websiteUrl', 'xUrl'
 ] as const satisfies ReadonlyArray<keyof BusinessFormState>;
 
+/** Rebuilds the form from a saved business listing (edit mode). */
+function businessFormFromListing(listing: Listing): BusinessFormState {
+  const saved = (listing.form_data || {}) as Partial<BusinessFormState> & { categoryId?: string; categoryName?: string };
+  const next: BusinessFormState = { ...EMPTY_BUSINESS };
+  for (const key of Object.keys(EMPTY_BUSINESS) as Array<keyof BusinessFormState>) {
+    const value = saved[key];
+    if (value !== undefined && value !== null) (next as unknown as Record<string, unknown>)[key] = value;
+  }
+  if (!Array.isArray(next.selectedCategories) || next.selectedCategories.length === 0) {
+    // Older listings saved a single categoryId / categoryName
+    next.selectedCategories = saved.categoryName ? [{ id: saved.categoryId || '', name: saved.categoryName }] : [];
+  }
+  return {
+    ...next,
+    name: next.name || listing.title,
+    person: next.person || listing.owner_name,
+    refCode: next.refCode || listing.reference_code || '',
+    refSearch: '',
+    categorySearch: ''
+  };
+}
+
 const BUSINESS_STEPS = [
   { label: 'Contact Details', icon: 'fas fa-address-card' },
   { label: 'Business Details', icon: 'fas fa-store' },
@@ -79,12 +101,17 @@ export interface BusinessListingFormProps {
   refCodes: RefCodeItem[];
   onSuccess: (listing: Listing) => void;
   onStepChange?: (step: number) => void;
+  /** Edit mode: fill the form from this listing and save changes to it instead of creating a new one */
+  editListing?: Listing | null;
 }
 
-export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange }: BusinessListingFormProps) {
-  const { user } = useAuth();
+export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange, editListing = null }: BusinessListingFormProps) {
+  const { user: authUser } = useAuth();
+  // In edit mode the form holds the saved listing, so the signed-in user's profile must not prefill it
+  const user = editListing ? null : authUser;
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [form, setForm] = useState<BusinessFormState>(EMPTY_BUSINESS);
+  const [form, setForm] = useState<BusinessFormState>(() => (editListing ? businessFormFromListing(editListing) : EMPTY_BUSINESS));
+  const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const [codes, setCodes] = useState<RefCodeItem[]>(refCodes);
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategories, setShowCategories] = useState(false);
@@ -230,8 +257,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
   const goToStep = (next: 1 | 2 | 3 | 4) => {
     setError(null);
     setStep(next);
-    // Bring the top of the form back into view (matters most on phones)
-    document.querySelector('.post-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollFormToTop();
   };
 
   const searchRef = async () => {
@@ -248,7 +274,8 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
   const addPhotos = (files: FileList | null) => {
     if (!files?.length) return;
     const incoming = Array.from(files);
-    if (photos.length + incoming.length > 10) {
+    const keptExisting = (editListing?.images.length || 0) - removedImageIds.length;
+    if (keptExisting + photos.length + incoming.length > 10) {
       setError('You can upload a maximum of 10 photos.');
       return;
     }
@@ -294,7 +321,13 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       fd.append('description', description);
       fd.append('owner_name', form.person.trim() || form.name.trim());
       fd.append('owner_role', 'Owner');
-      if (form.refCode.trim()) fd.append('reference_code', form.refCode.trim());
+      if (editListing) {
+        // Always sent when editing so a cleared code is saved too
+        fd.append('reference_code', form.refCode.trim());
+        if (removedImageIds.length) fd.append('remove_image_ids', removedImageIds.join(','));
+      } else if (form.refCode.trim()) {
+        fd.append('reference_code', form.refCode.trim());
+      }
       fd.append('form_data', JSON.stringify({
         kind: 'business',
         ...form,
@@ -305,16 +338,17 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
         categoryName: categoryNames
       }));
       photos.forEach((photo) => fd.append('photos', photo));
-      const res = await api.post<ApiResponse<Listing>>('/api/v1/listings', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const config = { headers: { 'Content-Type': 'multipart/form-data' } };
+      const res = editListing
+        ? await api.patch<ApiResponse<Listing>>(`/api/v1/listings/${editListing.id}`, fd, config)
+        : await api.post<ApiResponse<Listing>>('/api/v1/listings', fd, config);
       if (res.data?.status === 'success' && res.data.data) {
         onSuccess(res.data.data);
       } else {
         setError('Listing could not be saved. Please check the form.');
       }
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Failed to post the business listing.'));
+      setError(getApiErrorMessage(err, editListing ? 'Failed to save the business listing.' : 'Failed to post the business listing.'));
     } finally {
       setLoading(false);
     }
@@ -451,24 +485,25 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             />
             <label>{form.selectedCategories.length > 0 ? 'Add another category' : 'Search / Select Category'} <span style={{ color: '#dc2626' }}> *</span></label>
             <i className="fas fa-search field-icon"></i>
-            {showCategories ? (
-              <div className="cat-suggestions">
-                {suggestions.length === 0 ? (
-                  <div className="cat-suggestion-empty">No matching category</div>
-                ) : suggestions.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    className="cat-suggestion-item"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => addCategory(item)}
-                  >
-                    <i className="fas fa-plus" style={{ fontSize: 11, color: '#94a3b8', marginRight: 8 }}></i>{item.name}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </div>
+          {/* In normal flow (not floating) so the open list pushes Back/Next down instead of covering them */}
+          {showCategories ? (
+            <div className="cat-suggestions">
+              {suggestions.length === 0 ? (
+                <div className="cat-suggestion-empty">No matching category</div>
+              ) : suggestions.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className="cat-suggestion-item"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => addCategory(item)}
+                >
+                  <i className="fas fa-plus" style={{ fontSize: 11, color: '#94a3b8', marginRight: 8 }}></i>{item.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="bf-actions">
             <button type="button" className="btn-outline" onClick={() => goToStep(2)}><i className="fas fa-arrow-left"></i> Back</button>
             <button type="button" className="btn-premium" onClick={() => continueFrom(4)}>Next <i className="fas fa-arrow-right"></i></button>
@@ -485,6 +520,13 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             <div className="upload-sub">SVG, PNG, JPG or GIF (max. 5MB)</div>
             <input id="bPhotos" type="file" multiple accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => addPhotos(e.target.files)} />
           </div>
+          {editListing ? (
+            <ExistingPhotos
+              images={editListing.images}
+              removedIds={removedImageIds}
+              onRemove={(id) => setRemovedImageIds((current) => [...current, id])}
+            />
+          ) : null}
           {previews.length > 0 ? (
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
               {previews.map((src, index) => (
@@ -508,7 +550,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
           <div className="bf-actions">
             <button type="button" className="btn-outline" onClick={() => goToStep(3)}><i className="fas fa-arrow-left"></i> Back</button>
             <button type="button" className="btn-premium" disabled={loading} onClick={() => { void submit(); }}>
-              {loading ? 'Submitting...' : <>Submit Profile <i className="fas fa-check"></i></>}
+              {loading ? 'Saving...' : editListing ? <>Save Changes <i className="fas fa-check"></i></> : <>Submit Profile <i className="fas fa-check"></i></>}
             </button>
           </div>
         </>

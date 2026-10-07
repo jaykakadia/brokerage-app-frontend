@@ -1,4 +1,4 @@
-import { FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
+import { ExistingPhotos, FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SocialLinkFields, StepIndicator } from './fields';
 import { StateOptions } from '../../utils/indianStates';
 import {
   amenitiesFor,
@@ -11,7 +11,7 @@ import {
   type PropType,
   type PropertyStep
 } from './propertyForm';
-import type { RefCodeItem } from '../../types';
+import type { ListingImage, RefCodeItem } from '../../types';
 
 export const PROPERTY_STEPS = [
   { label: 'Contact Details', icon: 'fas fa-address-card' },
@@ -38,6 +38,11 @@ export interface PropertyListingFormProps {
   previews: string[];
   onPhotos: (files: FileList | null) => void;
   onRemovePhoto: (index: number) => void;
+  /** Edit mode: photos already saved on the listing */
+  existingImages?: ListingImage[];
+  removedImageIds?: number[];
+  onRemoveExisting?: (id: number) => void;
+  submitLabel?: string;
 }
 
 export default function PropertyListingForm({
@@ -57,7 +62,11 @@ export default function PropertyListingForm({
   photos,
   previews,
   onPhotos,
-  onRemovePhoto
+  onRemovePhoto,
+  existingImages = [],
+  removedImageIds = [],
+  onRemoveExisting,
+  submitLabel = 'Submit Listing'
 }: PropertyListingFormProps) {
   // Plot and agriculture prices follow area x rate
   const changeLand = (patch: Partial<PropertyFormState>) => onChange(withAutoPrice(form, patch));
@@ -419,6 +428,9 @@ export default function PropertyListingForm({
             <div className="upload-title">Click to Add Property Photos</div>
             <input id="ownerPhotos" type="file" multiple accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => onPhotos(e.target.files)} />
           </div>
+          {onRemoveExisting ? (
+            <ExistingPhotos images={existingImages} removedIds={removedImageIds} onRemove={onRemoveExisting} />
+          ) : null}
           {previews.length > 0 ? (
             <div className="thumbnails-container" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
               {previews.map((src, index) => (
@@ -445,7 +457,7 @@ export default function PropertyListingForm({
           <div className="bf-actions">
             <button type="button" className="btn-outline" onClick={onBack}><i className="fas fa-arrow-left"></i> Back</button>
             <button type="button" className="btn-premium" disabled={loading} onClick={onSubmit}>
-              {loading ? 'Submitting...' : <>Submit Listing <i className="fas fa-check"></i></>}
+              {loading ? 'Saving...' : <>{submitLabel} <i className="fas fa-check"></i></>}
             </button>
           </div>
         </>
