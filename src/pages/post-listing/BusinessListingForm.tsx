@@ -107,9 +107,11 @@ export interface BusinessListingFormProps {
   editListing?: Listing | null;
   /** Show every section on one page with a single Save button (admin edit) */
   singlePage?: boolean;
+  /** Admin only: email of the user this listing should belong to */
+  assignEmail?: string;
 }
 
-export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange, editListing = null, singlePage = false }: BusinessListingFormProps) {
+export default function BusinessListingForm({ cities, refCodes, onSuccess, onStepChange, editListing = null, singlePage = false, assignEmail = '' }: BusinessListingFormProps) {
   const { user: authUser } = useAuth();
   // In edit mode the form holds the saved listing, so the signed-in user's profile must not prefill it
   const user = editListing ? null : authUser;
@@ -343,6 +345,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
       fd.append('description', description);
       fd.append('owner_name', form.person.trim() || form.name.trim());
       fd.append('owner_role', 'Owner');
+      if (assignEmail.trim()) fd.append('assign_to_email', assignEmail.trim());
       if (editListing) {
         // Always sent when editing so a cleared code is saved too
         fd.append('reference_code', form.refCode.trim());

@@ -73,6 +73,8 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assignEmail, setAssignEmail] = useState('');
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   useEffect(() => {
     // When editing, the form holds the saved listing, not the signed-in user's profile
@@ -196,6 +198,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
       fd.append('description', form.description.trim());
       fd.append('owner_name', form.name.trim());
       fd.append('owner_role', canonicalPosterRole(form.posterRole));
+      if (assignEmail.trim()) fd.append('assign_to_email', assignEmail.trim());
       if (editListing) {
         // Always sent when editing so a cleared code is saved too
         fd.append('reference_code', form.refCode.trim());
@@ -307,6 +310,27 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
         )}
       </div>
 
+      {isAdmin && (
+        <div className="form-group">
+          <label>Assign to User (email)</label>
+          <input
+            type="email"
+            value={assignEmail}
+            onChange={(e) => setAssignEmail(e.target.value)}
+            placeholder={editListing ? 'Leave empty to keep the current owner' : 'Leave empty to keep it under your admin account'}
+            style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #d1d5db', fontFamily: 'inherit' }}
+          />
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+            <i className="fas fa-info-circle"></i> The listing goes to this user's account. If they haven't signed up yet, it moves to them when they do.
+          </div>
+          {editListing?.assigned_email && (
+            <div style={{ fontSize: 12, color: '#b45309', marginTop: 6 }}>
+              <i className="fas fa-clock"></i> Waiting for {editListing.assigned_email} to sign up.
+            </div>
+          )}
+        </div>
+      )}
+
       {(role === 'owner' || role === 'buyer') && (
         <PropertyListingForm
           variant={role === 'buyer' ? 'buyer' : 'owner'}
@@ -343,6 +367,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
           onStepChange={setBusinessStep}
           editListing={editListing}
           singlePage={singlePage}
+          assignEmail={assignEmail}
         />
       )}
     </>
