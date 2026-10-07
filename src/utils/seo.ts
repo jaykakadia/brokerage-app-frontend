@@ -1,7 +1,7 @@
 export const SITE_URL = 'https://tradecall.in';
 export const SITE_NAME = 'TradeCall India';
 
-const DEFAULT_TITLE = 'TradeCall India - Property & Business Directory in Palwal, Haryana';
+const DEFAULT_TITLE = 'TradeCall India - Free Property N Related Business Listing';
 const DEFAULT_DESCRIPTION =
   'Buy, sell or rent flats, plots, houses and commercial property in Palwal, Faridabad and the NCR with zero brokerage. Contact verified owners directly and find local businesses on TradeCall India.';
 
