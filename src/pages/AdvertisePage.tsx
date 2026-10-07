@@ -68,7 +68,7 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
     const fetchPlans = async (): Promise<void> => {
       try {
         const res = await getPlans(false);
-        const data = res.data?.data || [];
+        const data = [...(res.data?.data || [])].sort((a, b) => Number(a.price) - Number(b.price));
         if (data.length > 0) {
           const serverPlans: AdvertisePlan[] = data.map((p) => ({
             id: String(p.id),
