@@ -181,11 +181,15 @@ export function propTypeLabel(value: string): string {
   return labels[value] || 'Property';
 }
 
-export function listingTitle(form: PropertyFormState): string {
-  const purpose = form.forWhat === 'rent' ? 'for Rent' : 'for Sale';
+export function listingTitle(form: PropertyFormState, isBuyer = false): string {
   const place = [form.locality, form.city].filter(Boolean).join(', ');
   const rooms = form.propType === 'flat' || form.propType === 'house' ? `${form.bhk} ` : '';
-  return `${rooms}${propTypeLabel(form.propType)} ${purpose}${place ? ` in ${place}` : ''}`.replace(/\s+/g, ' ').trim();
+  const label = propTypeLabel(form.propType);
+  const title = isBuyer
+    // Buyer listings ask for a property, e.g. "Looking to Buy Plot in Sector-12, Palwal"
+    ? `Looking to ${form.forWhat === 'rent' ? 'Rent' : 'Buy'} ${rooms}${label === 'Commercial' ? 'Commercial Property' : label}`
+    : `${rooms}${label} ${form.forWhat === 'rent' ? 'for Rent' : 'for Sale'}`;
+  return `${title}${place ? ` in ${place}` : ''}`.replace(/\s+/g, ' ').trim();
 }
 
 export function canonicalPosterRole(role: PosterRole): 'Owner' | 'Agent' | 'Builder' {

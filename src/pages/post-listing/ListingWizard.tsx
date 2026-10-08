@@ -192,7 +192,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
     try {
       const location = [form.locality, form.city, form.state].filter(Boolean).join(', ');
       const fd = new FormData();
-      fd.append('title', listingTitle(form));
+      fd.append('title', listingTitle(form, role === 'buyer'));
       fd.append('location', location);
       fd.append('price', String(price));
       fd.append('description', form.description.trim());
