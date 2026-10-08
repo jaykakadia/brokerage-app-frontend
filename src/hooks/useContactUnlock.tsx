@@ -3,6 +3,7 @@ import { revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ContactRevealModal, { contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
 import PlansModal from '../components/PlansModal';
+import { publicListingTitle } from '../utils/listingKind';
 import type { Listing } from '../types';
 import type { AuthModalOptions } from '../pages/ListingDetailPage';
 
@@ -52,7 +53,7 @@ export function useContactUnlock(onOpenAuth?: (options?: AuthModalOptions) => vo
         isOpen={active !== null}
         onClose={() => setActive(null)}
         contactData={active?.data ?? null}
-        listingTitle={active?.listing.title}
+        listingTitle={active ? publicListingTitle(active.listing) : undefined}
       />
       <PlansModal
         isOpen={pending !== null}

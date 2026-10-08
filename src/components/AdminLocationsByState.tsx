@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { INDIAN_UNION_TERRITORIES } from '../utils/indianStates';
+import { cityNameVariants } from '../utils/listingKind';
 import type { Location } from '../types';
 
 export interface AdminLocationsByStateProps {
@@ -8,6 +9,7 @@ export interface AdminLocationsByStateProps {
   listingCounts: Map<string, number>;
   loading: boolean;
   onDelete: (id: number) => void;
+  onSave: (id: number, cityName: string) => Promise<void>;
 }
 
 const UNION_TERRITORIES = new Set<string>(INDIAN_UNION_TERRITORIES);
@@ -18,9 +20,22 @@ const byName = (a: string, b: string) => a.localeCompare(b, 'en', { sensitivity:
  * listings in each city. States start collapsed so thousands of cities stay manageable; searching opens
  * every state that has a match.
  */
-export default function AdminLocationsByState({ locations, listingCounts, loading, onDelete }: AdminLocationsByStateProps) {
+export default function AdminLocationsByState({ locations, listingCounts, loading, onDelete, onSave }: AdminLocationsByStateProps) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const countFor = (label: string): number => {
+    const seen = new Set<string>();
+    return cityNameVariants(label).reduce((sum, name) => {
+      const key = name.toLowerCase();
+      if (seen.has(key)) return sum;
+      seen.add(key);
+      return sum + (listingCounts.get(key) ?? 0);
+    }, 0);
+  };
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -35,8 +50,15 @@ export default function AdminLocationsByState({ locations, listingCounts, loadin
       .map(([state, cities]) => {
         const sorted = [...cities].sort((a, b) => byName(a.city_name, b.city_name));
         // A city saved twice in one state must not count its listings twice
-        const names = new Set(sorted.map((c) => c.city_name.trim().toLowerCase()));
-        const listings = [...names].reduce((sum, name) => sum + (listingCounts.get(name) ?? 0), 0);
+        const counted = new Set<string>();
+        const listings = sorted.reduce((sum, loc) => {
+          return sum + cityNameVariants(loc.city_name).reduce((part, name) => {
+            const key = name.toLowerCase();
+            if (counted.has(key)) return part;
+            counted.add(key);
+            return part + (listingCounts.get(key) ?? 0);
+          }, 0);
+        }, 0);
         return { state, cities: sorted, listings };
       });
   }, [locations, listingCounts, query]);
@@ -103,28 +125,81 @@ export default function AdminLocationsByState({ locations, listingCounts, loadin
                         <th>City</th>
                         <th>Category</th>
                         <th style={{ textAlign: 'center' }}>Live Listings</th>
-                        <th style={{ width: 70, textAlign: 'center' }}>Action</th>
+                        <th style={{ width: 110, textAlign: 'center' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {cities.map((loc) => {
-                        const count = listingCounts.get(loc.city_name.trim().toLowerCase()) ?? 0;
+                        const count = countFor(loc.city_name);
+                        const editing = editingId === loc.id;
+                        const save = async (): Promise<void> => {
+                          const name = draft.trim();
+                          if (!name || name === loc.city_name) {
+                            setEditingId(null);
+                            return;
+                          }
+                          setSaving(true);
+                          try {
+                            await onSave(loc.id, name);
+                            setEditingId(null);
+                          } finally {
+                            setSaving(false);
+                          }
+                        };
                         return (
                           <tr key={loc.id}>
-                            <td style={{ fontWeight: 700 }}>{loc.city_name}</td>
+                            <td style={{ fontWeight: 700 }}>
+                              {editing ? (
+                                <input
+                                  className="admin-loc-edit-input"
+                                  value={draft}
+                                  autoFocus
+                                  disabled={saving}
+                                  aria-label={`City name for ${loc.city_name}`}
+                                  onChange={(e) => setDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); void save(); }
+                                    if (e.key === 'Escape') setEditingId(null);
+                                  }}
+                                />
+                              ) : loc.city_name}
+                            </td>
                             <td style={{ textTransform: 'capitalize', color: '#6b7280' }}>{loc.category || 'city'}</td>
                             <td style={{ textAlign: 'center' }}>
                               <span className={`admin-loc-count${count > 0 ? ' has-listings' : ''}`}>{count}</span>
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                className="btn-outline admin-loc-delete"
-                                title={`Delete ${loc.city_name}`}
-                                onClick={() => onDelete(loc.id)}
-                              >
-                                <i className="fas fa-trash"></i>
-                              </button>
+                              <span className="admin-loc-actions">
+                                {editing ? (
+                                  <button
+                                    type="button"
+                                    className="btn-outline admin-loc-edit"
+                                    title="Save city name"
+                                    disabled={saving}
+                                    onClick={() => void save()}
+                                  >
+                                    <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-check'}`}></i>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn-outline admin-loc-edit"
+                                    title={`Edit ${loc.city_name}`}
+                                    onClick={() => { setEditingId(loc.id); setDraft(loc.city_name); }}
+                                  >
+                                    <i className="fas fa-pen"></i>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="btn-outline admin-loc-delete"
+                                  title={`Delete ${loc.city_name}`}
+                                  disabled={saving}
+                                  onClick={() => onDelete(loc.id)}
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </span>
                             </td>
                           </tr>
                         );

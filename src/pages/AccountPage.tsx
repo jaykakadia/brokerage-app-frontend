@@ -5,6 +5,7 @@ import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
 import EditProfileModal from '../components/EditProfileModal';
 import UserEditListingModal from '../components/UserEditListingModal';
+import { publicListingTitle } from '../utils/listingKind';
 import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
 
 // Website shows as a domain link; social profiles show as brand icon buttons.
@@ -499,7 +500,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                             </span>
                           </div>
                           <div style={{ fontWeight: 700, color: '#111827', fontSize: '15px' }}>
-                            {listing.title}
+                            {publicListingTitle(listing)}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             <i className="fas fa-map-marker-alt"></i> {listing.location}
@@ -602,7 +603,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <img
                           src={imgSrc}
-                          alt={item.title}
+                          alt={publicListingTitle(item)}
                           style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '8px' }}
                           onError={(e) => {
                             const target = e.currentTarget;
@@ -620,7 +621,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                             </span>
                           </div>
                           <div style={{ fontWeight: 700, color: '#111827', fontSize: '15px' }}>
-                            {item.title}
+                            {publicListingTitle(item)}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             <i className="fas fa-map-marker-alt"></i> {item.location}

@@ -5,7 +5,7 @@ import { formatListingPrice } from '../utils/formatters';
 import { getListingUniqueId, getListingUrl, isLegacyListingCode, slugify } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
-import { getBusinessCategories, getListingDescription } from '../utils/listingKind';
+import { getBusinessCategories, getListingDescription, publicListingTitle } from '../utils/listingKind';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
@@ -111,7 +111,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     const price = Number(listing.price) > 0 ? formatListingPrice(listing.price) : '';
     const summary = [price, listing.location].filter(Boolean).join(' · ');
     setSeo({
-      title: listing.title,
+      title: publicListingTitle(listing),
       description: toMetaDescription(`${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`),
       path: getListingUrl(listing),
       image: listing.images?.[0] ? getImageUrl(listing.images[0].file_path) : undefined
@@ -219,6 +219,17 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     }
   };
 
+  const shareListing = async (): Promise<void> => {
+    if (!listing) return;
+    const url = `${window.location.origin}${getListingUrl(listing)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Listing link copied');
+    } catch {
+      showToast('Could not copy the listing link', 'error');
+    }
+  };
+
   const handleStatusChange = async (action: string): Promise<void> => {
     setActionLoading(true);
     try {
@@ -284,6 +295,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
   const currentImg = images[activePhotoIdx] || images[0];
   const formData = listing.form_data || {};
+  const heading = publicListingTitle(listing);
   const isBusiness = formData.kind === 'business';
   const keyDetails = buildKeyDetails(formData);
   const amenities = Array.isArray(formData.amenities) ? formData.amenities.filter((a) => typeof a === 'string' && a) : [];
@@ -378,7 +390,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                 <img
                   className={`ld-main-img ${hasPhotos ? '' : 'is-placeholder'}`}
                   src={currentImg}
-                  alt={listing.title}
+                  alt={heading}
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.onerror = null;
@@ -411,7 +423,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                 </div>
               )}
               <h1 className="ld-title">
-                {listing.title}
+                {heading}
                 {isBusiness && getBusinessCategories(listing)[0] && (
                   <> <span className="title-category">-&nbsp;{getBusinessCategories(listing)[0]}</span></>
                 )}
@@ -490,7 +502,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                       {whatsappDigits && (
                         <a
                           className="btn-view"
-                          href={`https://wa.me/91${whatsappDigits}?text=${encodeURIComponent(`Hello ${listing.owner_name}, I am interested in "${listing.title}" on TradeCall.`)}`}
+                          href={`https://wa.me/91${whatsappDigits}?text=${encodeURIComponent(`Hello ${listing.owner_name}, I am interested in "${heading}" on TradeCall.`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -532,6 +544,14 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                 <span>{isWishlisted ? 'Wishlisted' : 'Wishlist'}</span>
               </button>
 
+              <button
+                type="button"
+                className="btn-view"
+                onClick={() => void shareListing()}
+              >
+                <i className="fas fa-link"></i> Share
+              </button>
+
               <a
                 className="btn-view"
                 href="#listings"
@@ -551,7 +571,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
         isOpen={contactModalOpen}
         onClose={() => setContactModalOpen(false)}
         contactData={contactData}
-        listingTitle={listing?.title}
+        listingTitle={listing ? publicListingTitle(listing) : undefined}
       />
 
       <PlansModal

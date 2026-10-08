@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { getListingCity, getListingDeal, isBusinessListing, isNewListing } from '../utils/listingKind';
+import { cityNameVariants, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
@@ -35,7 +35,7 @@ interface BudgetPreset {
 
 const ALL_CITIES = [
   'Ahmedabad', 'Agra', 'Ajmer', 'Aligarh', 'Ambala', 'Amritsar', 'Aurangabad',
-  'Bangalore', 'Bengaluru', 'Bhopal', 'Bhubaneswar', 'Bikaner',
+  'Bengaluru (Bangalore)', 'Bhopal', 'Bhubaneswar', 'Bikaner',
   'Chandigarh', 'Chennai', 'Coimbatore', 'Dehradun', 'Delhi', 'Dhanbad',
   'Faridabad', 'Ghaziabad', 'Gorakhpur', 'Gurugram', 'Guwahati', 'Gwalior',
   'Hathras', 'Hathin', 'Hisar', 'Hodal', 'Hyderabad',
@@ -310,7 +310,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         });
       }
     });
-    return Array.from(set).filter((c) => c.toLowerCase().includes(q)).sort((a, b) => a.localeCompare(b));
+    const names = Array.from(set);
+    const covered = new Set(
+      names.flatMap((name) => cityNameVariants(name).slice(1).map((part) => part.toLowerCase()))
+    );
+    return names
+      .filter((name) => name.toLowerCase().includes(q) && !covered.has(name.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
   }, [cityInput, citiesList, listings]);
 
   const handleSelectCity = (city: string): void => {
@@ -639,7 +645,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   // Filter listings
   const filteredListings = listings.filter((item) => {
     const loc = (item.location || '').toLowerCase();
-    const title = (item.title || '').toLowerCase();
+    const title = publicListingTitle(item).toLowerCase();
     const desc = (item.description || '').toLowerCase();
     const price = Number(item.price) || 0;
 
@@ -647,7 +653,10 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
     // City filter: either from selected checkboxes or heroCity
     const city = getListingCity(item).toLowerCase();
-    const matchesCity = (c: string): boolean => loc.includes(c.toLowerCase()) || city === c.toLowerCase();
+    const matchesCity = (c: string): boolean => cityNameVariants(c).some((name) => {
+      const needle = name.toLowerCase();
+      return loc.includes(needle) || city === needle;
+    });
     if (selectedCities.length > 0) {
       if (!selectedCities.some(matchesCity)) return false;
     } else if (heroCity) {
@@ -728,6 +737,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     const imgSrc = getFirstImageUrl(listing);
     const priceStr = formatListingPrice(listing.price);
     const pType = listing.form_data?.propType || 'Property';
+    const title = publicListingTitle(listing);
 
     return (
       <div
@@ -742,7 +752,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         >
           <img
             src={imgSrc}
-            alt={listing.title}
+            alt={title}
             className="card-img"
             onError={(e) => {
               const target = e.currentTarget;
@@ -801,9 +811,10 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
         <div className="card-body" style={{ flex: 1 }}>
           <div className="card-price">{priceStr}</div>
-          <h3 className="card-title">{listing.title}</h3>
+          <h3 className="card-title">{title}</h3>
           <div className="card-location">
-            <i className="fas fa-map-marker-alt"></i> {listing.location}
+            <i className="fas fa-map-marker-alt"></i>
+            <span>{listing.location}</span>
           </div>
           <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
             Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
@@ -1163,6 +1174,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 const imgSrc = getFirstImageUrl(listing);
                 const priceStr = formatListingPrice(listing.price);
                 const pType = listing.form_data?.propType || 'Plot';
+                const title = publicListingTitle(listing);
                 const isSaved = wishlistIds.has(listing.id);
 
                 return (
@@ -1174,7 +1186,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
                       <img
                         src={imgSrc}
-                        alt={listing.title}
+                        alt={title}
                         className="card-img"
                         onError={(e) => {
                           const target = e.currentTarget;
@@ -1206,9 +1218,10 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
                     <div className="card-body">
                       <div className="card-price">{priceStr}</div>
-                      <h3 className="card-title">{listing.title}</h3>
+                      <h3 className="card-title">{title}</h3>
                       <div className="card-location">
-                        <i className="fas fa-map-marker-alt"></i> {listing.location}
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span>{listing.location}</span>
                       </div>
                       <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
                         Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})

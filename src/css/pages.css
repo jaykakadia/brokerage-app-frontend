@@ -509,7 +509,7 @@ div.signup-video-box .signup-video-close { position: absolute; top: -44px; right
 /* Business category beside the name, smaller; drops to the next line by itself when it doesn't fit */
 .title-category { display: inline-block; font-size: 0.6em; font-weight: 600; color: #0c6253; line-height: 1.3; }
 .business-dir-title .title-category { font-size: 0.85em; }
-.business-dir-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.business-dir-actions { display: flex; gap: 10px; margin-top: auto; padding-top: 16px; flex-wrap: wrap; }
 .business-dir-actions a, .business-dir-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; font-size: 12px; text-decoration: none; white-space: nowrap; }
 @media (max-width: 768px) {
   .business-dir-filters { grid-template-columns: 1fr; }
@@ -539,4 +539,7 @@ div.signup-video-box .signup-video-close { position: absolute; top: -44px; right
 .admin-loc-table td { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; }
 .admin-loc-table tr:last-child td { border-bottom: none; }
 .admin-loc-count { display: inline-block; min-width: 28px; padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #94a3b8; font-weight: 700; }
+.admin-loc-actions { display: inline-flex; gap: 6px; }
+.admin-loc-edit-input { width: 100%; min-width: 180px; padding: 6px 8px; border: 1.5px solid #0c6253; border-radius: 8px; font: inherit; font-weight: 700; }
+.admin-loc-table .admin-loc-edit { padding: 4px 8px; font-size: 11px; line-height: 1; color: #0c6253; border-color: #86efac; display: inline-flex; }
 .admin-loc-table .admin-loc-delete { padding: 4px 8px; font-size: 11px; line-height: 1; color: #dc2626; border-color: #fca5a5; display: inline-flex; }

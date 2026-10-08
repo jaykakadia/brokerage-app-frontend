@@ -1,4 +1,5 @@
 import type { Listing } from '../types';
+import { EMPTY_PROPERTY_FORM, listingTitle, type PropertyFormState } from '../pages/post-listing/propertyForm';
 
 /** Business listings (posted via the Business Owner form) belong only in the Business Directory. */
 export const isBusinessListing = (listing: Pick<Listing, 'form_data'>): boolean =>
@@ -38,6 +39,23 @@ export const getListingCity = (listing: Pick<Listing, 'form_data' | 'location'>)
   return parts.length >= 3 ? parts[parts.length - 2] : parts[0];
 };
 
+/**
+ * Names a city label should match. "Bengaluru (Bangalore)" matches Bengaluru, Bangalore, and the full label.
+ */
+export const cityNameVariants = (label: string): string[] => {
+  const full = label.trim();
+  const parts = [full];
+  const alias = full.match(/^(.*?)\s*\((.*?)\)\s*$/);
+  if (alias) parts.push(alias[1].trim(), alias[2].trim());
+  const seen = new Set<string>();
+  return parts.filter((part) => {
+    const key = part.toLowerCase();
+    if (!part || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 /** Listings posted today. */
 export const isNewListing = (listing: Pick<Listing, 'created_at'>): boolean => {
   if (!listing.created_at) return false;
@@ -61,4 +79,18 @@ export const getListingDeal = (listing: Pick<Listing, 'form_data' | 'description
   if (legacy.includes('buy')) return 'buy';
   if ((listing.description || '').toLowerCase().includes('[listing_type: rent]')) return 'rent';
   return 'sale';
+};
+
+export const publicListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>): string => {
+  const fd = listing.form_data;
+  if (fd?.kind !== 'buyer') return listing.title || '';
+  const saved = fd as Partial<PropertyFormState>;
+  return listingTitle(
+    {
+      ...EMPTY_PROPERTY_FORM,
+      ...saved,
+      price: saved.price != null ? String(saved.price) : EMPTY_PROPERTY_FORM.price
+    },
+    true
+  );
 };

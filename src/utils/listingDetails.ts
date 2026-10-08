@@ -100,7 +100,13 @@ export function buildKeyDetails(fd: ListingFormData | null | undefined): KeyDeta
       ['State', text(fd.state)]
     ];
   } else if (fd.kind) {
-    const forWhat = fd.forWhat === 'rent' ? 'Rent/Lease' : fd.forWhat === 'sale' ? 'Sale' : text(fd.forWhat);
+    const forWhat = fd.kind === 'buyer'
+      ? (fd.forWhat === 'rent' ? 'Rent/Lease' : 'Buy')
+      : fd.forWhat === 'rent'
+        ? 'Rent/Lease'
+        : fd.forWhat === 'sale'
+          ? 'Sale'
+          : text(fd.forWhat);
     rows = [
       ['Property Type', fd.propType ? propTypeLabel(text(fd.propType)) : ''],
       ['For', forWhat],

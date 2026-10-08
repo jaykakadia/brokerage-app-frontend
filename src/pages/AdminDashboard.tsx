@@ -26,7 +26,7 @@ import api, {
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import AdminLocationsByState from '../components/AdminLocationsByState';
-import { getListingCity } from '../utils/listingKind';
+import { getListingCity, publicListingTitle } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
@@ -480,6 +480,19 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       showToast(getApiErrorMessage(err) || 'Failed to add location', 'error');
     } finally {
       setLocSaving(false);
+    }
+  };
+
+  const handleEditLocation = async (id: number, cityName: string): Promise<void> => {
+    const name = cityName.trim();
+    if (!name) return;
+    try {
+      await api.put(`/api/v1/locations/${id}`, { city_name: name });
+      showToast(`City updated to '${name}'`);
+      fetchLocations();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to update city', 'error');
+      throw err;
     }
   };
 
@@ -1336,7 +1349,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             title="Open listing page"
                             onClick={() => onNavigate('listing-detail', l)}
                           >
-                            {l.title}
+                            {publicListingTitle(l)}
                           </button>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             <i className="fas fa-map-marker-alt"></i> {l.location}
@@ -1558,6 +1571,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               listingCounts={cityListingCounts}
               loading={locationsLoading}
               onDelete={(id) => void handleDeleteLocation(id)}
+              onSave={handleEditLocation}
             />
             </div>
           </div>
@@ -3008,7 +3022,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </div>
 
               <p style={{ fontSize: '13px', color: '#475569', margin: '0 0 16px' }}>
-                #{featuringListing.id} · {featuringListing.title}
+                #{featuringListing.id} · {publicListingTitle(featuringListing)}
               </p>
 
               <form onSubmit={handleSubmitFeature}>

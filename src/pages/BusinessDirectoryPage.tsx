@@ -189,7 +189,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                         {b.title}
                         {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
                       </h3>
-                      <div className="card-location"><i className="fas fa-map-marker-alt"></i> {b.location}</div>
+                      <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
                       <div className="business-dir-actions">
                         <button type="button" className="btn-outline" disabled={contact.unlockingId === b.id} onClick={() => void contact.unlock(b)}>
                           {contact.unlockingId === b.id
