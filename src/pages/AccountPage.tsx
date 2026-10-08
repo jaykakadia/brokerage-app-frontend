@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
 import EditProfileModal from '../components/EditProfileModal';
+import UserEditListingModal from '../components/UserEditListingModal';
 import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
 
 // Website shows as a domain link; social profiles show as brand icon buttons.
@@ -40,6 +41,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
   const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'password'>('my-listings');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [featureListing, setFeatureListing] = useState<Listing | null>(null);
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Password Change State
@@ -520,6 +522,14 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                         <button
                           type="button"
                           className="btn-outline"
+                          style={{ padding: '8px 14px', fontSize: '12px', color: '#0c6253', borderColor: '#0c6253' }}
+                          onClick={() => setEditingListing(listing)}
+                        >
+                          <i className="fas fa-pen"></i> Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-outline"
                           style={{ padding: '8px 14px', fontSize: '12px' }}
                           onClick={() => onNavigate('listing-detail', listing)}
                         >
@@ -732,6 +742,13 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
         user={user}
         onClose={() => setEditModalOpen(false)}
         onSaved={refreshUser}
+      />
+      <UserEditListingModal
+        listing={editingListing}
+        onClose={() => setEditingListing(null)}
+        onSaved={(saved) => {
+          setMyListings((current) => current.map((item) => (item.id === saved.id ? { ...item, ...saved } : item)));
+        }}
       />
     </div>
   );

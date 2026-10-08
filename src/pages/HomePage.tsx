@@ -707,6 +707,23 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     scrollToSection('listings');
   };
 
+  const openListing = (listing: Listing): void => {
+    onNavigate('listing-detail', listing);
+  };
+
+  const listingCardProps = (listing: Listing): React.HTMLAttributes<HTMLDivElement> => ({
+    role: 'link',
+    tabIndex: 0,
+    onClick: () => openListing(listing),
+    onKeyDown: (e) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openListing(listing);
+      }
+    }
+  });
+
   const renderListingCard = (listing: Listing, asList = false) => {
     const imgSrc = getFirstImageUrl(listing);
     const priceStr = formatListingPrice(listing.price);
@@ -717,6 +734,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         key={listing.id}
         className="listing-card"
         style={asList ? { display: 'flex', flexDirection: 'row' } : {}}
+        {...listingCardProps(listing)}
       >
         <div
           className="card-img-wrap"
@@ -794,7 +812,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             <button
               type="button"
               className="btn-view"
-              onClick={() => onNavigate('listing-detail', listing)}
+              onClick={(e) => { e.stopPropagation(); openListing(listing); }}
             >
               <i className="fas fa-info-circle"></i> Details
             </button>
@@ -1151,6 +1169,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                   <div
                     key={`featured-${listing.id}-${index}`}
                     className="listing-card featured-card"
+                    {...listingCardProps(listing)}
                   >
                     <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
                       <img
@@ -1198,7 +1217,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                         <button
                           type="button"
                           className="btn-view"
-                          onClick={() => onNavigate('listing-detail', listing)}
+                          onClick={(e) => { e.stopPropagation(); openListing(listing); }}
                         >
                           <i className="fas fa-info-circle"></i> Details
                         </button>
