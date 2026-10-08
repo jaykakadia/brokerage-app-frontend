@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { getImageUrl } from '../services/api';
 import type { Listing } from '../types';
 
@@ -25,3 +26,6 @@ export const getFirstImageUrl = (listing?: Partial<Listing> | null): string => {
   }
   return '/placeholder-property.svg';
 };
+
+/** Inline style for .card-img-wrap: a blurred copy of the photo fills the space around the uncropped image. */
+export const cardImageBackdrop = (src: string): CSSProperties => ({ '--card-bg': `url("${src}")` } as CSSProperties);

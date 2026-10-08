@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
+import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { isBusinessListing } from '../utils/listingKind';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
@@ -958,7 +958,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     key={`featured-${listing.id}-${index}`}
                     className="listing-card featured-card"
                   >
-                    <div className="card-img-wrap">
+                    <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
                       <img
                         src={imgSrc}
                         alt={listing.title}
@@ -1169,7 +1169,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     >
                       <div
                         className="card-img-wrap"
-                        style={viewType === 'list' ? { width: '280px', flexShrink: 0 } : {}}
+                        style={{ ...cardImageBackdrop(imgSrc), ...(viewType === 'list' ? { width: '280px', flexShrink: 0 } : {}) }}
                       >
                         <img
                           src={imgSrc}

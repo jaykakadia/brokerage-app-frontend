@@ -341,7 +341,11 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
         <div className="ld-grid">
           <div className="ld-card">
             <div className="ld-gallery">
-              <div className="ld-main-wrap">
+              <div
+                className="ld-main-wrap"
+                // Blurred copy of the photo fills the space around it, so the full photo shows uncropped
+                style={hasPhotos ? ({ '--ld-bg': `url("${currentImg}")` } as React.CSSProperties) : undefined}
+              >
                 <img
                   className={`ld-main-img ${hasPhotos ? '' : 'is-placeholder'}`}
                   src={currentImg}

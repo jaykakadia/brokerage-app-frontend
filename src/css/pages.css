@@ -304,8 +304,10 @@
 .ld-grid { display: grid; grid-template-columns: 1.3fr 0.9fr; gap: 24px; align-items: start; }
 .ld-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow: hidden; width: 100%; max-width: 100%; box-sizing: border-box; }
 .ld-gallery { background: #0f172a; width: 100%; max-width: 100%; overflow: hidden; }
-.ld-main-wrap { position: relative; width: 100%; aspect-ratio: 16 / 10; background: #e5e7eb; overflow: hidden; }
-.ld-main-img { position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none !important; object-fit: cover; object-position: center; display: block; background: #e5e7eb; }
+.ld-main-wrap { position: relative; width: 100%; aspect-ratio: 16 / 10; background: #1f2937; overflow: hidden; }
+/* Show the whole photo (never cropped); a blurred copy of it fills the leftover space */
+.ld-main-wrap::before { content: ''; position: absolute; inset: -24px; background-image: var(--ld-bg, none); background-size: cover; background-position: center; filter: blur(22px) brightness(0.75); }
+.ld-main-img { position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none !important; object-fit: contain; object-position: center; display: block; }
 .ld-main-img.is-placeholder { object-fit: contain; padding: 24px; box-sizing: border-box; background: #f3f4f6; }
 .ld-thumbs { display: flex; gap: 8px; padding: 12px; overflow-x: auto; scrollbar-width: thin; background: #111827; }
 .ld-thumbs img { flex: 0 0 auto; width: 72px; height: 56px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; opacity: 0.85; max-width: none !important; }

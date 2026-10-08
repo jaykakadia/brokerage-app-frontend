@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api, { getApiErrorMessage } from '../services/api';
-import { getFirstImageUrl } from '../utils/formatters';
+import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { isBusinessListing } from '../utils/listingKind';
 import type { Listing, NavigateFunction } from '../types';
 
@@ -136,7 +136,7 @@ export default function BusinessDirectoryPage({ onNavigate }: BusinessDirectoryP
                 const info = businessInfo(b);
                 return (
                   <div key={b.id} className="listing-card">
-                    <div className="card-img-wrap">
+                    <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
                       <img
                         src={getFirstImageUrl(b)}
                         alt={b.title}
