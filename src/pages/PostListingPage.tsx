@@ -63,11 +63,16 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
         </div>
       </section>
       <section className="post-section">
-        <div className="post-wrap" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 8px 30px rgba(0,0,0,.08)' }}>
-          <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800, color: '#111827' }}>Add New Listing</h2>
-          <p className="sub" style={{ color: '#6b7280', marginBottom: 22, fontSize: 14 }}>
-            Logged in as {user.name}. Submit for approval.
-          </p>
+        <div className="post-wrap post-card-highlight" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', borderRadius: 16, padding: 28 }}>
+          <div className="post-card-head">
+            <span className="post-card-icon"><i className="fas fa-plus"></i></span>
+            <div>
+              <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#0c6253' }}>Add New Listing</h2>
+              <p className="sub" style={{ color: '#475569', margin: 0, fontSize: 14 }}>
+                Logged in as <strong>{user.name}</strong>. Submit for approval.
+              </p>
+            </div>
+          </div>
           <ListingWizard onSaved={setSuccessListing} onRequireAuth={onOpenAuth} />
         </div>
       </section>

@@ -318,3 +318,44 @@
 .multi-pill span { display: inline-flex; align-items: center; gap: 6px; }
 .multi-pill span i { font-size: 11px; }
 .multi-pill-count { margin-left: 8px; font-size: 12px; font-weight: 600; color: #0c6253; background: #f0faf7; padding: 2px 8px; border-radius: 999px; }
+
+/* ===== Add New Listing card: highlighted so it stands out on the page ===== */
+.post-card-highlight {
+  border: 1.5px solid #a7e3cc;
+  border-top: 5px solid #0c6253;
+  box-shadow: 0 14px 40px rgba(12, 98, 83, 0.16) !important;
+}
+.post-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: -28px -28px 22px;
+  padding: 20px 28px;
+  background: linear-gradient(135deg, #f0faf6, #e6f6ef);
+  border-bottom: 1px solid #d1f0e2;
+  border-radius: 11px 11px 0 0;
+}
+.post-card-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0c6253, #14a37a);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 6px 16px rgba(12, 98, 83, 0.3);
+}
+.listing-type-box > label { font-weight: 700; color: #0c6253; }
+.listing-type-box.needs-choice select {
+  border: 2px solid #0c6253 !important;
+  background: #f0faf6 !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 4px rgba(12, 98, 83, 0.12);
+}
+.listing-type-hint { font-size: 12.5px; font-weight: 600; color: #c2410c; margin: 2px 0 8px; }
+@media (max-width: 768px) {
+  .post-card-head { margin: -18px -16px 18px; padding: 16px; }
+}

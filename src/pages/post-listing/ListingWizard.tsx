@@ -226,8 +226,9 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
 
   return (
     <>
-      <div className="form-group">
+      <div className={`form-group listing-type-box ${role ? '' : 'needs-choice'}`}>
         <label>Select Listing Type</label>
+        {!role && <div className="listing-type-hint"><i className="fas fa-hand-point-down"></i> Start here: choose what you want to list</div>}
         <select
           required
           disabled={roleLocked}
