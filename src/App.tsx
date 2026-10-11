@@ -60,7 +60,7 @@ export default function App() {
         } else if (parsed.page === 'blog-detail' && parsed.param) {
           targetPath = `/blog/${parsed.param}`;
         } else if (parsed.page === 'terms') {
-          targetPath = '/Terms-of-use-tradecall-India';
+          targetPath = '/terms-of-use';
         } else if (parsed.page === 'home') {
           targetPath = '/home';
         } else if (parsed.page === 'login') {
@@ -93,8 +93,12 @@ export default function App() {
   // Listing and blog pages set their own SEO once their content loads
   useEffect(() => {
     if (activePage === 'listing-detail' || activePage === 'blog-detail') return;
+    if (activePage === 'login' && loginTab === 'register') {
+      setSeo({ title: 'Register', noindex: true });
+      return;
+    }
     setSeo(PAGE_SEO[activePage] ?? {});
-  }, [activePage]);
+  }, [activePage, loginTab]);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;
@@ -122,8 +126,8 @@ export default function App() {
       setSelectedBlogId(slug);
       path = slug ? `/blog/${slug}` : '/blog';
       setActivePage('blog-detail');
-    } else if (page === 'terms' || page.toLowerCase() === 'terms-of-use-tradecall-india') {
-      path = '/Terms-of-use-tradecall-India';
+    } else if (page === 'terms' || page.toLowerCase() === 'terms-of-use' || page.toLowerCase() === 'terms-of-use-tradecall-india') {
+      path = '/terms-of-use';
       setActivePage('terms');
     } else if (page === 'privacy') {
       path = '/privacy';

@@ -56,7 +56,7 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     if (cleanHash.startsWith('blog/')) {
       return { page: 'blog-detail', param: cleanHash.replace('blog/', '') };
     }
-    if (cleanHash === 'terms' || cleanHash.toLowerCase() === 'terms-of-use-tradecall-india') {
+    if (cleanHash === 'terms' || cleanHash === 'terms-of-use' || cleanHash.toLowerCase() === 'terms-of-use-tradecall-india') {
       return { page: 'terms', param: null };
     }
     if (cleanHash === 'privacy') {
@@ -76,8 +76,8 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     return { page: 'home', param: null };
   }
 
-  // Exact Terms of Use match requested by client
-  if (cleanPath.toLowerCase() === 'terms-of-use-tradecall-india' || cleanPath.toLowerCase() === 'terms') {
+  // Exact Terms of Use match
+  if (cleanPath.toLowerCase() === 'terms-of-use' || cleanPath.toLowerCase() === 'terms-of-use-tradecall-india' || cleanPath.toLowerCase() === 'terms') {
     return { page: 'terms', param: null };
   }
   if (cleanPath.toLowerCase() === 'privacy' || cleanPath.toLowerCase() === 'privacy-policy') {
@@ -108,7 +108,8 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     'post-listing': 'post-listing',
     'post-free': 'post-listing',
     'account': 'account',
-    'admin': 'admin'
+    'admin': 'admin',
+    'dashboard': 'admin'
   };
 
   if (singleRoutes[cleanPath.toLowerCase()]) {

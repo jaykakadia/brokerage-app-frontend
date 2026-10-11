@@ -94,9 +94,10 @@ export const PAGE_SEO: Record<string, SeoOptions> = {
     description: 'Get in touch with TradeCall India in Palwal, Haryana. Call or WhatsApp 9992292828 or email support.tradecall@gmail.com.',
     path: '/contact'
   },
-  terms: { title: 'Terms of Use', path: '/Terms-of-use-tradecall-India' },
+  terms: { title: 'Terms of Use', path: '/terms-of-use' },
   privacy: { title: 'Privacy Policy', path: '/privacy' },
   login: { title: 'Sign In or Register', noindex: true },
+  register: { title: 'Register', noindex: true },
   'admin-login': { title: 'Admin Login', noindex: true },
   'post-listing': {
     title: 'Post Your Property for Free',
@@ -104,5 +105,6 @@ export const PAGE_SEO: Record<string, SeoOptions> = {
     path: '/post-listing'
   },
   account: { title: 'My Account', noindex: true },
-  admin: { title: 'Admin', noindex: true }
+  admin: { title: 'Admin Dashboard', noindex: true },
+  dashboard: { title: 'Admin Dashboard', noindex: true }
 };

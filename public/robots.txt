@@ -1,5 +1,11 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /login
+Disallow: /register
+Disallow: /account
+Disallow: /dashboard
 
 Sitemap: https://tradecall.in/sitemap.xml

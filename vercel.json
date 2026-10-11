@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/Terms-of-use-tradecall-India",
+      "destination": "/terms-of-use",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
