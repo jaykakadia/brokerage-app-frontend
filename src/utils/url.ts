@@ -1,3 +1,5 @@
+import { getCityFromSlug } from '../config/cities';
+
 export function slugify(text?: string | null): string {
   if (!text) return '';
   return text
@@ -100,6 +102,8 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     'advertise': 'advertise',
     'business-directory': 'business-directory',
     'businesses': 'business-directory',
+    'cities': 'cities',
+    'all-cities': 'cities',
     'blog': 'blog',
     'about': 'about',
     'about-us': 'about',
@@ -117,6 +121,16 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
   }
 
   const parts = cleanPath.split('/');
+
+  // Properties by city: /properties/:city
+  if (parts.length === 2 && (parts[0].toLowerCase() === 'properties' || parts[0].toLowerCase() === 'city')) {
+    const citySlug = parts[1].toLowerCase();
+    const resolvedCity = getCityFromSlug(citySlug);
+    if (!resolvedCity) {
+      return { page: 'not-found', param: citySlug };
+    }
+    return { page: 'properties-city', param: citySlug };
+  }
 
   // Blog detail: /blog/:slug
   if (parts.length === 2 && parts[0].toLowerCase() === 'blog') {

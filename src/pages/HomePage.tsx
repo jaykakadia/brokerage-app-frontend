@@ -847,7 +847,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       <section className="hero">
         <div className="hero-overlay"></div>
         <div className="container hero-content">
-          <h1>Find Properties &amp; Related Businesses</h1>
+          <h1>{activeCity ? `Properties in ${activeCity}` : 'Find Properties & Related Businesses'}</h1>
 
           <div className="search-box">
             <div className="search-form">

@@ -1,3 +1,4 @@
+import { TOP_CITIES } from '../config/cities';
 import type { NavigateFunction } from '../types';
 
 export interface FooterProps {
@@ -5,7 +6,7 @@ export interface FooterProps {
   onNavigate: NavigateFunction;
 }
 
-export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
+export default function Footer({ onNavigate }: FooterProps) {
   return (
     <footer className="footer">
       <div className="container footer-inner">
@@ -33,14 +34,33 @@ export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
         </div>
 
         <div className="footer-col">
-          <h4>Cities We Cover</h4>
+          <h4>Top Cities</h4>
           <ul>
-            <li><a href="#city" onClick={(e) => { e.preventDefault(); onCitySelect('Palwal'); }}>Properties in Palwal</a></li>
-            <li><a href="#city" onClick={(e) => { e.preventDefault(); onCitySelect('Faridabad'); }}>Properties in Faridabad</a></li>
-            <li><a href="#city" onClick={(e) => { e.preventDefault(); onCitySelect('Gurugram'); }}>Properties in Gurugram</a></li>
-            <li><a href="#city" onClick={(e) => { e.preventDefault(); onCitySelect('Sonipat'); }}>Properties in Sonipat</a></li>
-            <li><a href="#city" onClick={(e) => { e.preventDefault(); onCitySelect('Hodal'); }}>Properties in Hodal</a></li>
-            <li><a href="#city" onClick={(e) => { e.preventDefault(); onCitySelect('Delhi'); }}>Properties in Delhi</a></li>
+            {TOP_CITIES.map((c) => (
+              <li key={c.slug}>
+                <a
+                  href={`/properties/${c.slug}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('properties-city', c.slug);
+                  }}
+                >
+                  Properties in {c.name}
+                </a>
+              </li>
+            ))}
+            <li style={{ marginTop: '6px' }}>
+              <a
+                href="/cities"
+                style={{ fontWeight: 700, color: '#38bdf8' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate('cities');
+                }}
+              >
+                All Cities in India →
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -60,6 +80,7 @@ export default function Footer({ onCitySelect, onNavigate }: FooterProps) {
           <h4>Quick Links</h4>
           <ul>
             <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
+            <li><a href="/cities" onClick={(e) => { e.preventDefault(); onNavigate('cities'); }}>All Cities</a></li>
             <li><a href="/business-directory" onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}>Business Directory</a></li>
             <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Blog</a></li>
             <li><a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>

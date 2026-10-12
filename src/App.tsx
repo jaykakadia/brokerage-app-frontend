@@ -17,8 +17,11 @@ import BlogPage from './pages/BlogPage';
 import BlogDetailPage from './pages/BlogDetailPage';
 import LoginPage from './pages/LoginPage';
 import AdminLoginPage from './pages/AdminLoginPage';
+import CitiesPage from './pages/CitiesPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { parseAppRoute, getListingUrl } from './utils/url';
 import { PAGE_SEO, setSeo } from './utils/seo';
+import { getCityFromSlug, getCitySlug } from './config/cities';
 import type { NavigateFunction } from './types';
 
 export default function App() {
@@ -82,6 +85,11 @@ export default function App() {
         setSelectedBlogId(String(parsed.param));
       } else if (parsed.page === 'login') {
         setLoginTab(parsed.param === 'register' ? 'register' : 'signin');
+      } else if (parsed.page === 'properties-city' && parsed.param) {
+        const city = getCityFromSlug(String(parsed.param));
+        setActiveCity(city || '');
+      } else if (parsed.page === 'home') {
+        setActiveCity('');
       }
     };
 
@@ -90,20 +98,46 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
-  // Listing and blog pages set their own SEO once their content loads
+  // Listing, blog, city, and not-found pages set their own SEO once active
   useEffect(() => {
     if (activePage === 'listing-detail' || activePage === 'blog-detail') return;
     if (activePage === 'login' && loginTab === 'register') {
       setSeo({ title: 'Register', noindex: true });
       return;
     }
+    if (activePage === 'properties-city' && activeCity) {
+      const slug = getCitySlug(activeCity);
+      setSeo({
+        title: `Properties in ${activeCity} | Buy, Rent & Commercial | Tradecall`,
+        description: `Find the best residential and commercial properties in ${activeCity} on Tradecall...`,
+        path: `/properties/${slug}`,
+      });
+      return;
+    }
+    if (activePage === 'cities') {
+      setSeo({
+        title: 'Properties by City | All Indian Cities | Tradecall',
+        description: 'Explore verified residential and commercial properties across all major cities and states in India on Tradecall.',
+        path: '/cities',
+      });
+      return;
+    }
+    if (activePage === 'not-found') {
+      setSeo({
+        title: 'Page Not Found | Tradecall',
+        description: 'The requested page or city could not be found.',
+        noindex: true,
+      });
+      return;
+    }
     setSeo(PAGE_SEO[activePage] ?? {});
-  }, [activePage, loginTab]);
+  }, [activePage, loginTab, activeCity]);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;
     if (page === 'home') {
       path = '/home';
+      setActiveCity('');
       setActivePage('home');
     } else if (page === 'login' || page === 'register' || page === 'signin') {
       const tab = page === 'register' || param === 'register' ? 'register' : 'signin';
@@ -126,6 +160,23 @@ export default function App() {
       setSelectedBlogId(slug);
       path = slug ? `/blog/${slug}` : '/blog';
       setActivePage('blog-detail');
+    } else if (page === 'properties-city' && param) {
+      const slug = typeof param === 'string' ? param : getCitySlug(String(param));
+      const city = getCityFromSlug(slug);
+      if (!city) {
+        setActivePage('not-found');
+        path = `/properties/${slug}`;
+      } else {
+        setActiveCity(city);
+        setActivePage('properties-city');
+        path = `/properties/${slug}`;
+      }
+    } else if (page === 'cities') {
+      setActivePage('cities');
+      path = '/cities';
+    } else if (page === 'not-found') {
+      setActivePage('not-found');
+      path = window.location.pathname;
     } else if (page === 'terms' || page.toLowerCase() === 'terms-of-use' || page.toLowerCase() === 'terms-of-use-tradecall-india') {
       path = '/terms-of-use';
       setActivePage('terms');
@@ -143,13 +194,22 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleCitySelect = (city: string) => {
+    if (!city || city === 'All Cities') {
+      setActiveCity('');
+      navigateTo('home');
+    } else {
+      navigateTo('properties-city', getCitySlug(city));
+    }
+  };
+
   // Login page keeps the site header (no footer)
   if (activePage === 'login') {
     return (
       <div className="tradecall-app">
         <Header
           activeCity={activeCity}
-          onCitySelect={setActiveCity}
+          onCitySelect={handleCitySelect}
           onNavigate={navigateTo}
           activePage={activePage}
         />
@@ -170,19 +230,31 @@ export default function App() {
     <div className="tradecall-app" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header
         activeCity={activeCity}
-        onCitySelect={setActiveCity}
+        onCitySelect={handleCitySelect}
         onNavigate={navigateTo}
         activePage={activePage}
         onOpenAuth={() => openAuthModal()}
       />
 
       <main style={{ flex: 1 }}>
-        {activePage === 'home' && (
+        {(activePage === 'home' || activePage === 'properties-city') && (
           <HomePage
             activeCity={activeCity}
-            onCitySelect={setActiveCity}
+            onCitySelect={handleCitySelect}
             onNavigate={navigateTo}
             onOpenAuth={openAuthModal}
+          />
+        )}
+
+        {activePage === 'cities' && (
+          <CitiesPage
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {activePage === 'not-found' && (
+          <NotFoundPage
+            onNavigate={navigateTo}
           />
         )}
 
@@ -268,10 +340,7 @@ export default function App() {
       </main>
 
       <Footer
-        onCitySelect={(city: string) => {
-          setActiveCity(city);
-          navigateTo('home');
-        }}
+        onCitySelect={handleCitySelect}
         onNavigate={navigateTo}
       />
 

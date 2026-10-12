@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Allow: /properties/
+Allow: /cities
 Disallow: /api/
 Disallow: /admin
 Disallow: /admin-login

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { TOP_CITIES } from '../config/cities';
 import type { NavigateFunction } from '../types';
 
 export interface HeaderProps {
@@ -10,9 +11,23 @@ export interface HeaderProps {
   onCitySelect?: (city: string) => void;
 }
 
-export default function Header({ onNavigate, activePage }: HeaderProps) {
+export default function Header({ onNavigate, activePage, activeCity }: HeaderProps) {
   const { user, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [citiesDropdownOpen, setCitiesDropdownOpen] = useState(false);
+  const citiesRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (citiesRef.current && !citiesRef.current.contains(event.target as Node)) {
+        setCitiesDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // The sign-in page is already where these buttons lead
   const onAuthPage = activePage === 'login';
 
@@ -21,70 +36,149 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
       <header className="site-header" id="siteHeader">
         <div className="header-container">
           <div className="header-start">
-          <div className="header-left">
-            <a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
-              <div className="logo-icon">
-                <div className="logo-bars">
-                  <span className="logo-bar"></span>
-                  <span className="logo-bar"></span>
-                  <span className="logo-bar"></span>
+            <div className="header-left">
+              <a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
+                <div className="logo-icon">
+                  <div className="logo-bars">
+                    <span className="logo-bar"></span>
+                    <span className="logo-bar"></span>
+                    <span className="logo-bar"></span>
+                  </div>
+                  <div className="logo-arrow"></div>
                 </div>
-                <div className="logo-arrow"></div>
-              </div>
-              <span className="logo-text">
-                <span className="logo-tradecall">TradeCall</span>
-                <span className="logo-india">India</span>
-              </span>
-            </a>
-          </div>
-
-          <nav className="main-nav">
-            <a
-              href="/home"
-              className={`nav-item ${activePage === 'home' ? 'active' : ''}`}
-              onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
-            >
-              Home
-            </a>
-            <a
-              href="/advertise"
-              className={`nav-item ${activePage === 'advertise' ? 'active' : ''}`}
-              onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}
-            >
-              Advertise
-            </a>
-            <a
-              href="/blog"
-              className={`nav-item ${activePage === 'blog' || activePage === 'blog-detail' ? 'active' : ''}`}
-              onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}
-            >
-              Blog
-            </a>
-            <a
-              href="/about"
-              className={`nav-item ${activePage === 'about' ? 'active' : ''}`}
-              onClick={(e) => { e.preventDefault(); onNavigate('about'); }}
-            >
-              About Us
-            </a>
-            <a
-              href="/contact"
-              className={`nav-item ${activePage === 'contact' ? 'active' : ''}`}
-              onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}
-            >
-              Contact Us
-            </a>
-            {user?.role?.toLowerCase() === 'admin' && (
-              <a
-                href="/admin"
-                className={`nav-item ${activePage === 'admin' ? 'active' : ''}`}
-                onClick={(e) => { e.preventDefault(); onNavigate('admin'); }}
-              >
-                <i className="fas fa-shield-alt" aria-hidden="true"></i>
-                Admin Panel
+                <span className="logo-text">
+                  <span className="logo-tradecall">TradeCall</span>
+                  <span className="logo-india">India</span>
+                </span>
               </a>
-            )}
-          </nav>
+            </div>
+
+            <nav className="main-nav">
+              <a
+                href="/home"
+                className={`nav-item ${activePage === 'home' && !activeCity ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
+              >
+                Home
+              </a>
+
+              {/* Top Cities Dropdown */}
+              <div className="nav-cities-wrapper" ref={citiesRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  className={`nav-item ${activePage === 'properties-city' || activePage === 'cities' ? 'active' : ''}`}
+                  onClick={() => setCitiesDropdownOpen(!citiesDropdownOpen)}
+                  style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  aria-label="Top Cities"
+                >
+                  <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#0c6253' }}></i>
+                  <span>{activeCity ? activeCity : 'Top Cities'}</span>
+                  <i className="fas fa-chevron-down" style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}></i>
+                </button>
+
+                {citiesDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: '6px',
+                      background: '#ffffff',
+                      borderRadius: '10px',
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                      border: '1px solid #e2e8f0',
+                      padding: '8px 0',
+                      minWidth: '190px',
+                      zIndex: 1000,
+                    }}
+                  >
+                    <div style={{ padding: '4px 16px', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Top Metros
+                    </div>
+                    {TOP_CITIES.map((c) => (
+                      <a
+                        key={c.slug}
+                        href={`/properties/${c.slug}`}
+                        style={{
+                          display: 'block',
+                          padding: '7px 16px',
+                          color: activeCity === c.name ? '#0c6253' : '#334155',
+                          fontSize: '13px',
+                          textDecoration: 'none',
+                          fontWeight: activeCity === c.name ? 700 : 500,
+                          backgroundColor: activeCity === c.name ? '#f0fdfa' : 'transparent',
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCitiesDropdownOpen(false);
+                          onNavigate('properties-city', c.slug);
+                        }}
+                      >
+                        Properties in {c.name}
+                      </a>
+                    ))}
+                    <div style={{ height: '1px', background: '#f1f5f9', margin: '6px 0' }}></div>
+                    <a
+                      href="/cities"
+                      style={{
+                        display: 'block',
+                        padding: '7px 16px',
+                        color: '#0c6253',
+                        fontSize: '13px',
+                        textDecoration: 'none',
+                        fontWeight: 700,
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCitiesDropdownOpen(false);
+                        onNavigate('cities');
+                      }}
+                    >
+                      All Cities in India →
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              <a
+                href="/advertise"
+                className={`nav-item ${activePage === 'advertise' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}
+              >
+                Advertise
+              </a>
+              <a
+                href="/blog"
+                className={`nav-item ${activePage === 'blog' || activePage === 'blog-detail' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}
+              >
+                Blog
+              </a>
+              <a
+                href="/about"
+                className={`nav-item ${activePage === 'about' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('about'); }}
+              >
+                About Us
+              </a>
+              <a
+                href="/contact"
+                className={`nav-item ${activePage === 'contact' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}
+              >
+                Contact Us
+              </a>
+              {user?.role?.toLowerCase() === 'admin' && (
+                <a
+                  href="/admin"
+                  className={`nav-item ${activePage === 'admin' ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); onNavigate('admin'); }}
+                >
+                  <i className="fas fa-shield-alt" aria-hidden="true"></i>
+                  Admin Panel
+                </a>
+              )}
+            </nav>
           </div>
 
           <a
@@ -97,13 +191,17 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
 
           <div className="header-right">
             {!onAuthPage && (
-              <button
-                type="button"
+              <a
+                href="/post-listing"
                 className="btn-post-free"
-                onClick={() => onNavigate('post-listing')}
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate('post-listing');
+                }}
               >
                 <i className="fas fa-plus-circle"></i> Post Free
-              </button>
+              </a>
             )}
 
             {onAuthPage ? null : user ? (
@@ -129,10 +227,10 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
             ) : (
               <button
                 type="button"
-                className="btn-header-ghost"
+                className="btn-header-signin"
                 onClick={() => onNavigate('login')}
               >
-                <i className="fas fa-sign-in-alt"></i> Sign-In / Register
+                <i className="fas fa-sign-in-alt"></i> Sign-In
               </button>
             )}
 
@@ -165,7 +263,39 @@ export default function Header({ onNavigate, activePage }: HeaderProps) {
               </button>
             </div>
             <nav className="drawer-nav">
-              <a href="/home" className={`drawer-nav-item ${activePage === 'home' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+              <a href="/home" className={`drawer-nav-item ${activePage === 'home' && !activeCity ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+
+              <div style={{ padding: '12px 16px 4px 16px', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Top Cities
+              </div>
+              {TOP_CITIES.map((c) => (
+                <a
+                  key={c.slug}
+                  href={`/properties/${c.slug}`}
+                  className={`drawer-nav-item ${activeCity === c.name ? 'active' : ''}`}
+                  style={{ paddingLeft: '28px', fontSize: '13.5px' }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDrawerOpen(false);
+                    onNavigate('properties-city', c.slug);
+                  }}
+                >
+                  Properties in {c.name}
+                </a>
+              ))}
+              <a
+                href="/cities"
+                className="drawer-nav-item"
+                style={{ paddingLeft: '28px', fontSize: '13.5px', color: '#0c6253', fontWeight: 700 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setDrawerOpen(false);
+                  onNavigate('cities');
+                }}
+              >
+                All Cities in India →
+              </a>
+
               <a href="/business-directory" className={`drawer-nav-item ${activePage === 'business-directory' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); setDrawerOpen(false); }}>Business Directory</a>
               <a href="/advertise" className={`drawer-nav-item ${activePage === 'advertise' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('advertise'); setDrawerOpen(false); }}>Advertise</a>
               <a href="/blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
