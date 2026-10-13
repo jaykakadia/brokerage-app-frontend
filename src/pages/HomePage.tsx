@@ -3,9 +3,18 @@ import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats }
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { TOP_CITIES } from '../config/cities';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
+
+const POPULAR_BROWSE_CITIES = [
+  ...TOP_CITIES,
+  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
+  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
+  { name: 'Gurugram', slug: 'gurugram', state: 'Haryana' },
+  { name: 'Noida', slug: 'noida', state: 'Uttar Pradesh' },
+];
 
 export interface AuthModalOptions {
   title?: string;
@@ -1122,6 +1131,64 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           </div>
         </div>
       </section>
+
+      {/* Popular Cities Section (Magicbricks style) */}
+      {!hasActiveFilters && (
+      <section className="popular-cities-section" id="popular-cities">
+        <div className="container">
+          <div className="section-header">
+            <div>
+              <h2>
+                <i className="fas fa-city" style={{ color: '#0d7a5f', marginRight: '8px' }}></i>
+                Explore Properties in Popular Cities
+              </h2>
+              <p>Verified residential and commercial properties with zero brokerage in top hubs</p>
+            </div>
+            <a
+              href="/cities"
+              className="btn-outline-green"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate('cities');
+              }}
+            >
+              All Indian Cities <i className="fas fa-arrow-right"></i>
+            </a>
+          </div>
+
+          <div className="popular-cities-grid">
+            {POPULAR_BROWSE_CITIES.map((city) => {
+              const count = cityCounts.find(
+                (c) => c.name.toLowerCase() === city.name.toLowerCase()
+              )?.count;
+
+              return (
+                <a
+                  key={city.slug}
+                  href={`/properties/${city.slug}`}
+                  className="city-browse-card"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('properties-city', city.slug);
+                  }}
+                >
+                  <span className="city-browse-name">
+                    <i className="fas fa-map-marker-alt" style={{ color: '#0d7a5f', fontSize: '12px' }}></i>
+                    {city.name}
+                  </span>
+                  <span className="city-browse-state">{city.state}</span>
+                  {count !== undefined && count > 0 ? (
+                    <span className="city-browse-count">{count} {count === 1 ? 'listing' : 'listings'}</span>
+                  ) : (
+                    <span className="city-browse-count" style={{ background: '#f1f5f9', color: '#64748b' }}>Explore</span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+      )}
 
       {/* Featured Listings Section */}
       {!hasActiveFilters && (
