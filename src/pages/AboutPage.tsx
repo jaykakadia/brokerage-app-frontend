@@ -65,7 +65,7 @@ export default function AboutPage({ onNavigate }: AboutPageProps) {
                 We noticed that existing portals focused on metro cities and often charged high fees. We built TradeCall India specifically for the Haryana NCR belt.
               </p>
               <p style={{ color: '#6b7280', lineHeight: 1.8 }}>
-                Today, we serve users across 16 cities with a growing database of verified property listings.
+                Today, we serve users across {citiesCovered} cities with a growing database of verified property listings.
               </p>
             </div>
             <div style={{ background: 'linear-gradient(135deg,#0c6253,#14a37a)', borderRadius: '20px', padding: '24px', color: '#fff' }}>
