@@ -1326,14 +1326,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <table className="admin-table admin-listings-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '12px 14px' }}>ID</th>
-                      <th style={{ padding: '12px 14px' }}>Title &amp; Location</th>
-                      <th style={{ padding: '12px 14px' }}>Price</th>
-                      <th style={{ padding: '12px 14px' }}>Owner</th>
-                      <th style={{ padding: '12px 14px' }}>Status</th>
-                      <th style={{ padding: '12px 14px' }}>Stamp</th>
-                      <th style={{ padding: '12px 14px' }}>Featured</th>
-                      <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                      <th style={{ padding: '12px 14px', width: '60px', whiteSpace: 'nowrap' }}>ID</th>
+                      <th style={{ padding: '12px 14px', minWidth: '320px', width: '35%' }}>Title &amp; Location</th>
+                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Price</th>
+                      <th style={{ padding: '12px 14px', minWidth: '120px' }}>Owner</th>
+                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Status</th>
+                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Stamp</th>
+                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Featured</th>
+                      <th style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap', width: '90px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1342,11 +1342,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <td data-label="ID" style={{ padding: '12px 14px', fontWeight: 700, color: '#64748b' }}>
                           #{l.id}
                         </td>
-                        <td data-label="Listing" style={{ padding: '12px 14px' }}>
+                        <td data-label="Listing" style={{ padding: '12px 14px', minWidth: '320px' }}>
                           <button
                             type="button"
                             className="admin-listing-title"
                             title="Open listing page"
+                            style={{ lineHeight: 1.45, marginBottom: '3px' }}
                             onClick={() => onNavigate('listing-detail', l)}
                           >
                             {publicListingTitle(l)}
