@@ -352,10 +352,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setHeroCity(val.trim());
     if (!val.trim()) {
       setSelectedCities([]);
-      if (onCitySelect) onCitySelect('');
     } else {
       setSelectedCities([val.trim()]);
-      if (onCitySelect) onCitySelect(val.trim());
     }
     setShowCitySuggestions(true);
     setHighlightedIndex(-1);
@@ -376,6 +374,10 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       if (highlightedIndex >= 0 && highlightedIndex < citySuggestions.length) {
         e.preventDefault();
         handleSelectCity(citySuggestions[highlightedIndex]);
+      } else if (citySuggestions.length > 0) {
+        const exact = citySuggestions.find((c) => c.toLowerCase() === cityInput.trim().toLowerCase());
+        e.preventDefault();
+        handleSelectCity(exact || citySuggestions[0]);
       } else {
         setShowCitySuggestions(false);
       }
