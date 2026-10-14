@@ -88,6 +88,7 @@ export interface ListingStatsResponse {
   featured_listings: number;
   cities_covered: number;
   registered_users: number;
+  new_today?: number;
 }
 
 export interface ListingRefSummaryItem {

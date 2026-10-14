@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { NavigateFunction } from '../types';
-import type { ListingStatsResponse } from '../types/listing';
-import { getListingStats } from '../services/api';
+import type { ListingStatsResponse, Listing } from '../types/listing';
+import api, { getListingStats } from '../services/api';
+import { isNewListing } from '../utils/listingKind';
 
 export interface AboutPageProps {
   onNavigate?: NavigateFunction;
@@ -9,6 +10,7 @@ export interface AboutPageProps {
 
 export default function AboutPage({ onNavigate }: AboutPageProps) {
   const [stats, setStats] = useState<ListingStatsResponse | null>(null);
+  const [newTodayCount, setNewTodayCount] = useState<number | null>(null);
 
   useEffect(() => {
     getListingStats()
@@ -18,12 +20,22 @@ export default function AboutPage({ onNavigate }: AboutPageProps) {
         }
       })
       .catch(() => {});
+
+    api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
+      params: { status: 'approved' }
+    })
+      .then((res) => {
+        if (res.data?.status === 'success' && Array.isArray(res.data.data)) {
+          setNewTodayCount(res.data.data.filter(isNewListing).length);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const activeListings = stats && stats.active_listings > 0 ? `${stats.active_listings}+` : '56+';
   const citiesCovered = stats && stats.cities_covered > 0 ? stats.cities_covered : 16;
   const registeredUsers = stats && stats.registered_users > 0 ? `${stats.registered_users}+` : '12+';
-  const featuredListings = stats && stats.featured_listings > 0 ? stats.featured_listings : 8;
+  const newToday = newTodayCount !== null ? newTodayCount : (stats?.new_today ?? 0);
 
   return (
     <div className="about-page">
@@ -70,9 +82,19 @@ export default function AboutPage({ onNavigate }: AboutPageProps) {
                   <div style={{ fontSize: '32px', fontWeight: 800 }}>{registeredUsers}</div>
                   <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', marginTop: '6px' }}>Registered Users</div>
                 </div>
-                <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '32px', fontWeight: 800 }}>{featuredListings}</div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', marginTop: '6px' }}>Featured Listings</div>
+                <div
+                  onClick={() => onNavigate?.('home')}
+                  style={{
+                    textAlign: 'center',
+                    padding: '20px',
+                    background: 'rgba(255,255,255,0.1)',
+                    borderRadius: '12px',
+                    cursor: onNavigate ? 'pointer' : 'default',
+                  }}
+                  title={onNavigate ? 'Show listings on Home' : undefined}
+                >
+                  <div style={{ fontSize: '32px', fontWeight: 800 }}>{newToday}</div>
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.8)', marginTop: '6px' }}>New Today</div>
                 </div>
               </div>
             </div>
