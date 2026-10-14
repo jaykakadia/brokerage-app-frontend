@@ -541,7 +541,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   // Until the listings load, show the site-wide stats
   const listingsLoaded = !loading && !error;
   const activeListingsCount = listingsLoaded ? listings.length : (stats?.active_listings ?? 0);
-  const featuredCount = listingsLoaded ? featuredListings.length : (stats?.featured_listings ?? 0);
+  const activeUsersCount = stats && stats.registered_users > 0 ? `${stats.registered_users}+` : '70+';
   const citiesCoveredCount = listingsLoaded ? cityCounts.length : (stats?.cities_covered ?? 0);
   const newCount = listingsLoaded ? newListingsCount : 0;
 
@@ -1087,11 +1087,26 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 <div className="metric-label">Active Listings</div>
               </div>
             </button>
-            <button type="button" className="metric-item metric-clickable" onClick={() => { handleClearFilters(); scrollToSection('featured'); }} title="Show featured listings">
-              <span className="metric-icon"><i className="fas fa-star" style={{ color: 'rgb(245, 158, 11)' }}></i></span>
+            <button
+              type="button"
+              className="metric-item metric-clickable"
+              onClick={() => {
+                if (!user && onOpenAuth) {
+                  onOpenAuth({
+                    title: 'Join TradeCall India',
+                    subtitle: 'Create a free account to post properties or contact owners directly.',
+                    icon: 'fa-users'
+                  });
+                } else if (onNavigate) {
+                  onNavigate('about');
+                }
+              }}
+              title="Active registered users on TradeCall India"
+            >
+              <span className="metric-icon"><i className="fas fa-users" style={{ color: '#0c6253' }}></i></span>
               <div>
-                <span className="metric-num">{featuredCount}</span>
-                <div className="metric-label">Featured Listings</div>
+                <span className="metric-num">{activeUsersCount}</span>
+                <div className="metric-label">Active Users</div>
               </div>
             </button>
             <div className="metric-cities-wrap" ref={citiesPanelRef}>
