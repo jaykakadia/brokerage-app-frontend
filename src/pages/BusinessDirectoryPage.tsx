@@ -1,11 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import api, { getApiErrorMessage, getWishlist, toggleWishlist } from '../services/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
-import { getBusinessCategories, isBusinessListing } from '../utils/listingKind';
+import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
+import { TOP_CITIES } from '../config/cities';
 import { useContactUnlock } from '../hooks/useContactUnlock';
 import type { AuthModalOptions } from './ListingDetailPage';
-import type { Listing, NavigateFunction } from '../types';
+import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
+
+const POPULAR_BROWSE_CITIES = [
+  ...TOP_CITIES,
+  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
+  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
+  { name: 'Gurugram', slug: 'gurugram', state: 'Haryana' },
+  { name: 'Noida', slug: 'noida', state: 'Uttar Pradesh' },
+];
 
 export interface BusinessDirectoryPageProps {
   onNavigate: NavigateFunction;
@@ -30,6 +39,9 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const contact = useContactUnlock(onOpenAuth);
   const { user } = useAuth();
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
+  const [stats, setStats] = useState<ListingStatsResponse | null>(null);
+  const [showCitiesPanel, setShowCitiesPanel] = useState(false);
+  const citiesPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -42,6 +54,18 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       })
       .catch(() => {});
   }, [user]);
+
+  // Click outside listener for cities covered dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (citiesPanelRef.current && !citiesPanelRef.current.contains(target)) {
+        setShowCitiesPanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const toggleSaved = async (listingId: number): Promise<void> => {
     if (!user) {
@@ -72,6 +96,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [city, setCity] = useState('');
+  const [newOnly, setNewOnly] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -85,21 +110,84 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       }
     };
     void load();
+    getListingStats()
+      .then((res) => {
+        if (res.data) setStats(res.data);
+      })
+      .catch(() => {});
   }, []);
+
+  // Compute business counts per city from approved businesses only
+  const cityCounts = useMemo(() => {
+    const byKey = new Map<string, { name: string; count: number }>();
+    businesses.forEach((item) => {
+      const info = businessInfo(item);
+      const name = info.city || getListingCity(item);
+      if (!name) return;
+      const key = name.toLowerCase();
+      const entry = byKey.get(key);
+      if (entry) entry.count += 1;
+      else byKey.set(key, { name, count: 1 });
+    });
+    return Array.from(byKey.values()).sort((a, b) => b.count - a.count);
+  }, [businesses]);
+
+  // Popular cities sorted with highest number of business listings first
+  const sortedBrowseCities = useMemo(() => {
+    const getCount = (cityName: string, slug?: string): number => {
+      const variants = [
+        cityName.toLowerCase(),
+        ...(slug ? [slug.toLowerCase()] : []),
+        ...(cityName.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
+        ...(cityName.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
+        ...(cityName.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+      ];
+      const match = cityCounts.find((c) => {
+        const lower = c.name.toLowerCase();
+        return variants.some((v) => lower === v || lower.includes(v));
+      });
+      return match?.count ?? 0;
+    };
+
+    return [...POPULAR_BROWSE_CITIES].sort((a, b) => {
+      const countA = getCount(a.name, a.slug);
+      const countB = getCount(b.name, b.slug);
+      if (countB !== countA) {
+        return countB - countA;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [cityCounts]);
+
+  const activeBusinessesCount = businesses.length;
+  const activeUsersCount = stats?.registered_users ? `${stats.registered_users}+` : '73+';
+  const citiesCoveredCount = cityCounts.length;
+  const newBusinessesCount = useMemo(() => businesses.filter(isNewListing).length, [businesses]);
 
   const categoryOptions = useMemo(
     () => [...new Set(businesses.flatMap((b) => businessInfo(b).categories))].sort(),
     [businesses]
   );
-  const cityOptions = useMemo(
-    () => [...new Set(businesses.map((b) => businessInfo(b).city).filter(Boolean))].sort(),
+  const rawCityOptions = useMemo(
+    () => [...new Set(businesses.map((b) => businessInfo(b).city || getListingCity(b)).filter(Boolean))].sort(),
     [businesses]
   );
+  const cityOptions = useMemo(() => {
+    if (city && !rawCityOptions.includes(city)) {
+      return [city, ...rawCityOptions].sort();
+    }
+    return rawCityOptions;
+  }, [city, rawCityOptions]);
 
   const visible = businesses.filter((b) => {
     const info = businessInfo(b);
+    if (newOnly && !isNewListing(b)) return false;
     if (category && !info.categories.includes(category)) return false;
-    if (city && info.city !== city) return false;
+    if (city) {
+      const bCity = (info.city || getListingCity(b)).toLowerCase();
+      const targetVariants = cityNameVariants(city).map((v) => v.toLowerCase());
+      if (!targetVariants.some((v) => bCity === v || bCity.includes(v))) return false;
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       const haystack = [b.title, b.location, b.description || '', ...info.categories].join(' ').toLowerCase();
@@ -108,18 +196,186 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return true;
   });
 
-  const hasFilters = Boolean(search || category || city);
+  const hasFilters = Boolean(search || category || city || newOnly);
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setCategory('');
+    setCity('');
+    setNewOnly(false);
+  };
+
+  const handleCitySelect = (selectedCityName: string) => {
+    const matched = rawCityOptions.find((c) => c.toLowerCase() === selectedCityName.toLowerCase()) || selectedCityName;
+    setCity(matched);
+    setShowCitiesPanel(false);
+    const el = document.getElementById('business-listings-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <>
       <section className="page-hero green-hero">
         <div className="container">
           <h1><i className="fas fa-store"></i> Business Directory</h1>
-          <p>Find trusted local businesses and services near you</p>
+          <p>Find trusted local businesses, services and shops near you</p>
+
+          {/* Business Directory Metrics Bar (Derived from business listings only) */}
+          <div className="metrics-inner">
+            <button
+              type="button"
+              className="metric-item metric-clickable"
+              onClick={clearAllFilters}
+              title="Show all active businesses"
+            >
+              <span className="metric-icon"><i className="fas fa-store"></i></span>
+              <div>
+                <span className="metric-num">{activeBusinessesCount}</span>
+                <div className="metric-label">Active Businesses</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className="metric-item metric-clickable"
+              onClick={() => {
+                if (!user && onOpenAuth) {
+                  onOpenAuth({
+                    title: 'Join TradeCall India',
+                    subtitle: 'Create a free account to list your business or connect with local customers.',
+                    icon: 'fa-users'
+                  });
+                } else if (onNavigate) {
+                  onNavigate('about');
+                }
+              }}
+              title="Active registered users and business owners"
+            >
+              <span className="metric-icon"><i className="fas fa-users"></i></span>
+              <div>
+                <span className="metric-num">{activeUsersCount}</span>
+                <div className="metric-label">Active Users</div>
+              </div>
+            </button>
+
+            <div className="metric-cities-wrap" ref={citiesPanelRef}>
+              <button
+                type="button"
+                className="metric-item metric-clickable"
+                onClick={() => setShowCitiesPanel((v) => !v)}
+                title="Show cities with active businesses"
+                aria-expanded={showCitiesPanel}
+              >
+                <span className="metric-icon"><i className="fas fa-map-marker-alt"></i></span>
+                <div>
+                  <span className="metric-num">{citiesCoveredCount}</span>
+                  <div className="metric-label">
+                    Cities Covered <i className="fas fa-chevron-down" style={{ fontSize: '9px' }}></i>
+                  </div>
+                </div>
+              </button>
+              {showCitiesPanel && (
+                <ul className="metric-cities-panel">
+                  {cityCounts.length === 0 ? (
+                    <li className="metric-cities-empty">No cities yet</li>
+                  ) : (
+                    cityCounts.map((c) => (
+                      <li key={c.name}>
+                        <button type="button" onClick={() => handleCitySelect(c.name)}>
+                          <span><i className="fas fa-map-marker-alt"></i> {c.name}</span>
+                          <span className="metric-cities-count">{c.count}</span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="metric-item metric-clickable"
+              onClick={() => setNewOnly((v) => !v)}
+              title={newOnly ? 'Click to show all businesses' : 'Show businesses posted today'}
+              style={newOnly ? { background: 'rgba(255, 255, 255, 0.2)' } : undefined}
+            >
+              <span className="metric-icon"><i className="fas fa-chart-line"></i></span>
+              <div>
+                <span className="metric-num">{newBusinessesCount}</span>
+                <div className="metric-label">{newOnly ? 'New Today (Active)' : 'New Today'}</div>
+              </div>
+            </button>
+          </div>
         </div>
       </section>
 
-      <section style={{ background: '#f4f6f9', minHeight: '60vh', padding: '32px 0 48px' }}>
+      {/* Explore Businesses in Popular Cities Section */}
+      {!hasFilters && (
+        <section className="popular-cities-section" id="popular-business-cities">
+          <div className="container">
+            <div className="section-header">
+              <div>
+                <h2>
+                  <i className="fas fa-city" style={{ color: '#0d7a5f', marginRight: '8px' }}></i>
+                  Explore Businesses in Popular Cities
+                </h2>
+                <p>Verified local businesses and services across top hubs</p>
+              </div>
+              <a
+                href="/cities"
+                className="btn-outline-green"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate('cities');
+                }}
+              >
+                All Indian Cities <i className="fas fa-arrow-right"></i>
+              </a>
+            </div>
+
+            <div className="popular-cities-grid">
+              {sortedBrowseCities.map((cityItem) => {
+                const cVariants = [
+                  cityItem.name.toLowerCase(),
+                  cityItem.slug.toLowerCase(),
+                  ...(cityItem.name.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
+                  ...(cityItem.name.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
+                  ...(cityItem.name.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+                ];
+                const count = cityCounts.find((c) => {
+                  const lower = c.name.toLowerCase();
+                  return cVariants.some((v) => lower === v || lower.includes(v));
+                })?.count;
+
+                return (
+                  <a
+                    key={cityItem.slug}
+                    href={`#city-${cityItem.slug}`}
+                    className="city-browse-card"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleCitySelect(cityItem.name);
+                    }}
+                  >
+                    <span className="city-browse-name">
+                      <i className="fas fa-map-marker-alt" style={{ color: '#0d7a5f', fontSize: '12px' }}></i>
+                      {cityItem.name}
+                    </span>
+                    <span className="city-browse-state">{cityItem.state}</span>
+                    {count !== undefined && count > 0 ? (
+                      <span className="city-browse-count">{count} {count === 1 ? 'business' : 'businesses'}</span>
+                    ) : (
+                      <span className="city-browse-count" style={{ background: '#f1f5f9', color: '#64748b' }}>Explore</span>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section id="business-listings-section" style={{ background: '#f4f6f9', minHeight: '60vh', padding: '32px 0 48px' }}>
         <div className="container">
           <div className="business-dir-filters">
             <input
@@ -141,13 +397,14 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             </button>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 14px', flexWrap: 'wrap', gap: '8px' }}>
             <strong style={{ color: '#111827' }}>
               {loading ? 'Loading businesses...' : `${visible.length} ${visible.length === 1 ? 'business' : 'businesses'} found`}
+              {newOnly && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#0c6253', fontWeight: 600 }}>(Filtered: Posted Today)</span>}
             </strong>
             {hasFilters && (
               <button type="button" className="btn-outline" style={{ padding: '6px 12px', fontSize: 13 }}
-                onClick={() => { setSearch(''); setCategory(''); setCity(''); }}>
+                onClick={clearAllFilters}>
                 <i className="fas fa-times"></i> Clear filters
               </button>
             )}

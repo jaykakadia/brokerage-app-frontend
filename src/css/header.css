@@ -168,7 +168,8 @@
   flex-shrink: 0;
   margin-left: auto;
 }
-.btn-header-ghost {
+.btn-header-ghost,
+.btn-header-signin {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -185,9 +186,12 @@
   transition: all 0.2s;
   white-space: nowrap;
 }
-.btn-header-ghost:hover { border-color: #cbd5e1; background: #f8fafc; color: #0c6253; }
-.btn-header-ghost i { font-size: 14px; color: #64748b; }
-.btn-header-ghost:hover i { color: #0c6253; }
+.btn-header-ghost:hover,
+.btn-header-signin:hover { border-color: #cbd5e1; background: #f8fafc; color: #0c6253; }
+.btn-header-ghost i,
+.btn-header-signin i { font-size: 14px; color: #64748b; }
+.btn-header-ghost:hover i,
+.btn-header-signin:hover i { color: #0c6253; }
 
 .btn-post-free {
   display: inline-flex;
@@ -382,7 +386,8 @@
 @media (max-width: 900px) {
   .main-nav { display: none; }
   .btn-business-directory { display: none; }
-  .btn-header-ghost { display: none; }
+  .btn-header-ghost,
+  .btn-header-signin { display: none; }
   .hamburger-btn { display: flex; }
   .btn-mobile-post { display: flex; }
   .btn-post-free { display: none; }

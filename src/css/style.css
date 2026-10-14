@@ -621,21 +621,26 @@ ul { list-style: none; }
   margin-top: 2px;
 }
 
-/* When metrics-inner is placed inside hero-content below search box */
-.hero-content .metrics-inner {
-  margin-top: 18px;
+/* When metrics-inner is placed inside hero-content below search box or inside page-hero */
+.hero-content .metrics-inner,
+.page-hero .metrics-inner {
+  margin-top: 24px;
   padding: 0;
   gap: 48px;
 }
-.hero-content .metric-icon {
+.hero-content .metric-icon,
+.page-hero .metric-icon {
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
 }
 .hero-content .metric-num,
-.hero-content .metric-plus {
+.hero-content .metric-plus,
+.page-hero .metric-num,
+.page-hero .metric-plus {
   color: #ffffff;
 }
-.hero-content .metric-label {
+.hero-content .metric-label,
+.page-hero .metric-label {
   color: rgba(255, 255, 255, 0.85);
 }
 
