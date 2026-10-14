@@ -70,7 +70,8 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
         const res = await getPlans(false);
         const data = res.data?.data || [];
         if (data.length > 0) {
-          const serverPlans: AdvertisePlan[] = data.map((p) => ({
+          const sorted = [...data].sort((a, b) => Number(a.price) - Number(b.price));
+          const serverPlans: AdvertisePlan[] = sorted.map((p) => ({
             id: String(p.id),
             name: p.name.toUpperCase(),
             price: `₹${p.price}`,
