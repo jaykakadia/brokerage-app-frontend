@@ -538,6 +538,33 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     return Array.from(byKey.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }, [listings]);
 
+  // Popular cities sorted by highest number of listings first
+  const sortedBrowseCities = useMemo(() => {
+    const getCount = (cityName: string, slug?: string): number => {
+      const variants = [
+        cityName.toLowerCase(),
+        ...(slug ? [slug.toLowerCase()] : []),
+        ...(cityName.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
+        ...(cityName.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
+        ...(cityName.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+      ];
+      const match = cityCounts.find((c) => {
+        const lower = c.name.toLowerCase();
+        return variants.some((v) => lower === v || lower.includes(v));
+      });
+      return match?.count ?? 0;
+    };
+
+    return [...POPULAR_BROWSE_CITIES].sort((a, b) => {
+      const countA = getCount(a.name, a.slug);
+      const countB = getCount(b.name, b.slug);
+      if (countB !== countA) {
+        return countB - countA;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [cityCounts]);
+
   // Until the listings load, show the site-wide stats
   const listingsLoaded = !loading && !error;
   const activeListingsCount = listingsLoaded ? listings.length : (stats?.active_listings ?? 0);
@@ -1174,10 +1201,18 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           </div>
 
           <div className="popular-cities-grid">
-            {POPULAR_BROWSE_CITIES.map((city) => {
-              const count = cityCounts.find(
-                (c) => c.name.toLowerCase() === city.name.toLowerCase()
-              )?.count;
+            {sortedBrowseCities.map((city) => {
+              const cVariants = [
+                city.name.toLowerCase(),
+                city.slug.toLowerCase(),
+                ...(city.name.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
+                ...(city.name.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
+                ...(city.name.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+              ];
+              const count = cityCounts.find((c) => {
+                const lower = c.name.toLowerCase();
+                return cVariants.some((v) => lower === v || lower.includes(v));
+              })?.count;
 
               return (
                 <a
