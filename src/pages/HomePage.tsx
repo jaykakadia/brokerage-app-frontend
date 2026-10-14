@@ -1130,7 +1130,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               }}
               title="Active registered users on TradeCall India"
             >
-              <span className="metric-icon"><i className="fas fa-users" style={{ color: '#0c6253' }}></i></span>
+              <span className="metric-icon"><i className="fas fa-users"></i></span>
               <div>
                 <span className="metric-num">{activeUsersCount}</span>
                 <div className="metric-label">Active Users</div>
