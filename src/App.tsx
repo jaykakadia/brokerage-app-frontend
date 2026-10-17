@@ -1,24 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
 import HomePage from './pages/HomePage';
-import ListingDetailPage from './pages/ListingDetailPage';
-import PostListingPage from './pages/PostListingPage';
-import AccountPage from './pages/AccountPage';
-import AdminDashboard from './pages/AdminDashboard';
-import AboutPage from './pages/AboutPage';
-import ContactPage from './pages/ContactPage';
-import AdvertisePage from './pages/AdvertisePage';
-import BusinessDirectoryPage from './pages/BusinessDirectoryPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import BlogPage from './pages/BlogPage';
-import BlogDetailPage from './pages/BlogDetailPage';
-import LoginPage from './pages/LoginPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import CitiesPage from './pages/CitiesPage';
-import NotFoundPage from './pages/NotFoundPage';
+
+// Route-level code-splitting for fast initial bundle
+const ListingDetailPage = lazy(() => import('./pages/ListingDetailPage'));
+const PostListingPage = lazy(() => import('./pages/PostListingPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const AdvertisePage = lazy(() => import('./pages/AdvertisePage'));
+const BusinessDirectoryPage = lazy(() => import('./pages/BusinessDirectoryPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const BlogPage = lazy(() => import('./pages/BlogPage'));
+const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const CitiesPage = lazy(() => import('./pages/CitiesPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
+const PageLoader = () => (
+  <div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+    <div style={{
+      width: '36px',
+      height: '36px',
+      border: '3px solid #e2e8f0',
+      borderTopColor: '#0c6253',
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite'
+    }} />
+  </div>
+);
 import { parseAppRoute, getListingUrl } from './utils/url';
 import { PAGE_SEO, setSeo } from './utils/seo';
 import { getCityFromSlug, getCitySlug } from './config/cities';
@@ -213,17 +228,23 @@ export default function App() {
           onNavigate={navigateTo}
           activePage={activePage}
         />
-        <LoginPage
-          initialTab={loginTab}
-          onNavigate={navigateTo}
-          onLoginSuccess={() => navigateTo('home')}
-        />
+        <Suspense fallback={<PageLoader />}>
+          <LoginPage
+            initialTab={loginTab}
+            onNavigate={navigateTo}
+            onLoginSuccess={() => navigateTo('home')}
+          />
+        </Suspense>
       </div>
     );
   }
 
   if (activePage === 'admin-login') {
-    return <AdminLoginPage onNavigate={navigateTo} />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminLoginPage onNavigate={navigateTo} />
+      </Suspense>
+    );
   }
 
   return (
@@ -237,106 +258,107 @@ export default function App() {
       />
 
       <main style={{ flex: 1 }}>
-        {(activePage === 'home' || activePage === 'properties-city') && (
-          <HomePage
-            activeCity={activeCity}
-            onCitySelect={handleCitySelect}
-            onNavigate={navigateTo}
-            onOpenAuth={openAuthModal}
-          />
-        )}
+        <Suspense fallback={<PageLoader />}>
+          {(activePage === 'home' || activePage === 'properties-city') && (
+            <HomePage
+              activeCity={activeCity}
+              onCitySelect={handleCitySelect}
+              onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
+            />
+          )}
 
-        {activePage === 'cities' && (
-          <CitiesPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'cities' && (
+            <CitiesPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'not-found' && (
-          <NotFoundPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'not-found' && (
+            <NotFoundPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'listing-detail' && (
-          <ListingDetailPage
-            listingId={selectedListingId}
-            onNavigate={navigateTo}
-            onOpenAuth={openAuthModal}
-          />
-        )}
+          {activePage === 'listing-detail' && (
+            <ListingDetailPage
+              listingId={selectedListingId}
+              onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
+            />
+          )}
 
-        {activePage === 'post-listing' && (
-          <PostListingPage
-            onNavigate={navigateTo}
-            onOpenAuth={openAuthModal}
-          />
-        )}
+          {activePage === 'post-listing' && (
+            <PostListingPage
+              onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
+            />
+          )}
 
-        {activePage === 'account' && (
-          <AccountPage
-            onNavigate={navigateTo}
-            onOpenAuth={openAuthModal}
-          />
-        )}
+          {activePage === 'account' && (
+            <AccountPage
+              onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
+            />
+          )}
 
-        {activePage === 'admin' && (
-          <AdminDashboard
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'admin' && (
+            <AdminDashboard
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'about' && (
-          <AboutPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'about' && (
+            <AboutPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'contact' && (
-          <ContactPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'contact' && (
+            <ContactPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'advertise' && (
-          <AdvertisePage
-            onNavigate={navigateTo}
-            onOpenAuth={openAuthModal}
-          />
-        )}
+          {activePage === 'advertise' && (
+            <AdvertisePage
+              onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
+            />
+          )}
 
-        {activePage === 'business-directory' && (
-          <BusinessDirectoryPage
-            onNavigate={navigateTo}
-            onOpenAuth={openAuthModal}
-          />
-        )}
+          {activePage === 'business-directory' && (
+            <BusinessDirectoryPage
+              onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
+            />
+          )}
 
-        {activePage === 'terms' && (
-          <TermsPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'terms' && (
+            <TermsPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'privacy' && (
-          <PrivacyPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'privacy' && (
+            <PrivacyPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'blog' && (
-          <BlogPage
-            onNavigate={navigateTo}
-          />
-        )}
+          {activePage === 'blog' && (
+            <BlogPage
+              onNavigate={navigateTo}
+            />
+          )}
 
-        {activePage === 'blog-detail' && (
-          <BlogDetailPage
-            blogIdentifier={selectedBlogId}
-            onNavigate={navigateTo}
-          />
-        )}
-
+          {activePage === 'blog-detail' && (
+            <BlogDetailPage
+              blogIdentifier={selectedBlogId}
+              onNavigate={navigateTo}
+            />
+          )}
+        </Suspense>
       </main>
 
       <Footer

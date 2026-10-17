@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Allow: /properties/
 Allow: /cities
+Allow: /listing/
 Disallow: /api/
 Disallow: /admin
 Disallow: /admin-login

@@ -143,18 +143,21 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
   }
 
   // Justdial style: /:city/:slug/:uniqueId (3 parts)
-  if (parts.length >= 3) {
-    const uniqueId = parts[parts.length - 1];
-    let resolvedId = uniqueId;
-    if (uniqueId.toUpperCase().startsWith('TC011P-')) {
-      resolvedId = uniqueId.substring(7);
-    } else if (uniqueId.toUpperCase().startsWith('TC-')) {
-      resolvedId = uniqueId.substring(3);
+  if (parts.length === 3) {
+    const uniqueId = parts[2];
+    const isCode = uniqueId.toUpperCase().startsWith('TC011P-') || uniqueId.toUpperCase().startsWith('TC-') || /^\d+$/.test(uniqueId);
+    if (isCode) {
+      let resolvedId = uniqueId;
+      if (uniqueId.toUpperCase().startsWith('TC011P-')) {
+        resolvedId = uniqueId.substring(7);
+      } else if (uniqueId.toUpperCase().startsWith('TC-')) {
+        resolvedId = uniqueId.substring(3);
+      }
+      return { page: 'listing-detail', param: resolvedId };
     }
-    return { page: 'listing-detail', param: resolvedId };
   }
 
-  return { page: 'home', param: null };
+  return { page: 'not-found', param: null };
 }
 
 /** Accepts "facebook.com/x" as well as full URLs; returns '' for blank input and null when invalid. */

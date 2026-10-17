@@ -1,10 +1,19 @@
+import { useEffect } from 'react';
 import type { NavigateFunction } from '../types';
+import { setSeo } from '../utils/seo';
 
 interface NotFoundPageProps {
   onNavigate: NavigateFunction;
 }
 
 export default function NotFoundPage({ onNavigate }: NotFoundPageProps) {
+  useEffect(() => {
+    setSeo({
+      title: 'Page Not Found',
+      description: 'The requested page could not be found.',
+      noindex: true,
+    });
+  }, []);
   return (
     <div style={{
       minHeight: '60vh',
