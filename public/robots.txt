@@ -1,10 +1,22 @@
 User-agent: *
 Allow: /
 Allow: /properties/
+Allow: /properties/palwal
 Allow: /cities
 Allow: /listing/
+Allow: /privacy
+Allow: /advertise
+Allow: /blog
+Allow: /about
+Allow: /contact
+Allow: /business-directory
+Allow: /terms-of-use
+Allow: /post-listing
+
 Disallow: /api/
 Disallow: /admin
+Disallow: /adminpanel
+Disallow: /admin-panel
 Disallow: /admin-login
 Disallow: /login
 Disallow: /register
