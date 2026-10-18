@@ -165,12 +165,6 @@ export const FOOTER_TOP_CITIES: Array<{ name: string; slug: string }> = [
   { name: 'Hasanpur', slug: 'hasanpur' },
   { name: 'Faridabad', slug: 'faridabad' },
   { name: 'Ballabgarh', slug: 'ballabgarh' },
-  { name: 'Gurugram', slug: 'gurugram' },
-  { name: 'Nuh Mewat', slug: 'nuh-mewat' },
-  { name: 'Sonipat', slug: 'sonipat' },
-  { name: 'Delhi', slug: 'delhi-ncr' },
-  { name: 'Noida', slug: 'noida' },
-  { name: 'Greater Noida', slug: 'greater-noida' },
 ];
 
 // Aliases mapping for common names / variations
