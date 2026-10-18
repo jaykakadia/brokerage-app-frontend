@@ -179,6 +179,126 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'cashfree', label: 'Cashfree Settings', icon: 'fas fa-credit-card' }
 ];
 
+const ADMIN_ITEMS_PER_PAGE = 10;
+
+interface AdminPaginationProps {
+  currentPage: number;
+  totalItems: number;
+  itemsPerPage?: number;
+  onPageChange: (page: number) => void;
+  itemName?: string;
+}
+
+function AdminPagination({
+  currentPage,
+  totalItems,
+  itemsPerPage = ADMIN_ITEMS_PER_PAGE,
+  onPageChange,
+  itemName = 'items'
+}: AdminPaginationProps) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  if (totalPages <= 1) return null;
+
+  const startIdx = (currentPage - 1) * itemsPerPage + 1;
+  const endIdx = Math.min(currentPage * itemsPerPage, totalItems);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: '20px',
+      paddingTop: '16px',
+      borderTop: '1px solid #e5e7eb',
+      flexWrap: 'wrap',
+      gap: '12px'
+    }}>
+      <div style={{ fontSize: '13px', color: '#6b7280' }}>
+        Showing <strong>{startIdx}</strong> to <strong>{endIdx}</strong> of <strong>{totalItems}</strong> {itemName}
+      </div>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <button
+          type="button"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '6px',
+            border: '1px solid #d1d5db',
+            background: currentPage === 1 ? '#f9fafb' : '#fff',
+            color: currentPage === 1 ? '#9ca3af' : '#374151',
+            cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+            fontSize: '12px',
+            fontWeight: 600
+          }}
+        >
+          <i className="fas fa-chevron-left" style={{ marginRight: '4px' }}></i> Prev
+        </button>
+
+        {getPageNumbers().map((p, idx) => (
+          typeof p === 'number' ? (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => onPageChange(p)}
+              style={{
+                minWidth: '32px',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: p === currentPage ? '#0c6253' : '#d1d5db',
+                background: p === currentPage ? '#0c6253' : '#fff',
+                color: p === currentPage ? '#fff' : '#374151',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: p === currentPage ? 700 : 500
+              }}
+            >
+              {p}
+            </button>
+          ) : (
+            <span key={idx} style={{ padding: '0 4px', color: '#9ca3af', fontSize: '12px' }}>...</span>
+          )
+        ))}
+
+        <button
+          type="button"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '6px',
+            border: '1px solid #d1d5db',
+            background: currentPage === totalPages ? '#f9fafb' : '#fff',
+            color: currentPage === totalPages ? '#9ca3af' : '#374151',
+            cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+            fontSize: '12px',
+            fontWeight: 600
+          }}
+        >
+          Next <i className="fas fa-chevron-right" style={{ marginLeft: '4px' }}></i>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const { user, loading: authLoading } = useAuth();
 
@@ -203,6 +323,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [listingTab, setListingTab] = useState<string>('pending');
   const [listingSearch, setListingSearch] = useState<string>('');
   const [listingsLoading, setListingsLoading] = useState<boolean>(false);
+  const [listingPage, setListingPage] = useState<number>(1);
 
   // === LOCATIONS MODULE STATE ===
   const [locations, setLocations] = useState<Location[]>([]);
@@ -218,6 +339,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   // === CATEGORIES MODULE STATE ===
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
+  const [categoryPage, setCategoryPage] = useState<number>(1);
   const [newCatName, setNewCatName] = useState<string>('');
   const [newCatDesc, setNewCatDesc] = useState<string>('');
   const [catSaving, setCatSaving] = useState<boolean>(false);
@@ -230,6 +352,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [usersLoading, setUsersLoading] = useState<boolean>(false);
   const [userSearch, setUserSearch] = useState<string>('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('');
+  const [userPage, setUserPage] = useState<number>(1);
   const [userModalOpen, setUserModalOpen] = useState<boolean>(false);
   const [userForm, setUserForm] = useState<UserFormState>(EMPTY_USER_FORM);
   const [showUserPassword, setShowUserPassword] = useState<boolean>(false);
@@ -1260,14 +1383,22 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   placeholder="Search ID, title, owner..."
                   value={listingSearch}
                   onChange={(e) => setListingSearch(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') fetchAdminListings(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setListingPage(1);
+                      fetchAdminListings();
+                    }
+                  }}
                   style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '220px' }}
                 />
                 <button
                   type="button"
                   className="btn-primary"
                   style={{ padding: '8px 14px', fontSize: '13px' }}
-                  onClick={fetchAdminListings}
+                  onClick={() => {
+                    setListingPage(1);
+                    fetchAdminListings();
+                  }}
                 >
                   <i className="fas fa-search"></i>
                 </button>
@@ -1281,7 +1412,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   key={st}
                   type="button"
                   className={`btn-outline ${listingTab === st ? 'active' : ''}`}
-                  onClick={() => setListingTab(st)}
+                  onClick={() => {
+                    setListingTab(st);
+                    setListingPage(1);
+                  }}
                   style={{
                     padding: '6px 14px',
                     fontSize: '12px',
@@ -1322,6 +1456,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 No {listingTab} listings found.
               </div>
             ) : (
+              <>
               <div style={{ overflowX: 'auto' }}>
                 <table className="admin-table admin-listings-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
@@ -1337,7 +1472,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {listings.map((l) => (
+                    {listings
+                      .slice(
+                        (Math.min(listingPage, Math.max(1, Math.ceil(listings.length / ADMIN_ITEMS_PER_PAGE))) - 1) * ADMIN_ITEMS_PER_PAGE,
+                        Math.min(listingPage, Math.max(1, Math.ceil(listings.length / ADMIN_ITEMS_PER_PAGE))) * ADMIN_ITEMS_PER_PAGE
+                      )
+                      .map((l) => (
                       <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td data-label="ID" style={{ padding: '12px 14px', fontWeight: 700, color: '#64748b' }}>
                           #{l.id}
@@ -1479,6 +1619,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </tbody>
                 </table>
               </div>
+              <AdminPagination
+                currentPage={Math.min(listingPage, Math.max(1, Math.ceil(listings.length / ADMIN_ITEMS_PER_PAGE)))}
+                totalItems={listings.length}
+                itemsPerPage={ADMIN_ITEMS_PER_PAGE}
+                onPageChange={setListingPage}
+                itemName={`${listingTab} listings`}
+              />
+            </>
             )}
           </div>
         )}
@@ -1633,7 +1781,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       </td>
                     </tr>
                   ) : (
-                    categories.map((cat) => (
+                    categories
+                      .slice(
+                        (Math.min(categoryPage, Math.max(1, Math.ceil(categories.length / ADMIN_ITEMS_PER_PAGE))) - 1) * ADMIN_ITEMS_PER_PAGE,
+                        Math.min(categoryPage, Math.max(1, Math.ceil(categories.length / ADMIN_ITEMS_PER_PAGE))) * ADMIN_ITEMS_PER_PAGE
+                      )
+                      .map((cat) => (
                       <tr key={cat.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '16px', color: '#6b7280', whiteSpace: 'nowrap' }}>
                           #CAT-{String(cat.id).padStart(2, '0')}
@@ -1688,6 +1841,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   )}
                 </tbody>
               </table>
+              <div style={{ padding: '0 12px 6px' }}>
+                <AdminPagination
+                  currentPage={Math.min(categoryPage, Math.max(1, Math.ceil(categories.length / ADMIN_ITEMS_PER_PAGE)))}
+                  totalItems={categories.length}
+                  itemsPerPage={ADMIN_ITEMS_PER_PAGE}
+                  onPageChange={setCategoryPage}
+                  itemName="categories"
+                />
+              </div>
             </div>
 
             {categoryModalOpen && (
@@ -1851,7 +2013,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <select
                     value={userRoleFilter}
-                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    onChange={(e) => {
+                      setUserRoleFilter(e.target.value);
+                      setUserPage(1);
+                    }}
                     style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px' }}
                   >
                     <option value="">All Roles</option>
@@ -1866,7 +2031,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     placeholder="Search name, email, phone..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') fetchUsers(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setUserPage(1);
+                        fetchUsers();
+                      }
+                    }}
                     style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '220px' }}
                   />
 
@@ -1874,7 +2044,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     type="button"
                     className="btn-primary"
                     style={{ padding: '8px 14px', fontSize: '13px' }}
-                    onClick={fetchUsers}
+                    onClick={() => {
+                      setUserPage(1);
+                      fetchUsers();
+                    }}
                   >
                     <i className="fas fa-search"></i>
                   </button>
@@ -1900,20 +2073,26 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   No users found.
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                        <th style={{ padding: '12px 14px' }}>ID</th>
-                        <th style={{ padding: '12px 14px' }}>Name</th>
-                        <th style={{ padding: '12px 14px' }}>Email &amp; Phone</th>
-                        <th style={{ padding: '12px 14px' }}>Current Role</th>
-                        <th style={{ padding: '12px 14px' }}>Status</th>
-                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usersList.map((u) => (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                          <th style={{ padding: '12px 14px' }}>ID</th>
+                          <th style={{ padding: '12px 14px' }}>Name</th>
+                          <th style={{ padding: '12px 14px' }}>Email &amp; Phone</th>
+                          <th style={{ padding: '12px 14px' }}>Current Role</th>
+                          <th style={{ padding: '12px 14px' }}>Status</th>
+                          <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usersList
+                          .slice(
+                            (Math.min(userPage, Math.max(1, Math.ceil(usersList.length / ADMIN_ITEMS_PER_PAGE))) - 1) * ADMIN_ITEMS_PER_PAGE,
+                            Math.min(userPage, Math.max(1, Math.ceil(usersList.length / ADMIN_ITEMS_PER_PAGE))) * ADMIN_ITEMS_PER_PAGE
+                          )
+                          .map((u) => (
                         <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '12px 14px', color: '#64748b' }}>#{u.id}</td>
                           <td style={{ padding: '12px 14px', fontWeight: 700, color: '#111827' }}>
@@ -1991,6 +2170,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </tbody>
                   </table>
                 </div>
+                <AdminPagination
+                  currentPage={Math.min(userPage, Math.max(1, Math.ceil(usersList.length / ADMIN_ITEMS_PER_PAGE)))}
+                  totalItems={usersList.length}
+                  itemsPerPage={ADMIN_ITEMS_PER_PAGE}
+                  onPageChange={setUserPage}
+                  itemName="users"
+                />
+              </>
               )}
             </div>
           </div>
