@@ -22,10 +22,12 @@ export const ALL_INDIAN_CITIES: CityInfo[] = [
   // Haryana & NCR Corridor
   { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
   { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
+  { name: 'Ballabgarh', slug: 'ballabgarh', state: 'Haryana' },
   { name: 'Gurugram', slug: 'gurugram', state: 'Haryana' },
   { name: 'Sonipat', slug: 'sonipat', state: 'Haryana' },
   { name: 'Hodal', slug: 'hodal', state: 'Haryana' },
   { name: 'Hathin', slug: 'hathin', state: 'Haryana' },
+  { name: 'Hasanpur', slug: 'hasanpur', state: 'Haryana' },
   { name: 'Panipat', slug: 'panipat', state: 'Haryana' },
   { name: 'Karnal', slug: 'karnal', state: 'Haryana' },
   { name: 'Ambala', slug: 'ambala', state: 'Haryana' },

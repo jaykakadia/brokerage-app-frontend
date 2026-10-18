@@ -52,6 +52,15 @@ const ALL_CITIES = [
   'Thane', 'Thiruvananthapuram', 'Udaipur', 'Ujjain', 'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam'
 ];
 
+const POPULAR_BROWSE_CITIES = [
+  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
+  { name: 'Hodal', slug: 'hodal', state: 'Haryana' },
+  { name: 'Hathin', slug: 'hathin', state: 'Haryana' },
+  { name: 'Hasanpur', slug: 'hasanpur', state: 'Haryana' },
+  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
+  { name: 'Ballabgarh', slug: 'ballabgarh', state: 'Haryana' },
+];
+
 // Same types (values and labels) as "Select Property Type" in the Post Listing form.
 const PROPERTY_TYPES: PropertyTypeOption[] = [
   { value: '', label: 'All Property Types', icon: 'fa-shapes' },
@@ -909,7 +918,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       <section className="hero">
         <div className="hero-overlay"></div>
         <div className="container hero-content">
-          <h1>{activeCity ? `Properties in ${activeCity}` : 'Buy, Rent & Sell Property in Palwal & NCR'}</h1>
+          <h1>{activeCity ? `Properties in ${activeCity}` : 'Find Properties & Related Businesses'}</h1>
 
           <div className="search-box">
             <div className="search-form">
@@ -1225,13 +1234,11 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           </div>
 
           <div className="popular-cities-grid">
-            {sortedBrowseCities.map((city) => {
+            {POPULAR_BROWSE_CITIES.map((city) => {
               const cVariants = [
                 city.name.toLowerCase(),
                 city.slug.toLowerCase(),
-                ...(city.name.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
-                ...(city.name.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
-                ...(city.name.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+                ...(city.name.toLowerCase() === 'ballabgarh' ? ['ballabhgarh'] : []),
               ];
               const count = cityCounts.find((c) => {
                 const lower = c.name.toLowerCase();
@@ -1250,7 +1257,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 >
                   <span className="city-browse-name">
                     <i className="fas fa-map-marker-alt" style={{ color: '#0d7a5f', fontSize: '12px' }}></i>
-                    Properties in {city.name}
+                    {city.name}
                   </span>
                   <span className="city-browse-state">{city.state}</span>
                   {count !== undefined && count > 0 ? (
