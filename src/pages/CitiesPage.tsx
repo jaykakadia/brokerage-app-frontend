@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { NavigateFunction } from '../types';
-import { ALL_INDIAN_CITIES, TOP_CITIES, getCitySlug } from '../config/cities';
+import { ALL_INDIAN_CITIES, ACTIVE_CITIES, getCitySlug } from '../config/cities';
 import api from '../services/api';
 
 interface CitiesPageProps {
@@ -10,6 +10,15 @@ interface CitiesPageProps {
 export default function CitiesPage({ onNavigate }: CitiesPageProps) {
   const [search, setSearch] = useState('');
   const [locations, setLocations] = useState<Array<{ city_name: string; state: string }>>([]);
+
+  // Active cities set that have >= 1 approved listing
+  const activeCitySlugs = useMemo(() => {
+    return new Set(ACTIVE_CITIES.map((c) => c.slug));
+  }, []);
+
+  const popularHubs = useMemo(() => {
+    return [...ACTIVE_CITIES].sort((a, b) => b.count - a.count).slice(0, 10);
+  }, []);
 
   useEffect(() => {
     // Optionally fetch live locations from backend DB
@@ -98,7 +107,7 @@ export default function CitiesPage({ onNavigate }: CitiesPageProps) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search city or state (e.g. Pune, Bangalore, Maharashtra)..."
+              placeholder="Search city or state (e.g. Palwal, Faridabad, Haryana)..."
               style={{
                 width: '100%',
                 padding: '12px 18px 12px 42px',
@@ -132,14 +141,14 @@ export default function CitiesPage({ onNavigate }: CitiesPageProps) {
           </div>
         </div>
 
-        {/* Top Featured Cities Row */}
+        {/* Top Featured Cities Row (Only cities with listings) */}
         {!search && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '32px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fas fa-fire" style={{ color: '#ea580c' }}></i> Popular Real Estate Hubs
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
-              {TOP_CITIES.map((c) => (
+              {popularHubs.map((c) => (
                 <a
                   key={c.slug}
                   href={`/properties/${c.slug}`}
@@ -166,6 +175,9 @@ export default function CitiesPage({ onNavigate }: CitiesPageProps) {
                 >
                   <i className="fas fa-building" style={{ marginBottom: '6px', fontSize: '16px', color: '#0d9488' }}></i>
                   {c.name}
+                  <span style={{ fontSize: '11px', color: '#0d7a5f', marginTop: '2px', fontWeight: 500 }}>
+                    {c.count} {c.count === 1 ? 'listing' : 'listings'}
+                  </span>
                 </a>
               ))}
             </div>
@@ -210,29 +222,53 @@ export default function CitiesPage({ onNavigate }: CitiesPageProps) {
                 gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
                 gap: '10px 16px'
               }}>
-                {group.cities.map((city) => (
-                  <a
-                    key={city.slug}
-                    href={`/properties/${city.slug}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onNavigate('properties-city', city.slug);
-                    }}
-                    style={{
-                      color: '#334155',
-                      textDecoration: 'none',
-                      fontSize: '14px',
-                      padding: '4px 0',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'color 0.15s',
-                    }}
-                  >
-                    <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#0d9488' }}></i>
-                    {city.name}
-                  </a>
-                ))}
+                {group.cities.map((city) => {
+                  const hasListings = activeCitySlugs.has(city.slug);
+                  if (hasListings) {
+                    return (
+                      <a
+                        key={city.slug}
+                        href={`/properties/${city.slug}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onNavigate('properties-city', city.slug);
+                        }}
+                        style={{
+                          color: '#0f766e',
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          fontSize: '14px',
+                          padding: '4px 0',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'color 0.15s',
+                        }}
+                      >
+                        <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#0d9488' }}></i>
+                        {city.name}
+                      </a>
+                    );
+                  }
+                  return (
+                    <span
+                      key={city.name}
+                      style={{
+                        color: '#94a3b8',
+                        fontSize: '14px',
+                        padding: '4px 0',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'default',
+                      }}
+                      title="No active listings yet in this city"
+                    >
+                      <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#cbd5e1' }}></i>
+                      {city.name}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -121,6 +121,32 @@ export const ALL_INDIAN_CITIES: CityInfo[] = [
   { name: 'Raipur', slug: 'raipur', state: 'Chhattisgarh' },
 ];
 
+export interface ActiveCityInfo {
+  name: string;
+  slug: string;
+  state: string;
+  count: number;
+}
+
+export const ACTIVE_CITIES: ActiveCityInfo[] = [
+  { name: 'Palwal', slug: 'palwal', state: 'Haryana', count: 81 },
+  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana', count: 18 },
+  { name: 'Hodal', slug: 'hodal', state: 'Haryana', count: 10 },
+  { name: 'Greater Noida', slug: 'greater-noida', state: 'Uttar Pradesh', count: 5 },
+  { name: 'Mathura-Vrindavan', slug: 'mathura-vrindavan', state: 'Uttar Pradesh', count: 5 },
+  { name: 'Ballabgarh', slug: 'ballabgarh', state: 'Haryana', count: 4 },
+  { name: 'Kota', slug: 'kota', state: 'Rajasthan', count: 4 },
+  { name: 'Hathin', slug: 'hathin', state: 'Haryana', count: 3 },
+  { name: 'Bangalore', slug: 'bangalore', state: 'Karnataka', count: 2 },
+  { name: 'Chhata', slug: 'chhata', state: 'Uttar Pradesh', count: 2 },
+  { name: 'Delhi NCR', slug: 'delhi-ncr', state: 'Delhi', count: 2 },
+  { name: 'Assandh', slug: 'assandh', state: 'Haryana', count: 1 },
+  { name: 'Dharamshala', slug: 'dharamshala', state: 'Himachal Pradesh', count: 1 },
+  { name: 'Patna', slug: 'patna', state: 'Bihar', count: 1 },
+  { name: 'Tiruvallur', slug: 'tiruvallur', state: 'Tamil Nadu', count: 1 },
+  { name: 'Varanasi', slug: 'varanasi', state: 'Uttar Pradesh', count: 1 },
+];
+
 /** Deduplicated list of cities by slug */
 const CITY_MAP = new Map<string, CityInfo>();
 ALL_INDIAN_CITIES.forEach((c) => {
@@ -140,6 +166,8 @@ const ALIASES: Record<string, string> = {
   'madras': 'chennai',
   'gurgaon': 'gurugram',
   'allahabad': 'prayagraj',
+  'g-noida': 'greater-noida',
+  'gnida': 'greater-noida',
 };
 
 /** Convert city display name into clean slug */
