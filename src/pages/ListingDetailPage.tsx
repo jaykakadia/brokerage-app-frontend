@@ -522,7 +522,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   {contactData.owner_phone ? (
                     <>
                       <a className="btn-contact" href={`tel:${contactData.owner_phone}`}>
-                        <i className="fas fa-phone-alt"></i> {contactData.owner_phone}
+                        <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> {contactData.owner_phone}
                       </a>
                       {whatsappDigits && (
                         <a
@@ -555,7 +555,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   {contactLoading ? (
                     <><i className="fas fa-spinner fa-spin"></i> Checking Balance...</>
                   ) : (
-                    <><i className="fas fa-phone-alt"></i> Contact</>
+                    <><i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Contact</>
                   )}
                 </button>
               )}
