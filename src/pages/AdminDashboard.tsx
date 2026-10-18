@@ -1391,7 +1391,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="text"
-                  placeholder="Search ID, title, owner..."
+                  placeholder="Search ID, title, name, email, phone..."
                   value={listingSearch}
                   onChange={(e) => setListingSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -1400,7 +1400,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       fetchAdminListings();
                     }
                   }}
-                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '220px' }}
+                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '270px' }}
                 />
                 <button
                   type="button"
