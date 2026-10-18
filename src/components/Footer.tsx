@@ -1,4 +1,4 @@
-import { ACTIVE_CITIES } from '../config/cities';
+import { FOOTER_TOP_CITIES } from '../config/cities';
 import type { NavigateFunction } from '../types';
 
 export interface FooterProps {
@@ -7,8 +7,6 @@ export interface FooterProps {
 }
 
 export default function Footer({ onNavigate }: FooterProps) {
-  // Only link to cities with at least 1 approved listing, sorted by listing count
-  const sortedTopCities = [...ACTIVE_CITIES].sort((a, b) => b.count - a.count);
 
   return (
     <footer className="footer">
@@ -39,7 +37,7 @@ export default function Footer({ onNavigate }: FooterProps) {
         <div className="footer-col">
           <h4>Top Cities</h4>
           <ul>
-            {sortedTopCities.map((c) => (
+            {FOOTER_TOP_CITIES.map((c) => (
               <li key={c.slug}>
                 <a
                   href={`/properties/${c.slug}`}

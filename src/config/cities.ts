@@ -28,6 +28,7 @@ export const ALL_INDIAN_CITIES: CityInfo[] = [
   { name: 'Hodal', slug: 'hodal', state: 'Haryana' },
   { name: 'Hathin', slug: 'hathin', state: 'Haryana' },
   { name: 'Hasanpur', slug: 'hasanpur', state: 'Haryana' },
+  { name: 'Nuh Mewat', slug: 'nuh-mewat', state: 'Haryana' },
   { name: 'Panipat', slug: 'panipat', state: 'Haryana' },
   { name: 'Karnal', slug: 'karnal', state: 'Haryana' },
   { name: 'Ambala', slug: 'ambala', state: 'Haryana' },
@@ -157,6 +158,21 @@ ALL_INDIAN_CITIES.forEach((c) => {
   }
 });
 
+export const FOOTER_TOP_CITIES: Array<{ name: string; slug: string }> = [
+  { name: 'Palwal', slug: 'palwal' },
+  { name: 'Hodal', slug: 'hodal' },
+  { name: 'Hathin', slug: 'hathin' },
+  { name: 'Hasanpur', slug: 'hasanpur' },
+  { name: 'Faridabad', slug: 'faridabad' },
+  { name: 'Ballabgarh', slug: 'ballabgarh' },
+  { name: 'Gurugram', slug: 'gurugram' },
+  { name: 'Nuh Mewat', slug: 'nuh-mewat' },
+  { name: 'Sonipat', slug: 'sonipat' },
+  { name: 'Delhi', slug: 'delhi-ncr' },
+  { name: 'Noida', slug: 'noida' },
+  { name: 'Greater Noida', slug: 'greater-noida' },
+];
+
 // Aliases mapping for common names / variations
 const ALIASES: Record<string, string> = {
   'bengaluru': 'bangalore',
@@ -170,6 +186,8 @@ const ALIASES: Record<string, string> = {
   'allahabad': 'prayagraj',
   'g-noida': 'greater-noida',
   'gnida': 'greater-noida',
+  'nuh': 'nuh-mewat',
+  'mewat': 'nuh-mewat',
 };
 
 /** Convert city display name into clean slug */
