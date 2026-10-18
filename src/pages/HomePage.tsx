@@ -3,7 +3,7 @@ import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats }
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
-import { ALL_INDIAN_CITIES, getCitySlug } from '../config/cities';
+import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
@@ -37,23 +37,15 @@ interface BudgetPreset {
   max: string;
 }
 
-
-
-const POPULAR_BROWSE_CITIES = [
-  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
-  { name: 'Hodal', slug: 'hodal', state: 'Haryana' },
-  { name: 'Hathin', slug: 'hathin', state: 'Haryana' },
-  { name: 'Hasanpur', slug: 'hasanpur', state: 'Haryana' },
-  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
-  { name: 'Ballabgarh', slug: 'ballabgarh', state: 'Haryana' },
-];
-
 // Same types (values and labels) as "Select Property Type" in the Post Listing form.
 const PROPERTY_TYPES: PropertyTypeOption[] = [
   { value: '', label: 'All Property Types', icon: 'fa-shapes' },
-  { value: 'flat', label: 'Flat / Builder Floor / House / Villa', icon: 'fa-building' },
+  { value: 'flat', label: 'Flat / Builder Floor', icon: 'fa-building' },
+  { value: 'house', label: 'House / Villa', icon: 'fa-home' },
   { value: 'plot', label: 'Plot', icon: 'fa-vector-square' },
   { value: 'agriculture', label: 'Agriculture Land', icon: 'fa-seedling' },
+  { value: 'industrial_land', label: 'Industrial Land', icon: 'fa-industry' },
+  { value: 'r_zone_land', label: 'R - Zone Land', icon: 'fa-map' },
   { value: 'commercial', label: 'Commercial - Shop/ Showroom/ Warehouse', icon: 'fa-store' },
   { value: 'pg', label: 'PG/ Guest House', icon: 'fa-bed' }
 ];
@@ -730,8 +722,16 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       const text = (title + ' ' + desc).toLowerCase();
       let matches = formType.includes(heroType.toLowerCase()) || text.includes(heroType.toLowerCase());
       if (!matches && heroType === 'flat') {
-        // Older listings used a separate "house" type
-        matches = formType === 'house';
+        matches = formType === 'apartment' || text.includes('flat') || text.includes('apartment') || text.includes('builder floor');
+      }
+      if (!matches && heroType === 'house') {
+        matches = text.includes('house') || text.includes('villa') || text.includes('kothi') || text.includes('independent house');
+      }
+      if (!matches && heroType === 'industrial_land') {
+        matches = formType.includes('industrial') || text.includes('industrial');
+      }
+      if (!matches && heroType === 'r_zone_land') {
+        matches = formType.includes('r_zone') || formType.includes('r-zone') || text.includes('r-zone') || text.includes('r zone');
       }
       if (!matches && heroType === 'commercial') {
         matches = text.includes('shop') || text.includes('office') || text.includes('retail')

@@ -3,18 +3,9 @@ import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist }
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
-import { TOP_CITIES } from '../config/cities';
-import { useContactUnlock } from '../hooks/useContactUnlock';
+import { POPULAR_BROWSE_CITIES } from '../config/cities';
 import type { AuthModalOptions } from './ListingDetailPage';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
-
-const POPULAR_BROWSE_CITIES = [
-  ...TOP_CITIES,
-  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
-  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
-  { name: 'Gurugram', slug: 'gurugram', state: 'Haryana' },
-  { name: 'Noida', slug: 'noida', state: 'Uttar Pradesh' },
-];
 
 export interface BusinessDirectoryPageProps {
   onNavigate: NavigateFunction;
@@ -35,8 +26,6 @@ function businessInfo(listing: Listing): BusinessInfo {
 }
 
 export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: BusinessDirectoryPageProps) {
-  // Phone, WhatsApp and email stay locked until the visitor unlocks them (1 lead), as on property listings
-  const contact = useContactUnlock(onOpenAuth);
   const { user } = useAuth();
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [stats, setStats] = useState<ListingStatsResponse | null>(null);
@@ -132,32 +121,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return Array.from(byKey.values()).sort((a, b) => b.count - a.count);
   }, [businesses]);
 
-  // Popular cities sorted with highest number of business listings first
-  const sortedBrowseCities = useMemo(() => {
-    const getCount = (cityName: string, slug?: string): number => {
-      const variants = [
-        cityName.toLowerCase(),
-        ...(slug ? [slug.toLowerCase()] : []),
-        ...(cityName.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
-        ...(cityName.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
-        ...(cityName.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
-      ];
-      const match = cityCounts.find((c) => {
-        const lower = c.name.toLowerCase();
-        return variants.some((v) => lower === v || lower.includes(v));
-      });
-      return match?.count ?? 0;
-    };
-
-    return [...POPULAR_BROWSE_CITIES].sort((a, b) => {
-      const countA = getCount(a.name, a.slug);
-      const countB = getCount(b.name, b.slug);
-      if (countB !== countA) {
-        return countB - countA;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [cityCounts]);
 
   const activeBusinessesCount = businesses.length;
   const activeUsersCount = stats?.registered_users ? `${stats.registered_users}+` : '73+';
@@ -219,6 +182,26 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
         <div className="container">
           <h1><i className="fas fa-store"></i> Business Directory</h1>
           <p>Find trusted local businesses, services and shops near you</p>
+
+          <div className="business-dir-filters" style={{ margin: '24px auto 24px', maxWidth: '1000px', textAlign: 'left' }}>
+            <input
+              type="text"
+              placeholder="Search business name, category or area..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">All Categories</option>
+              {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={city} onChange={(e) => setCity(e.target.value)}>
+              <option value="">All Cities</option>
+              {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button type="button" className="btn-primary" onClick={() => onNavigate('post-listing')}>
+              <i className="fas fa-plus"></i> List Your Business
+            </button>
+          </div>
 
           {/* Business Directory Metrics Bar (Derived from business listings only) */}
           <div className="metrics-inner">
@@ -334,13 +317,11 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             </div>
 
             <div className="popular-cities-grid">
-              {sortedBrowseCities.map((cityItem) => {
+              {POPULAR_BROWSE_CITIES.map((cityItem) => {
                 const cVariants = [
                   cityItem.name.toLowerCase(),
                   cityItem.slug.toLowerCase(),
-                  ...(cityItem.name.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
-                  ...(cityItem.name.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
-                  ...(cityItem.name.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+                  ...(cityItem.name.toLowerCase() === 'ballabgarh' ? ['ballabhgarh'] : []),
                 ];
                 const count = cityCounts.find((c) => {
                   const lower = c.name.toLowerCase();
@@ -375,29 +356,9 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
         </section>
       )}
 
-      <section id="business-listings-section" style={{ background: '#f4f6f9', minHeight: '60vh', padding: '32px 0 48px' }}>
+      <section id="business-listings-section" style={{ background: '#f4f6f9', minHeight: '60vh', padding: '24px 0 48px' }}>
         <div className="container">
-          <div className="business-dir-filters">
-            <input
-              type="text"
-              placeholder="Search business name, category or area..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">All Categories</option>
-              {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={city} onChange={(e) => setCity(e.target.value)}>
-              <option value="">All Cities</option>
-              {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <button type="button" className="btn-primary" onClick={() => onNavigate('post-listing')}>
-              <i className="fas fa-plus"></i> List Your Business
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
             <strong style={{ color: '#111827' }}>
               {loading ? 'Loading businesses...' : `${visible.length} ${visible.length === 1 ? 'business' : 'businesses'} found`}
               {newOnly && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#0c6253', fontWeight: 600 }}>(Filtered: Posted Today)</span>}
@@ -410,9 +371,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             )}
           </div>
 
-          {contact.error && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10, marginBottom: 14 }}>{contact.error}</div>
-          )}
           {error ? (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '12px 14px', borderRadius: 10 }}>{error}</div>
           ) : loading ? (
@@ -447,12 +405,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                         {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
                       </h3>
                       <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
-                      <div className="business-dir-actions">
-                        <button type="button" className="btn-outline" disabled={contact.unlockingId === b.id} onClick={() => void contact.unlock(b)}>
-                          {contact.unlockingId === b.id
-                            ? <><i className="fas fa-spinner fa-spin"></i> Unlocking...</>
-                            : <><i className="fas fa-phone-alt"></i> Contact</>}
-                        </button>
+                      <div className="card-footer card-footer-actions">
                         <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
                           <i className="fas fa-info-circle"></i> Details
                         </button>
@@ -473,7 +426,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
           )}
         </div>
       </section>
-      {contact.modals}
     </>
   );
 }

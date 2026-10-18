@@ -18,6 +18,15 @@ export const TOP_CITIES: CityInfo[] = [
   { name: 'Kolkata', slug: 'kolkata', state: 'West Bengal', isTop: true },
 ];
 
+export const POPULAR_BROWSE_CITIES: CityInfo[] = [
+  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
+  { name: 'Hodal', slug: 'hodal', state: 'Haryana' },
+  { name: 'Hathin', slug: 'hathin', state: 'Haryana' },
+  { name: 'Hasanpur', slug: 'hasanpur', state: 'Haryana' },
+  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
+  { name: 'Ballabgarh', slug: 'ballabgarh', state: 'Haryana' },
+];
+
 export const ALL_INDIAN_CITIES: CityInfo[] = [
   // Top Metros & Capitals
   ...TOP_CITIES,
