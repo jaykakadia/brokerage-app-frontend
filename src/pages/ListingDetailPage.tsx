@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice } from '../utils/formatters';
@@ -59,6 +60,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     if (!listingId) {
       setLoading(false);
       setError('Listing ID not found');
+      setSeo({
+        title: 'Listing Not Found | Tradecall',
+        description: 'The requested property listing could not be found.',
+        path: window.location.pathname,
+        noindex: true,
+      });
       return;
     }
     setLoading(true);
@@ -82,17 +89,35 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           setListing(fallback);
         } else {
           setError('Listing could not be found.');
+          setSeo({
+            title: 'Listing Not Found | Tradecall',
+            description: 'The requested property listing could not be found.',
+            path: window.location.pathname,
+            noindex: true,
+          });
         }
       }
-    } catch {
-      const cleanId = String(listingId).replace(/^(TC011P-|TC-)/i, '');
-      const fallback = DEFAULT_FEATURED_LISTINGS.find(
-        (l) => String(l.id) === cleanId || getListingUniqueId(l) === String(listingId)
-      );
-      if (fallback) {
-        setListing(fallback);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        const cleanId = String(listingId).replace(/^(TC011P-|TC-)/i, '');
+        const fallback = DEFAULT_FEATURED_LISTINGS.find(
+          (l) => String(l.id) === cleanId || getListingUniqueId(l) === String(listingId)
+        );
+        if (fallback) {
+          setListing(fallback);
+        } else {
+          setError('Listing could not be found.');
+          setSeo({
+            title: 'Listing Not Found | Tradecall',
+            description: 'The requested property listing could not be found.',
+            path: window.location.pathname,
+            noindex: true,
+          });
+        }
       } else {
-        setError('Unable to load listing details. It may have been removed.');
+        // Network errors, timeouts, or crawler blocked (e.g. status 0 / ECONNABORTED / 403 / 500):
+        // Keep the server-injected canonical/title and do NOT set noindex or homepage SEO.
+        setError('Unable to load listing details. Please try again.');
       }
     } finally {
       setLoading(false);

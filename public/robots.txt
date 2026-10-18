@@ -13,6 +13,14 @@ Allow: /business-directory
 Allow: /terms-of-use
 Allow: /post-listing
 
+Allow: /uploads/
+Allow: /api/v1/listings
+Allow: /api/v1/locations
+Allow: /api/v1/categories
+Allow: /api/v1/blogs
+Allow: /api/v1/settings/signup-guide
+Allow: /api/v1/auth/csrf
+Allow: /api/v1/auth/me
 Disallow: /api/
 Disallow: /admin
 Disallow: /adminpanel

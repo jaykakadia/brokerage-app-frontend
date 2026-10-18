@@ -40,11 +40,23 @@ import { getCityFromSlug, getCitySlug } from './config/cities';
 import type { NavigateFunction } from './types';
 
 export default function App() {
-  const [activePage, setActivePage] = useState<string>('home');
-  const [selectedListingId, setSelectedListingId] = useState<string | number | null>(null);
-  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
-  const [activeCity, setActiveCity] = useState<string>('');
-  const [loginTab, setLoginTab] = useState<'signin' | 'register'>('signin');
+  const [initialRoute] = useState(() => parseAppRoute(window.location.pathname, window.location.hash));
+  const [activePage, setActivePage] = useState<string>(() => initialRoute.page);
+  const [selectedListingId, setSelectedListingId] = useState<string | number | null>(() => {
+    return initialRoute.page === 'listing-detail' ? initialRoute.param : null;
+  });
+  const [selectedBlogId, setSelectedBlogId] = useState<string | null>(() => {
+    return initialRoute.page === 'blog-detail' ? String(initialRoute.param) : null;
+  });
+  const [activeCity, setActiveCity] = useState<string>(() => {
+    if (initialRoute.page === 'properties-city' && initialRoute.param) {
+      return getCityFromSlug(String(initialRoute.param)) || '';
+    }
+    return '';
+  });
+  const [loginTab, setLoginTab] = useState<'signin' | 'register'>(() => {
+    return initialRoute.page === 'login' && initialRoute.param === 'register' ? 'register' : 'signin';
+  });
   const [authModalConfig, setAuthModalConfig] = useState<{
     isOpen: boolean;
     title?: string;
