@@ -723,6 +723,17 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const downloadUsersCSV = () => {
+    if (usersList.length === 0) { showToast('No users to download', 'error'); return; }
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'WhatsApp', 'Role', 'Status', 'Business Name', 'Leads Balance', 'Leads Used', 'Listing Limit', 'Plan Expires', 'Registered On'];
+    const esc = (v: string | number | null | undefined) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s; };
+    const rows = usersList.map((u) => [u.id, u.name, u.email, u.phone, u.whatsapp ?? '', u.role, u.status, u.business_name ?? '', u.leads_balance, u.leads_used, u.listing_limit, u.plan_expires_at ?? '', u.created_at].map(esc).join(','));
+    const blob = new Blob([headers.join(',') + '\n' + rows.join('\n')], { type: 'text/csv' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `tradecall-users-${new Date().toISOString().slice(0, 10)}.csv` });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   const handleUserRoleChange = async (userId: number, newRole: string) => {
     try {
       await api.post(`/api/v1/admin/users/${userId}/role`, { role: newRole });
@@ -2059,6 +2070,17 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     onClick={() => openUserModal()}
                   >
                     <i className="fas fa-user-plus"></i> Create User
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ padding: '8px 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                    onClick={downloadUsersCSV}
+                    disabled={usersLoading || usersList.length === 0}
+                    title="Download user data as CSV"
+                  >
+                    <i className="fas fa-download"></i> Download CSV
                   </button>
                 </div>
               </div>

@@ -402,6 +402,28 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
               <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#111827' }}>
                 Properties Posted by You
               </h2>
+             <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn-outline"
+                style={{ padding: '6px 12px', fontSize: '13px' }}
+                onClick={() => {
+                  if (myListings.length === 0) {
+                    alert('You do not have any property listings posted yet. Once you post a property, your listing data will be exported here.');
+                    return;
+                  }
+                  const headers = ['ID', 'Title', 'Location', 'City', 'Price', 'Type', 'Purpose', 'Status', 'Bedrooms', 'Bathrooms', 'Area', 'Unit', 'Furnishing', 'Facing', 'Posted On'];
+                  const esc = (v: string | number | null | undefined) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s; };
+                  const rows = myListings.map((l) => [l.id, l.title, l.location, l.form_data?.city ?? '', l.price, l.form_data?.type ?? '', l.form_data?.purpose ?? '', l.status, l.form_data?.bedrooms ?? '', l.form_data?.bathrooms ?? '', l.form_data?.builtup_area ?? '', l.form_data?.unit ?? '', l.form_data?.furnishing ?? '', l.form_data?.facing ?? '', l.created_at].map(esc).join(','));
+                  const blob = new Blob([headers.join(',') + '\n' + rows.join('\n')], { type: 'text/csv' });
+                  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `my-listings-${new Date().toISOString().slice(0, 10)}.csv` });
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                }}
+                title="Download your listings as CSV"
+              >
+                <i className="fas fa-download"></i> Download
+              </button>
               <button
                 type="button"
                 className="btn-outline"
@@ -410,6 +432,7 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
               >
                 <i className="fas fa-sync-alt"></i> Refresh
               </button>
+             </div>
             </div>
 
             {listingsLoading ? (
