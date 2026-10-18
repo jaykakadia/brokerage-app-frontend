@@ -1320,7 +1320,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         </div>
       )}
 
-      <div className="container" style={{ maxWidth: '1360px', margin: '0 auto' }}>
+      <div className="container" style={{ maxWidth: '1440px', margin: '0 auto' }}>
         {/* Admin Header */}
         <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
@@ -1382,7 +1382,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {/* MODULE 1: LISTINGS MANAGEMENT */}
         {/* ======================================================== */}
         {activeModule === 'listings' && (
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
                 Listings Moderation &amp; Control
@@ -1472,14 +1472,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <table className="admin-table admin-listings-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '12px 14px', width: '60px', whiteSpace: 'nowrap' }}>ID</th>
-                      <th style={{ padding: '12px 14px', minWidth: '320px', width: '35%' }}>Title &amp; Location</th>
-                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Price</th>
-                      <th style={{ padding: '12px 14px', minWidth: '120px' }}>Owner</th>
-                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Status</th>
-                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Stamp</th>
-                      <th style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>Featured</th>
-                      <th style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap', width: '90px' }}>Actions</th>
+                      <th style={{ padding: '10px 8px', width: '48px', whiteSpace: 'nowrap' }}>ID</th>
+                      <th style={{ padding: '10px 8px' }}>Title &amp; Location</th>
+                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Price</th>
+                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Owner</th>
+                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Status</th>
+                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Stamp</th>
+                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Featured</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1490,10 +1490,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       )
                       .map((l) => (
                       <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td data-label="ID" style={{ padding: '12px 14px', fontWeight: 700, color: '#64748b' }}>
+                        <td data-label="ID" style={{ padding: '10px 8px', fontWeight: 700, color: '#64748b' }}>
                           #{l.id}
                         </td>
-                        <td data-label="Listing" style={{ padding: '12px 14px', minWidth: '320px' }}>
+                        <td data-label="Listing" style={{ padding: '10px 8px' }}>
                           <button
                             type="button"
                             className="admin-listing-title"
@@ -1507,10 +1507,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <i className="fas fa-map-marker-alt"></i> {l.location}
                           </div>
                         </td>
-                        <td data-label="Price" style={{ padding: '12px 14px', fontWeight: 700, color: '#0c6253' }}>
+                        <td data-label="Price" style={{ padding: '10px 8px', fontWeight: 700, color: '#0c6253', whiteSpace: 'nowrap' }}>
                           {formatListingPrice(l.price)}
                         </td>
-                        <td data-label="Owner" style={{ padding: '12px 14px' }}>
+                        <td data-label="Owner" style={{ padding: '10px 8px' }}>
                           <div style={{ fontWeight: 600 }}>{l.owner_name}</div>
                           {l.assigned_email && (
                             <div style={{ fontSize: 11, color: '#b45309' }} title="Moves to this user when they sign up">
@@ -1519,7 +1519,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           )}
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{l.owner_role}</div>
                         </td>
-                        <td data-label="Status" style={{ padding: '12px 14px' }}>
+                        <td data-label="Status" style={{ padding: '10px 8px' }}>
 <select
                             className="admin-status-select"
                             value={l.status}
@@ -1534,7 +1534,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             {LISTING_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
                           </select>
                         </td>
-                        <td data-label="Stamp" style={{ padding: '12px 14px' }}>
+                        <td data-label="Stamp" style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
                           {l.verified === 1 ? (
                             <span style={{ color: '#16a34a', fontWeight: 700 }}>
                               <i className="fas fa-check-circle"></i> Verified
@@ -1550,7 +1550,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             </button>
                           )}
                         </td>
-                        <td data-label="Featured" style={{ padding: '12px 14px' }}>
+                        <td data-label="Featured" style={{ padding: '10px 8px' }}>
                           {l.is_featured ? (
                             <div>
                               <span style={{ color: '#b45309', fontWeight: 700 }}>
@@ -1595,7 +1595,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <span style={{ fontSize: '11px', color: '#94a3b8' }}>Approve first</span>
                           )}
                         </td>
-                        <td data-label="Actions" style={{ padding: '12px 14px', textAlign: 'right' }}>
+                        <td data-label="Actions" style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', gap: '6px' }}>
                             <button
                               type="button"
