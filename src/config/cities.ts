@@ -5,6 +5,8 @@ export interface CityInfo {
   isTop?: boolean;
 }
 
+import ALL_CITIES_DATA from './allCities.json';
+
 export const TOP_CITIES: CityInfo[] = [
   { name: 'Mumbai', slug: 'mumbai', state: 'Maharashtra', isTop: true },
   { name: 'Bangalore', slug: 'bangalore', state: 'Karnataka', isTop: true },
@@ -158,6 +160,17 @@ const CITY_MAP = new Map<string, CityInfo>();
 ALL_INDIAN_CITIES.forEach((c) => {
   if (!CITY_MAP.has(c.slug)) {
     CITY_MAP.set(c.slug, c);
+  }
+});
+ACTIVE_CITIES.forEach((c) => {
+  if (!CITY_MAP.has(c.slug)) {
+    CITY_MAP.set(c.slug, c);
+  }
+});
+(ALL_CITIES_DATA as string[]).forEach((name) => {
+  const slug = getCitySlug(name);
+  if (slug && !CITY_MAP.has(slug)) {
+    CITY_MAP.set(slug, { name, slug, state: '' });
   }
 });
 
