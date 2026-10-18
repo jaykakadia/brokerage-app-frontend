@@ -155,34 +155,6 @@ export const ACTIVE_CITIES: ActiveCityInfo[] = [
   { name: 'Varanasi', slug: 'varanasi', state: 'Uttar Pradesh', count: 1 },
 ];
 
-/** Deduplicated list of cities by slug */
-const CITY_MAP = new Map<string, CityInfo>();
-ALL_INDIAN_CITIES.forEach((c) => {
-  if (!CITY_MAP.has(c.slug)) {
-    CITY_MAP.set(c.slug, c);
-  }
-});
-ACTIVE_CITIES.forEach((c) => {
-  if (!CITY_MAP.has(c.slug)) {
-    CITY_MAP.set(c.slug, c);
-  }
-});
-(ALL_CITIES_DATA as string[]).forEach((name) => {
-  const slug = getCitySlug(name);
-  if (slug && !CITY_MAP.has(slug)) {
-    CITY_MAP.set(slug, { name, slug, state: '' });
-  }
-});
-
-export const FOOTER_TOP_CITIES: Array<{ name: string; slug: string }> = [
-  { name: 'Palwal', slug: 'palwal' },
-  { name: 'Hodal', slug: 'hodal' },
-  { name: 'Hathin', slug: 'hathin' },
-  { name: 'Hasanpur', slug: 'hasanpur' },
-  { name: 'Faridabad', slug: 'faridabad' },
-  { name: 'Ballabgarh', slug: 'ballabgarh' },
-];
-
 // Aliases mapping for common names / variations
 const ALIASES: Record<string, string> = {
   'bengaluru': 'bangalore',
@@ -217,6 +189,34 @@ export function getCitySlug(cityName: string): string {
   return ALIASES[slug] || slug;
 }
 
+/** Deduplicated list of cities by slug */
+const CITY_MAP = new Map<string, CityInfo>();
+ALL_INDIAN_CITIES.forEach((c) => {
+  if (!CITY_MAP.has(c.slug)) {
+    CITY_MAP.set(c.slug, c);
+  }
+});
+ACTIVE_CITIES.forEach((c) => {
+  if (!CITY_MAP.has(c.slug)) {
+    CITY_MAP.set(c.slug, c);
+  }
+});
+(ALL_CITIES_DATA as string[]).forEach((name) => {
+  const slug = getCitySlug(name);
+  if (slug && !CITY_MAP.has(slug)) {
+    CITY_MAP.set(slug, { name, slug, state: '' });
+  }
+});
+
+export const FOOTER_TOP_CITIES: Array<{ name: string; slug: string }> = [
+  { name: 'Palwal', slug: 'palwal' },
+  { name: 'Hodal', slug: 'hodal' },
+  { name: 'Hathin', slug: 'hathin' },
+  { name: 'Hasanpur', slug: 'hasanpur' },
+  { name: 'Faridabad', slug: 'faridabad' },
+  { name: 'Ballabgarh', slug: 'ballabgarh' },
+];
+
 /** Resolve slug to proper Display City Name, or null if unknown */
 export function getCityFromSlug(slug: string): string | null {
   if (!slug) return null;
@@ -228,3 +228,4 @@ export function getCityFromSlug(slug: string): string | null {
 
   return null;
 }
+
