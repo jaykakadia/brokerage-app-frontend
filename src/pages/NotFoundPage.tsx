@@ -79,7 +79,7 @@ export default function NotFoundPage({ onNavigate }: NotFoundPageProps) {
             <i className="fas fa-city"></i> Browse All Cities
           </a>
           <a
-            href="/home"
+            href="/"
             onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
             style={{
               display: 'inline-flex',

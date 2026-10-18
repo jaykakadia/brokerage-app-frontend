@@ -67,19 +67,19 @@ export default function Footer({ onNavigate }: FooterProps) {
         <div className="footer-col">
           <h4>Property Types</h4>
           <ul>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Flats / Apartments</a></li>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Independent Houses</a></li>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Residential Plots</a></li>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Commercial Shops</a></li>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Office Space</a></li>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Agricultural Land</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Flats / Apartments</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Independent Houses</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Residential Plots</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Commercial Shops</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Office Space</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Agricultural Land</a></li>
           </ul>
         </div>
 
         <div className="footer-col">
           <h4>Quick Links</h4>
           <ul>
-            <li><a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
             <li><a href="/cities" onClick={(e) => { e.preventDefault(); onNavigate('cities'); }}>All Cities</a></li>
             <li><a href="/business-directory" onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}>Business Directory</a></li>
             <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Blog</a></li>

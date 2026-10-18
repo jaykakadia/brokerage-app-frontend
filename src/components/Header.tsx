@@ -23,7 +23,7 @@ export default function Header({ onNavigate, activePage, activeCity }: HeaderPro
         <div className="header-container">
           <div className="header-start">
             <div className="header-left">
-              <a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
+              <a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="site-logo">
                 <div className="logo-icon">
                   <div className="logo-bars">
                     <span className="logo-bar"></span>
@@ -41,7 +41,7 @@ export default function Header({ onNavigate, activePage, activeCity }: HeaderPro
 
             <nav className="main-nav">
               <a
-                href="/home"
+                href="/"
                 className={`nav-item ${activePage === 'home' && !activeCity ? 'active' : ''}`}
                 onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
               >
@@ -172,7 +172,7 @@ export default function Header({ onNavigate, activePage, activeCity }: HeaderPro
               </button>
             </div>
             <nav className="drawer-nav">
-              <a href="/home" className={`drawer-nav-item ${activePage === 'home' && !activeCity ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('home'); setDrawerOpen(false); }}>Home</a>
+              <a href="/" className={`drawer-nav-item ${activePage === 'home' && !activeCity ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('home'); setDrawerOpen(false); }}>Home</a>
 
 
               <a href="/business-directory" className={`drawer-nav-item ${activePage === 'business-directory' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); setDrawerOpen(false); }}>Business Directory</a>

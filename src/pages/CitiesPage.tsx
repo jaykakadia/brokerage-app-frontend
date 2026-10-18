@@ -78,7 +78,7 @@ export default function CitiesPage({ onNavigate }: CitiesPageProps) {
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Breadcrumb */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
-          <a href="/home" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} style={{ color: '#0c6253', textDecoration: 'none' }}>Home</a>
+          <a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} style={{ color: '#0c6253', textDecoration: 'none' }}>Home</a>
           <span>/</span>
           <span style={{ color: '#1e293b', fontWeight: 600 }}>All Cities</span>
         </div>

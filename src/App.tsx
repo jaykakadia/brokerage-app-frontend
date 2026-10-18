@@ -92,7 +92,7 @@ export default function App() {
         } else if (parsed.page === 'terms') {
           targetPath = '/terms-of-use';
         } else if (parsed.page === 'home') {
-          targetPath = '/home';
+          targetPath = '/';
         } else if (parsed.page === 'login') {
           targetPath = parsed.param === 'register' ? '/register' : '/login';
         }
@@ -163,7 +163,7 @@ export default function App() {
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;
     if (page === 'home') {
-      path = '/home';
+      path = '/';
       setActiveCity('');
       setActivePage('home');
     } else if (page === 'login' || page === 'register' || page === 'signin') {
@@ -179,7 +179,7 @@ export default function App() {
       } else {
         const id = typeof param === 'object' ? null : param;
         setSelectedListingId(id);
-        path = id ? `/listing/${id}` : '/home';
+        path = id ? `/listing/${id}` : '/';
       }
       setActivePage('listing-detail');
     } else if (page === 'blog-detail' && param) {

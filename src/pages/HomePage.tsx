@@ -1226,7 +1226,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 >
                   <span className="city-browse-name">
                     <i className="fas fa-map-marker-alt" style={{ color: '#0d7a5f', fontSize: '12px' }}></i>
-                    {city.name}
+                    Properties in {city.name}
                   </span>
                   <span className="city-browse-state">{city.state}</span>
                   {count !== undefined && count > 0 ? (
