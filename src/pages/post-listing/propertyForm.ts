@@ -4,7 +4,7 @@ export type ListingRole = 'business' | 'buyer' | 'owner';
 export type PosterRole = 'real_owner' | 'real_buyer' | 'agent' | 'builder';
 export type ListingFor = 'sale' | 'rent';
 export type PropertyStep = 1 | 2 | 3 | 4;
-export type PropType = 'flat' | 'house' | 'plot' | 'agriculture' | 'commercial' | 'pg';
+export type PropType = 'flat' | 'house' | 'plot' | 'agriculture' | 'industrial_land' | 'r_zone_land' | 'commercial' | 'pg';
 
 export interface CityOption {
   city: string;
@@ -171,14 +171,16 @@ export function amenitiesFor(propType: PropType | ''): readonly string[] {
 
 export function propTypeLabel(value: string): string {
   const labels: Record<string, string> = {
-    flat: 'Flat/Builder Floor/House/Villa',
-    house: 'House/Villa',
+    flat: 'Flat / Builder Floor',
+    house: 'House / Villa',
     plot: 'Plot',
     agriculture: 'Agriculture Land',
+    industrial_land: 'Industrial Land',
+    r_zone_land: 'R - Zone Land',
     commercial: 'Commercial',
     pg: 'PG/Guest House'
   };
-  return labels[value] || 'Property';
+  return labels[value] || value || 'Property';
 }
 
 export function listingTitle(form: PropertyFormState, isBuyer = false): string {
@@ -270,7 +272,9 @@ export function inrInWords(value: string): string {
 /** Area and unit that a per-unit rate applies to, for property types priced as area x rate. */
 export function landAreaFor(form: Pick<PropertyFormState, 'propType' | 'area' | 'unit' | 'plotArea' | 'plotUnit' | 'agriArea' | 'agriUnit'>): { area: number; unit: string } | null {
   if (form.propType === 'plot') return { area: Number(form.plotArea) || 0, unit: form.plotUnit };
-  if (form.propType === 'agriculture') return { area: Number(form.agriArea) || 0, unit: form.agriUnit };
+  if (form.propType === 'agriculture' || form.propType === 'industrial_land' || form.propType === 'r_zone_land') {
+    return { area: Number(form.agriArea) || 0, unit: form.agriUnit };
+  }
   return null;
 }
 

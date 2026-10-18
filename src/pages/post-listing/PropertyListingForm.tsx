@@ -223,9 +223,12 @@ export default function PropertyListingForm({
           />
           <div style={{ marginTop: 8 }}>
             <FloatSelect label="Select Property Type" icon="fas fa-building" required value={form.propType} onChange={(propType) => onChange({ propType: propType as PropType })}>
-              <option value="flat">Flat / Builder Floor / House / Villa</option>
+              <option value="flat">Flat / Builder Floor</option>
+              <option value="house">House / Villa</option>
               <option value="plot">Plot</option>
               <option value="agriculture">Agriculture Land</option>
+              <option value="industrial_land">Industrial Land</option>
+              <option value="r_zone_land">R - Zone Land</option>
               <option value="commercial">Commercial - Shop/ Showroom/ Warehouse</option>
               <option value="pg">PG/ Guest House</option>
             </FloatSelect>
@@ -340,7 +343,7 @@ export default function PropertyListingForm({
             </>
           )}
 
-          {form.propType === 'agriculture' && (
+          {(form.propType === 'agriculture' || form.propType === 'industrial_land' || form.propType === 'r_zone_land') && (
             <>
               {frontRoadField}
               {facingPills}

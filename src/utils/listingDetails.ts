@@ -53,6 +53,8 @@ function propertyTypeFields(fd: ListingFormData): Array<[string, string]> {
         ['Facing', text(fd.facing)]
       ];
     case 'agriculture':
+    case 'industrial_land':
+    case 'r_zone_land':
       return [
         ['Land Area', withUnit(fd.agriArea, fd.agriUnit)],
         ['Rate', fd.rate ? `₹${text(fd.rate)} / ${text(fd.agriUnit)}` : ''],

@@ -243,7 +243,16 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
         role === 'buyer' ? 'Property - Buyer / Renter' : 'Property - Seller / Landlord',
         { real_buyer: 'User', real_owner: 'Real Owner', agent: 'Agent', builder: 'Builder' }[form.posterRole],
         form.forWhat === 'rent' ? 'Rent/Lease' : role === 'buyer' ? 'Buy' : 'Sale',
-        { flat: 'Flat / House / Villa', house: 'Flat / House / Villa', plot: 'Plot', agriculture: 'Agriculture Land', commercial: 'Commercial', pg: 'PG / Guest House' }[form.propType as string]
+        {
+          flat: 'Flat / Builder Floor',
+          house: 'House / Villa',
+          plot: 'Plot',
+          agriculture: 'Agriculture Land',
+          industrial_land: 'Industrial Land',
+          r_zone_land: 'R - Zone Land',
+          commercial: 'Commercial',
+          pg: 'PG / Guest House'
+        }[form.propType as string]
       ].filter(Boolean)
     : null;
 
