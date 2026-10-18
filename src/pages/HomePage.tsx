@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, getCitySlug } from '../config/cities';
+import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
@@ -36,21 +37,7 @@ interface BudgetPreset {
   max: string;
 }
 
-const ALL_CITIES = [
-  'Ahmedabad', 'Agra', 'Ajmer', 'Aligarh', 'Ambala', 'Amritsar', 'Aurangabad',
-  'Bengaluru (Bangalore)', 'Bhopal', 'Bhubaneswar', 'Bikaner',
-  'Chandigarh', 'Chennai', 'Coimbatore', 'Dehradun', 'Delhi', 'Dhanbad',
-  'Faridabad', 'Ghaziabad', 'Gorakhpur', 'Gurugram', 'Guwahati', 'Gwalior',
-  'Hathras', 'Hathin', 'Hisar', 'Hodal', 'Hyderabad',
-  'Indore', 'Jabalpur', 'Jaipur', 'Jalandhar', 'Jamnagar', 'Jamshedpur', 'Jodhpur',
-  'Kanpur', 'Karnal', 'Kochi', 'Kolkata', 'Kota',
-  'Lucknow', 'Ludhiana', 'Madurai', 'Meerut', 'Moradabad', 'Mumbai', 'Mysore',
-  'Nagpur', 'Nashik', 'Navi Mumbai', 'Noida',
-  'Palwal', 'Panchkula', 'Panipat', 'Patna', 'Pune',
-  'Raipur', 'Rajkot', 'Ranchi', 'Rewari', 'Rohtak', 'Rourkela',
-  'Salem', 'Siliguri', 'Solapur', 'Sonipat', 'Surat',
-  'Thane', 'Thiruvananthapuram', 'Udaipur', 'Ujjain', 'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam'
-];
+
 
 const POPULAR_BROWSE_CITIES = [
   { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
@@ -255,10 +242,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const hasActiveFilters = !!(heroCity || heroType || budgetMin || budgetMax || heroKeyword.trim()
     || selectedCities.length > 0 || newOnly || activeCategoryTab !== 'all');
 
-  const citiesList = useMemo(() => [
-    'Palwal', 'Faridabad', 'Gurugram', 'Sonipat', 'Panipat',
-    'Hodal', 'Hathin', 'Delhi', 'Noida'
-  ], []);
+
 
   // Sync cityInput when heroCity changes (from pills or resets)
   useEffect(() => {
@@ -306,30 +290,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter city suggestions based on user input
+  // Filter city suggestions based on user input - searches all 5,000+ Indian cities
   const citySuggestions = useMemo(() => {
     const q = cityInput.trim().toLowerCase();
+    const all = ALL_CITIES_DATA as string[];
     if (!q) {
-      return citiesList;
+      return all.slice(0, 100);
     }
-    // Gather all available cities including any extra locations in current listings
-    const set = new Set<string>(ALL_CITIES);
-    listings.forEach((item) => {
-      if (item.location) {
-        item.location.split(',').forEach((part) => {
-          const trimmed = part.trim();
-          if (trimmed.length > 2 && trimmed.length < 25) set.add(trimmed);
-        });
-      }
-    });
-    const names = Array.from(set);
-    const covered = new Set(
-      names.flatMap((name) => cityNameVariants(name).slice(1).map((part) => part.toLowerCase()))
-    );
-    return names
-      .filter((name) => name.toLowerCase().includes(q) && !covered.has(name.toLowerCase()))
-      .sort((a, b) => a.localeCompare(b));
-  }, [cityInput, citiesList, listings]);
+    return all.filter((name) => name.toLowerCase().includes(q)).slice(0, 100);
+  }, [cityInput]);
 
   const handleSelectCity = (city: string): void => {
     setAllCitiesPicked(city === 'All Cities');
@@ -724,10 +693,23 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
     // City filter: either from selected checkboxes or heroCity
     const city = getListingCity(item).toLowerCase();
-    const matchesCity = (c: string): boolean => cityNameVariants(c).some((name) => {
-      const needle = name.toLowerCase();
-      return loc.includes(needle) || city === needle;
-    });
+    const matchesCity = (c: string): boolean => {
+      const cLower = c.toLowerCase().trim();
+      const variants = [
+        cLower,
+        ...(cLower === 'vrindavan' ? ['mathura-vrindavan', 'vrindaban', 'mathura'] : []),
+        ...(cLower === 'mathura' ? ['mathura-vrindavan', 'vrindavan'] : []),
+        ...(cLower === 'mathura-vrindavan' ? ['mathura', 'vrindavan'] : []),
+        ...(cLower === 'delhi' ? ['delhi-ncr', 'ncr', 'new delhi'] : []),
+        ...(cLower === 'delhi ncr' ? ['delhi', 'ncr', 'new delhi'] : []),
+        ...(cLower === 'bangalore' ? ['bengaluru'] : []),
+        ...(cLower === 'gurugram' ? ['gurgaon'] : []),
+        ...(cLower === 'nuh' || cLower === 'mewat' || cLower === 'nuh mewat' ? ['nuh', 'mewat', 'nuh mewat'] : []),
+        ...(cLower === 'ballabgarh' ? ['ballabhgarh'] : []),
+        ...cityNameVariants(c).map((n) => n.toLowerCase()),
+      ];
+      return variants.some((needle) => loc.includes(needle) || city === needle || city.includes(needle));
+    };
     if (selectedCities.length > 0) {
       if (!selectedCities.some(matchesCity)) return false;
     } else if (heroCity) {

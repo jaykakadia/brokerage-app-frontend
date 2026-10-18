@@ -41,6 +41,9 @@ export const ALL_INDIAN_CITIES: CityInfo[] = [
   { name: 'Ghaziabad', slug: 'ghaziabad', state: 'Uttar Pradesh' },
 
   // Uttar Pradesh
+  { name: 'Mathura-Vrindavan', slug: 'mathura-vrindavan', state: 'Uttar Pradesh' },
+  { name: 'Mathura', slug: 'mathura', state: 'Uttar Pradesh' },
+  { name: 'Vrindavan', slug: 'vrindavan', state: 'Uttar Pradesh' },
   { name: 'Lucknow', slug: 'lucknow', state: 'Uttar Pradesh' },
   { name: 'Kanpur', slug: 'kanpur', state: 'Uttar Pradesh' },
   { name: 'Varanasi', slug: 'varanasi', state: 'Uttar Pradesh' },
@@ -182,6 +185,8 @@ const ALIASES: Record<string, string> = {
   'gnida': 'greater-noida',
   'nuh': 'nuh-mewat',
   'mewat': 'nuh-mewat',
+  'vrindavan': 'mathura-vrindavan',
+  'vrindaban': 'mathura-vrindavan',
 };
 
 /** Convert city display name into clean slug */
