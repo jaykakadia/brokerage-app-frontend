@@ -68,7 +68,10 @@ export function setSeo({ title, description, path, image, noindex = false }: Seo
 
 /** Title, description and main URL for each page that isn't a single listing or blog post. */
 export const PAGE_SEO: Record<string, SeoOptions> = {
-  home: { path: '/' },
+  home: {
+    title: 'TradeCall India - Buy, Rent & Sell Property in Palwal & NCR',
+    path: '/'
+  },
   'business-directory': {
     title: 'Business Directory - Local Businesses in Palwal & NCR',
     description: 'Find trusted local businesses in Palwal, Faridabad and the NCR: builders, interior designers, contractors, property dealers and more. Unlock contact details on TradeCall India.',
