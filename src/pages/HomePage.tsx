@@ -3,18 +3,12 @@ import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats }
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
-import { TOP_CITIES } from '../config/cities';
+import { ALL_INDIAN_CITIES, getCitySlug } from '../config/cities';
+import { setSeo } from '../utils/seo';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
 
-const POPULAR_BROWSE_CITIES = [
-  ...TOP_CITIES,
-  { name: 'Palwal', slug: 'palwal', state: 'Haryana' },
-  { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
-  { name: 'Gurugram', slug: 'gurugram', state: 'Haryana' },
-  { name: 'Noida', slug: 'noida', state: 'Uttar Pradesh' },
-];
 
 export interface AuthModalOptions {
   title?: string;
@@ -538,32 +532,62 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     return Array.from(byKey.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }, [listings]);
 
-  // Popular cities sorted by highest number of listings first
+  // Popular cities: list ONLY cities with at least 1 listing, sorted by listing count descending
   const sortedBrowseCities = useMemo(() => {
-    const getCount = (cityName: string, slug?: string): number => {
+    if (cityCounts.length > 0) {
+      const items: Array<{ name: string; slug: string; state: string; count: number }> = [];
+      cityCounts.forEach((c) => {
+        if (c.count <= 0) return;
+        const slug = getCitySlug(c.name);
+        if (!slug) return;
+        const known = ALL_INDIAN_CITIES.find((ci) => ci.slug === slug);
+        items.push({
+          name: known?.name || c.name,
+          slug,
+          state: known?.state || '',
+          count: c.count,
+        });
+      });
+      return items.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    }
+
+    // Baseline fallback before listings load (only active cities)
+    return [
+      { name: 'Palwal', slug: 'palwal', state: 'Haryana', count: 80 },
+      { name: 'Faridabad', slug: 'faridabad', state: 'Haryana', count: 18 },
+      { name: 'Hodal', slug: 'hodal', state: 'Haryana', count: 10 },
+      { name: 'Greater Noida', slug: 'greater-noida', state: 'Uttar Pradesh', count: 5 },
+      { name: 'Bangalore', slug: 'bangalore', state: 'Karnataka', count: 2 },
+      { name: 'Delhi NCR', slug: 'delhi-ncr', state: 'Delhi', count: 2 },
+    ];
+  }, [cityCounts]);
+
+  // Ensure client-side setSeo is consistent with server: noindex for cities with 0 listings
+  useEffect(() => {
+    if (activeCity && !loading) {
+      const slug = getCitySlug(activeCity);
       const variants = [
-        cityName.toLowerCase(),
-        ...(slug ? [slug.toLowerCase()] : []),
-        ...(cityName.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
-        ...(cityName.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
-        ...(cityName.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
+        activeCity.toLowerCase(),
+        slug.toLowerCase(),
+        ...(activeCity.toLowerCase() === 'bangalore' ? ['bengaluru'] : []),
+        ...(activeCity.toLowerCase() === 'delhi ncr' ? ['delhi', 'new delhi', 'ncr'] : []),
+        ...(activeCity.toLowerCase() === 'gurugram' ? ['gurgaon'] : []),
       ];
       const match = cityCounts.find((c) => {
         const lower = c.name.toLowerCase();
         return variants.some((v) => lower === v || lower.includes(v));
       });
-      return match?.count ?? 0;
-    };
-
-    return [...POPULAR_BROWSE_CITIES].sort((a, b) => {
-      const countA = getCount(a.name, a.slug);
-      const countB = getCount(b.name, b.slug);
-      if (countB !== countA) {
-        return countB - countA;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [cityCounts]);
+      const count = match?.count ?? 0;
+      setSeo({
+        title: `Properties in ${activeCity} | Buy, Rent & Commercial | Tradecall`,
+        description: count > 0
+          ? `${count} properties for sale and rent in ${activeCity}. Explore verified flats, plots and houses with zero brokerage on TradeCall India.`
+          : `Explore properties in ${activeCity}. Contact verified owners directly on TradeCall India.`,
+        path: `/properties/${slug}`,
+        noindex: count === 0,
+      });
+    }
+  }, [activeCity, loading, cityCounts]);
 
   // Until the listings load, show the site-wide stats
   const listingsLoaded = !loading && !error;
@@ -1514,7 +1538,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 style={{
                   gridColumn: '1 / -1',
                   textAlign: 'center',
-                  padding: '60px',
+                  padding: '50px 24px',
                   color: '#6b7280',
                   fontSize: '16px',
                   background: '#fff',
@@ -1522,15 +1546,63 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                   border: '1px dashed #cbd5e1'
                 }}
               >
-                <i className="fas fa-home" style={{ fontSize: '36px', color: '#94a3b8', marginBottom: '14px', display: 'block' }}></i>
-                No listings matching your selected filters. Try broadening your search or{' '}
-                <a
-                  href="#post"
-                  onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); }}
-                  style={{ color: '#0c6253', fontWeight: 'bold' }}
-                >
-                  post a new listing!
-                </a>
+                <i className="fas fa-city" style={{ fontSize: '36px', color: '#0d7a5f', marginBottom: '14px', display: 'block' }}></i>
+                {activeCity ? (
+                  <div>
+                    <h3 style={{ fontSize: '20px', color: '#1e293b', fontWeight: 700, marginBottom: '8px' }}>
+                      Currently 0 active listings in {activeCity}
+                    </h3>
+                    <p style={{ color: '#64748b', maxWidth: '580px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+                      Be the first owner or agent to list in {activeCity}! You can also explore verified properties in nearby active cities:
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '24px' }}>
+                      {sortedBrowseCities.slice(0, 6).map((c) => (
+                        <a
+                          key={c.slug}
+                          href={`/properties/${c.slug}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onNavigate('properties-city', c.slug);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            color: '#0c6253',
+                            borderRadius: '20px',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            fontSize: '13px'
+                          }}
+                        >
+                          Properties in {c.name} ({c.count})
+                        </a>
+                      ))}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('post-listing')}
+                        className="btn-primary"
+                        style={{ padding: '12px 28px', borderRadius: '8px', fontSize: '15px', fontWeight: 700 }}
+                      >
+                        <i className="fas fa-plus-circle" style={{ marginRight: '8px' }}></i>
+                        Post Free Listing in {activeCity}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    No listings matching your selected filters. Try broadening your search or{' '}
+                    <a
+                      href="#post"
+                      onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); }}
+                      style={{ color: '#0c6253', fontWeight: 'bold' }}
+                    >
+                      post a new listing!
+                    </a>
+                  </div>
+                )}
               </div>
             ) : (
               <div

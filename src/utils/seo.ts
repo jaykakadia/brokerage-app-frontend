@@ -51,7 +51,7 @@ export function setSeo({ title, description, path, image, noindex = false }: Seo
 
   document.title = fullTitle;
   setMeta('name', 'description', desc);
-  setMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow');
+  setMeta('name', 'robots', noindex ? 'noindex, follow' : 'index, follow');
   setCanonical(url);
 
   setMeta('property', 'og:title', fullTitle);

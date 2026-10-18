@@ -134,10 +134,13 @@ export default function App() {
     }
     if (activePage === 'properties-city' && activeCity) {
       const slug = getCitySlug(activeCity);
+      const serverRobots = document.querySelector('meta[name="robots"]')?.getAttribute('content');
+      const isServerNoIndex = serverRobots?.includes('noindex') ?? false;
       setSeo({
         title: `Properties in ${activeCity} | Buy, Rent & Commercial | Tradecall`,
         description: `Find the best residential and commercial properties in ${activeCity} on Tradecall...`,
         path: `/properties/${slug}`,
+        noindex: isServerNoIndex,
       });
       return;
     }
