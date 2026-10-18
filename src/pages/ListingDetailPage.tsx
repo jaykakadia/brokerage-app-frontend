@@ -221,7 +221,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
   const shareListing = async (): Promise<void> => {
     if (!listing) return;
-    const url = `${window.location.origin}${getListingUrl(listing)}`;
+    const url = `https://tradecall.in${getListingUrl(listing)}`;
     try {
       await navigator.clipboard.writeText(url);
       showToast('Listing link copied');
