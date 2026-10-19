@@ -6,6 +6,7 @@ import { cityNameVariants, getBusinessCategories, getListingCity, getListingDeal
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
+import { propTypeLabel } from './post-listing/propertyForm';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
@@ -729,25 +730,51 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
     // Property Type / Category
     if (heroType) {
-      const formType = item.form_data?.propType?.toLowerCase() || '';
-      const text = (title + ' ' + desc).toLowerCase();
-      let matches = formType.includes(heroType.toLowerCase()) || text.includes(heroType.toLowerCase());
-      if (!matches && heroType === 'flat') {
-        matches = formType === 'apartment' || text.includes('flat') || text.includes('apartment') || text.includes('builder floor');
+      const formType = (item.form_data?.propType || '').toLowerCase().trim();
+      const target = heroType.toLowerCase().trim();
+
+      let matches = false;
+      if (formType) {
+        if (formType === target) {
+          matches = true;
+        } else if (target === 'flat' && (formType === 'apartment' || formType === 'builder_floor')) {
+          matches = true;
+        } else if (target === 'house' && (formType === 'villa' || formType === 'kothi')) {
+          matches = true;
+        } else if (target === 'plot' && formType === 'plots') {
+          matches = true;
+        } else if (target === 'agriculture' && (formType === 'agricultural' || formType === 'farm_land')) {
+          matches = true;
+        } else if (target === 'industrial_land' && formType === 'industrial') {
+          matches = true;
+        } else if (target === 'r_zone_land' && (formType === 'r_zone' || formType === 'r-zone')) {
+          matches = true;
+        } else if (target === 'commercial' && ['shop', 'office', 'showroom', 'warehouse'].includes(formType)) {
+          matches = true;
+        } else if (target === 'pg' && formType === 'guest_house') {
+          matches = true;
+        }
+      } else {
+        // Fallback for legacy listings without form_data.propType using strict word boundaries on title
+        if (target === 'flat') {
+          matches = /\b(flat|apartment|builder\s+floor)\b/i.test(title);
+        } else if (target === 'house') {
+          matches = /\b(house|villa|villas|kothi|bungalow|duplex)\b/i.test(title);
+        } else if (target === 'plot') {
+          matches = /\b(plot|plots)\b/i.test(title);
+        } else if (target === 'agriculture') {
+          matches = /\b(agriculture|agricultural|khet|farm\s+land)\b/i.test(title);
+        } else if (target === 'industrial_land') {
+          matches = /\b(industrial)\b/i.test(title);
+        } else if (target === 'r_zone_land') {
+          matches = /\b(r[\s_-]?zone)\b/i.test(title);
+        } else if (target === 'commercial') {
+          matches = /\b(commercial|shop|showroom|warehouse|office)\b/i.test(title);
+        } else if (target === 'pg') {
+          matches = /\b(pg|guest\s+house)\b/i.test(title);
+        }
       }
-      if (!matches && heroType === 'house') {
-        matches = text.includes('house') || text.includes('villa') || text.includes('kothi') || text.includes('independent house');
-      }
-      if (!matches && heroType === 'industrial_land') {
-        matches = formType.includes('industrial') || text.includes('industrial');
-      }
-      if (!matches && heroType === 'r_zone_land') {
-        matches = formType.includes('r_zone') || formType.includes('r-zone') || text.includes('r-zone') || text.includes('r zone');
-      }
-      if (!matches && heroType === 'commercial') {
-        matches = text.includes('shop') || text.includes('office') || text.includes('retail')
-          || text.includes('showroom') || text.includes('warehouse');
-      }
+
       if (!matches) return false;
     }
 
@@ -800,7 +827,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const renderListingCard = (listing: Listing, asList = false) => {
     const imgSrc = getFirstImageUrl(listing);
     const priceStr = formatListingPrice(listing.price);
-    const pType = listing.form_data?.propType || 'Property';
+    const pType = propTypeLabel(listing.form_data?.propType || '') || 'Property';
     const title = publicListingTitle(listing);
 
     return (
@@ -1444,7 +1471,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               {circularListings.map((listing, index) => {
                 const imgSrc = getFirstImageUrl(listing);
                 const priceStr = formatListingPrice(listing.price);
-                const pType = listing.form_data?.propType || 'Plot';
+                const pType = propTypeLabel(listing.form_data?.propType || '') || 'Plot';
                 const title = publicListingTitle(listing);
                 const isSaved = wishlistIds.has(listing.id);
 
