@@ -696,7 +696,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     if (newOnly && !isNewListing(item)) return false;
 
     // City filter: either from selected checkboxes or heroCity
-    const city = getListingCity(item).toLowerCase();
+    const city = getListingCity(item).toLowerCase().trim();
     const matchesCity = (c: string): boolean => {
       const cLower = c.toLowerCase().trim();
       const variants = [
@@ -712,7 +712,12 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         ...(cLower === 'ballabgarh' ? ['ballabhgarh'] : []),
         ...cityNameVariants(c).map((n) => n.toLowerCase()),
       ];
-      return variants.some((needle) => loc.includes(needle) || city === needle || city.includes(needle));
+      if (city) {
+        return variants.some((needle) => city === needle || city.includes(needle) || needle.includes(city));
+      }
+      const locParts = loc.split(',').map((p) => p.trim());
+      const locCity = locParts.length >= 3 ? locParts[locParts.length - 2] : locParts[0] || '';
+      return variants.some((needle) => locCity === needle || locCity.includes(needle) || needle.includes(locCity));
     };
     if (selectedCities.length > 0) {
       if (!selectedCities.some(matchesCity)) return false;
@@ -1595,12 +1600,19 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       {/* Listings Section */}
       <section className="listings-section" id="listings">
         <div className="container">
+          <div className="section-header">
+            <div>
+              <h2>
+                <i className="fas fa-clock" style={{ color: '#0c6253', marginRight: '8px' }}></i>
+                Recent Listings
+              </h2>
+              <p>Latest properties posted on TradeCall</p>
+            </div>
+          </div>
+
           <div className="listings-main">
             <div className="listings-controls">
               <div className="listing-count" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
-                  Recent Listings
-                </span>
                 {newOnly && (
                   <span className="listing-filter-chip">
                     New today
