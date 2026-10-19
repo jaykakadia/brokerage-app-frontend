@@ -25,12 +25,28 @@ function businessInfo(listing: Listing): BusinessInfo {
   };
 }
 
+const BUSINESSES_PER_PAGE = 8; // 2 rows of 4 cards on desktop
+
+function getPaginationItems(current: number, total: number): Array<number | '...'> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: BusinessDirectoryPageProps) {
   const { user } = useAuth();
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [stats, setStats] = useState<ListingStatsResponse | null>(null);
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!user) {
@@ -161,16 +177,33 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
 
   const hasFilters = Boolean(search || category || city || newOnly);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, category, city, newOnly]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / BUSINESSES_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const pagedBusinesses = visible.slice((page - 1) * BUSINESSES_PER_PAGE, page * BUSINESSES_PER_PAGE);
+
+  const goToPage = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    const el = document.getElementById('business-listings-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const clearAllFilters = () => {
     setSearch('');
     setCategory('');
     setCity('');
     setNewOnly(false);
+    setCurrentPage(1);
   };
 
   const handleCitySelect = (selectedCityName: string) => {
     const matched = rawCityOptions.find((c) => c.toLowerCase() === selectedCityName.toLowerCase()) || selectedCityName;
     setCity(matched);
+    setCurrentPage(1);
     setShowCitiesPanel(false);
     const el = document.getElementById('business-listings-section');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -361,6 +394,11 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
             <strong style={{ color: '#111827' }}>
               {loading ? 'Loading businesses...' : `${visible.length} ${visible.length === 1 ? 'business' : 'businesses'} found`}
+              {!loading && visible.length > BUSINESSES_PER_PAGE && (
+                <span style={{ marginLeft: '8px', fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+                  (Page {page} of {totalPages})
+                </span>
+              )}
               {newOnly && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#0c6253', fontWeight: 600 }}>(Filtered: Posted Today)</span>}
             </strong>
             {hasFilters && (
@@ -383,66 +421,109 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               {hasFilters ? 'No businesses match your search.' : 'No businesses listed yet.'}
             </div>
           ) : (
-            <div className="listings-grid">
-              {visible.map((b) => {
-                const info = businessInfo(b);
-                return (
-                  <div key={b.id} className="listing-card business-dir-card">
-                    <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
-                      <img
-                        src={getFirstImageUrl(b)}
-                        alt={b.title}
-                        className="card-img"
-                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
-                      />
-                      {b.verified === 1 && (
-                        <span className="badge-verified"><i className="fas fa-check-circle"></i> Verified</span>
-                      )}
-                      {b.is_featured && (
-                        <span
-                          className="badge-featured"
-                          style={{
-                            top: '12px',
-                            left: '12px',
-                            background: '#0d7a5f',
-                            color: '#fff',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured
-                        </span>
-                      )}
-                    </div>
-                    <div className="card-body">
-                      <h3 className="card-title business-dir-title">
-                        {b.title}
-                        {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
-                      </h3>
-                      <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
-                      <div className="card-footer card-footer-actions">
-                        <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
-                          <i className="fas fa-info-circle"></i> Details
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
-                          onClick={() => void toggleSaved(b.id)}
-                        >
-                          <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
-                          <span>Wishlist</span>
-                        </button>
+            <>
+              <div className="listings-grid">
+                {pagedBusinesses.map((b) => {
+                  const info = businessInfo(b);
+                  return (
+                    <div key={b.id} className="listing-card business-dir-card">
+                      <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
+                        <img
+                          src={getFirstImageUrl(b)}
+                          alt={b.title}
+                          className="card-img"
+                          loading="lazy"
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
+                        />
+                        {b.verified === 1 && (
+                          <span className="badge-verified"><i className="fas fa-check-circle"></i> Verified</span>
+                        )}
+                        {b.is_featured && (
+                          <span
+                            className="badge-featured"
+                            style={{
+                              top: '12px',
+                              left: '12px',
+                              background: '#0d7a5f',
+                              color: '#fff',
+                              borderRadius: '4px',
+                              padding: '4px 8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured
+                          </span>
+                        )}
+                      </div>
+                      <div className="card-body">
+                        <h3 className="card-title business-dir-title">
+                          {b.title}
+                          {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
+                        </h3>
+                        <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
+                        <div className="card-footer card-footer-actions">
+                          <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
+                            <i className="fas fa-info-circle"></i> Details
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
+                            onClick={() => void toggleSaved(b.id)}
+                          >
+                            <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+                            <span>Wishlist</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+
+              {!loading && !error && totalPages > 1 && (
+                <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '32px' }}>
+                  <button type="button" className="page-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>
+                    <i className="fas fa-chevron-left"></i> Prev
+                  </button>
+                  {getPaginationItems(page, totalPages).map((item, idx) =>
+                    item === '...' ? (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="pagination-ellipsis"
+                        style={{
+                          padding: '0 8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#94a3b8',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          userSelect: 'none'
+                        }}
+                      >
+                        &hellip;
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        className={`page-btn ${item === page ? 'active' : ''}`}
+                        onClick={() => goToPage(item)}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+                  <button type="button" className="page-btn" disabled={page === totalPages} onClick={() => goToPage(page + 1)}>
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
