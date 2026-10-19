@@ -26,7 +26,7 @@ import api, {
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import AdminLocationsByState from '../components/AdminLocationsByState';
-import { getBusinessCategories, getListingCity, isBusinessListing, publicListingTitle } from '../utils/listingKind';
+import { getListingCity, isBusinessListing, publicListingTitle } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
@@ -1655,9 +1655,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '8px 10px', width: '48px', whiteSpace: 'nowrap' }}>ID</th>
                       <th style={{ padding: '8px 10px', minWidth: '220px' }}>Title &amp; Location</th>
-                      <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
-                        {effectiveKind === 'business' ? 'Category' : 'Price / Category'}
-                      </th>
+                      {effectiveKind !== 'business' && (
+                        <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Price</th>
+                      )}
                       <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Owner</th>
                       <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Status</th>
                       <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Stamp</th>
@@ -1698,15 +1698,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <i className="fas fa-map-marker-alt" style={{ fontSize: '10.5px', color: '#9ca3af' }}></i> {l.location}
                           </div>
                         </td>
-                        <td data-label="Price" style={{ padding: '8px 10px', fontWeight: 700, color: '#0c6253', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                          {isBusinessListing(l) ? (
-                            <span style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 600, background: '#f5f3ff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
-                              {getBusinessCategories(l)[0] || 'Business'}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '12.5px' }}>{formatListingPrice(l.price)}</span>
-                          )}
-                        </td>
+                        {effectiveKind !== 'business' && (
+                          <td data-label="Price" style={{ padding: '8px 10px', fontWeight: 700, color: '#0c6253', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            {isBusinessListing(l) ? (
+                              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>—</span>
+                            ) : (
+                              <span style={{ fontSize: '12.5px' }}>{formatListingPrice(l.price)}</span>
+                            )}
+                          </td>
+                        )}
                         <td data-label="Owner" style={{ padding: '8px 10px', verticalAlign: 'middle' }}>
                           <div style={{ fontWeight: 600, fontSize: '12.5px' }}>{l.owner_name}</div>
                           {l.assigned_email && (
