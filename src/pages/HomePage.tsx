@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { cityNameVariants, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { cityNameVariants, getBusinessCategories, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
@@ -125,9 +125,23 @@ const LISTINGS_PER_PAGE = 8;
 // Featured cards visible at once on desktop (matches the Recent Listings row)
 const FEATURED_PER_VIEW = 4;
 
+function getPaginationItems(current: number, total: number): Array<number | '...'> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+  if (current >= total - 3) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
+  const [businesses, setBusinesses] = useState<Listing[]>([]);
   const [stats, setStats] = useState<ListingStatsResponse | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
@@ -454,10 +468,12 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         params: { status: 'approved' }
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
-        // Business listings are shown only in the Business Directory
-        setListings(res.data.data.filter((l) => !isBusinessListing(l)));
+        const all = res.data.data;
+        setListings(all.filter((l) => !isBusinessListing(l)));
+        setBusinesses(all.filter(isBusinessListing));
       } else {
         setListings([]);
+        setBusinesses([]);
       }
     } catch (err: unknown) {
       console.error('Error fetching listings:', err);
@@ -480,13 +496,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   // Only listings featured by the server (paid featured plan or admin) — never a fallback to the latest ones
   const featuredListings = useMemo(() => listings.filter((l) => l.is_featured), [listings]);
-  // The 4 newest listings, shown in one row just after Featured Listings
-  const recentListings = useMemo(
-    () => [...listings]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime() || b.id - a.id)
-      .slice(0, 4),
-    [listings]
-  );
+  // Featured businesses promoted on TradeCall
+  const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
 
   // Cities with listing counts, from the same listings shown below so the numbers match what a click shows
   const cityCounts = useMemo(() => {
@@ -894,6 +905,129 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     );
   };
 
+  const renderBusinessCard = (business: Listing) => {
+    const imgSrc = getFirstImageUrl(business);
+    const categories = getBusinessCategories(business);
+    const categoryName: string = categories[0] || (typeof business.form_data?.categoryName === 'string' ? business.form_data.categoryName : '') || 'Business';
+    const isSaved = wishlistIds.has(business.id);
+
+    return (
+      <div
+        key={`business-${business.id}`}
+        className="listing-card business-featured-card"
+        {...listingCardProps(business)}
+      >
+        <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
+          <img
+            src={imgSrc}
+            alt={business.title}
+            className="card-img"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = '/placeholder-property.svg';
+            }}
+          />
+          {business.verified === 1 && (
+            <span className="badge-verified">
+              <i className="fas fa-check-circle"></i> Verified
+            </span>
+          )}
+          <span
+            className="badge-featured"
+            style={{
+              top: '12px',
+              left: '12px',
+              background: '#0d7a5f',
+              color: '#fff',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured Business
+          </span>
+
+          <button
+            type="button"
+            onClick={(e) => void handleToggleWishlist(e, business.id)}
+            title={isSaved ? 'Remove from Wishlist' : 'Save to Wishlist'}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '34px',
+              height: '34px',
+              borderRadius: '50%',
+              background: '#fff',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isSaved ? '#dc2626' : '#9ca3af',
+              fontSize: '15px',
+              zIndex: 2,
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
+          </button>
+        </div>
+
+        <div className="card-body">
+          <div
+            className="card-price"
+            style={{
+              fontSize: '14px',
+              color: '#0d7a5f',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              textTransform: 'capitalize'
+            }}
+          >
+            <i className="fas fa-store" style={{ fontSize: '12px', color: '#0d7a5f' }}></i>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {categoryName}
+            </span>
+          </div>
+          <h3 className="card-title" title={business.title}>{business.title}</h3>
+          <div className="card-location">
+            <i className="fas fa-map-marker-alt"></i>
+            <span>{business.location}</span>
+          </div>
+          <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+            Contact: <strong>{business.owner_name}</strong>
+          </div>
+          <div className="card-footer card-footer-actions">
+            <button
+              type="button"
+              className="btn-view"
+              onClick={(e) => { e.stopPropagation(); openListing(business); }}
+            >
+              <i className="fas fa-info-circle"></i> Details
+            </button>
+            <button
+              type="button"
+              className={`btn-wishlist ${isSaved ? 'active' : ''}`}
+              onClick={(e) => void handleToggleWishlist(e, business.id)}
+            >
+              <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
+              <span>Wishlist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="home-page">
       {/* Hero Section */}
@@ -1288,7 +1422,12 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             )}
 
             <div className="carousel-viewport">
-            {featuredListings.length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#6b7280', width: '100%' }}>
+                <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '12px' }}></i>
+                <div>Loading featured listings...</div>
+              </div>
+            ) : featuredListings.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280', width: '100%' }}>
                 No featured listings yet
               </div>
@@ -1398,21 +1537,29 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       </section>
       )}
 
-      {/* Recent Listings Section */}
-      {!hasActiveFilters && recentListings.length > 0 && (
-      <section className="recent-section" id="recent">
+      {/* TC Favourite Businesses Section */}
+      {!hasActiveFilters && featuredBusinesses.length > 0 && (
+      <section className="recent-section tc-favourite-businesses-section" id="favourite-businesses">
         <div className="container">
-          <div className="section-header">
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h2>
-                <i className="fas fa-clock" style={{ color: '#0d7a5f', marginRight: '8px' }}></i>
-                Recent Listings
+                <i className="fas fa-crown" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
+                TC Favourite Businesses
               </h2>
-              <p>Latest properties posted on TradeCall</p>
+              <p>Handpicked &amp; featured local businesses on TradeCall</p>
             </div>
+            <button
+              type="button"
+              className="btn-outline-green"
+              onClick={() => onNavigate('business-directory')}
+              style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              Explore Business Directory <i className="fas fa-arrow-right"></i>
+            </button>
           </div>
           <div className="recent-grid">
-            {recentListings.map((listing) => renderListingCard(listing))}
+            {featuredBusinesses.slice(0, 4).map((business) => renderBusinessCard(business))}
           </div>
         </div>
       </section>
@@ -1424,7 +1571,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           <div className="listings-main">
             <div className="listings-controls">
               <div className="listing-count" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span><strong>{filteredListings.length}</strong> listings found</span>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
+                  Recent Listings
+                </span>
                 {newOnly && (
                   <span className="listing-filter-chip">
                     New today
@@ -1607,16 +1756,33 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 <button type="button" className="page-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>
                   <i className="fas fa-chevron-left"></i> Prev
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className={`page-btn ${n === page ? 'active' : ''}`}
-                    onClick={() => goToPage(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
+                {getPaginationItems(page, totalPages).map((item, idx) =>
+                  item === '...' ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{
+                        padding: '6px 8px',
+                        color: '#9ca3af',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        userSelect: 'none'
+                      }}
+                    >
+                      &hellip;
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`page-btn ${item === page ? 'active' : ''}`}
+                      onClick={() => goToPage(item)}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
                 <button type="button" className="page-btn" disabled={page === totalPages} onClick={() => goToPage(page + 1)}>
                   Next <i className="fas fa-chevron-right"></i>
                 </button>

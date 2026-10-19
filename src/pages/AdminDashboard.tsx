@@ -26,7 +26,7 @@ import api, {
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import AdminLocationsByState from '../components/AdminLocationsByState';
-import { getListingCity, publicListingTitle } from '../utils/listingKind';
+import { getBusinessCategories, getListingCity, isBusinessListing, publicListingTitle } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
@@ -154,6 +154,7 @@ interface CashfreeSettingsState {
 
 type AdminModule =
   | 'listings'
+  | 'businesses'
   | 'locations'
   | 'categories'
   | 'users'
@@ -167,6 +168,7 @@ type AdminModule =
 
 const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'listings', label: 'Listings Management', icon: 'fas fa-building' },
+  { key: 'businesses', label: 'Business Directory', icon: 'fas fa-store' },
   { key: 'locations', label: 'Location Management', icon: 'fas fa-map-marker-alt' },
   { key: 'categories', label: 'Category Management', icon: 'fas fa-tags' },
   { key: 'users', label: 'User Management', icon: 'fas fa-users' },
@@ -322,6 +324,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   });
   const [listingTab, setListingTab] = useState<string>('pending');
   const [listingSearch, setListingSearch] = useState<string>('');
+  const [listingKindFilter, setListingKindFilter] = useState<'all' | 'property' | 'business'>('all');
+  const [onlyFeatured, setOnlyFeatured] = useState<boolean>(false);
   const [listingsLoading, setListingsLoading] = useState<boolean>(false);
   const [listingPage, setListingPage] = useState<number>(1);
 
@@ -1244,7 +1248,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   };
 
   useEffect(() => {
-    if (activeModule === 'listings') {
+    if (activeModule === 'listings' || activeModule === 'businesses') {
       fetchListingCounts();
       fetchAdminListings();
     } else if (activeModule === 'locations') {
@@ -1345,6 +1349,16 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               <i className="fas fa-plus"></i> Post Property as Admin
             </button>
           )}
+          {activeModule === 'businesses' && (
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => onNavigate('post-business-listing')}
+              style={{ fontSize: '13px', padding: '8px 16px' }}
+            >
+              <i className="fas fa-plus"></i> Post Business as Admin
+            </button>
+          )}
         </div>
 
         <div className="admin-layout">
@@ -1381,12 +1395,46 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {/* ======================================================== */}
         {/* MODULE 1: LISTINGS MANAGEMENT */}
         {/* ======================================================== */}
-        {activeModule === 'listings' && (
+        {(activeModule === 'listings' || activeModule === 'businesses') && (() => {
+          const effectiveKind = activeModule === 'businesses' ? 'business' : listingKindFilter;
+          const propertyCount = listings.filter((l) => !isBusinessListing(l)).length;
+          const businessCount = listings.filter(isBusinessListing).length;
+          const featuredCount = listings.filter((l) => l.is_featured).length;
+
+          const filteredAdminListings = listings.filter((l) => {
+            if (effectiveKind === 'property' && isBusinessListing(l)) return false;
+            if (effectiveKind === 'business' && !isBusinessListing(l)) return false;
+            if (onlyFeatured && !l.is_featured) return false;
+            return true;
+          });
+
+          const totalPages = Math.max(1, Math.ceil(filteredAdminListings.length / ADMIN_ITEMS_PER_PAGE));
+          const currentPage = Math.min(listingPage, totalPages);
+          const pagedListings = filteredAdminListings.slice(
+            (currentPage - 1) * ADMIN_ITEMS_PER_PAGE,
+            currentPage * ADMIN_ITEMS_PER_PAGE
+          );
+
+          return (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                Listings Moderation &amp; Control
-              </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  {activeModule === 'businesses' ? (
+                    <>
+                      <i className="fas fa-store" style={{ color: '#7c3aed', marginRight: '8px' }}></i>
+                      Business Directory Moderation &amp; Feature Control
+                    </>
+                  ) : (
+                    'Listings Moderation & Control'
+                  )}
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#6b7280' }}>
+                  {activeModule === 'businesses'
+                    ? 'Review, verify, and promote local businesses on TC Favourite Businesses'
+                    : 'Manage property and business listings across TradeCall'}
+                </p>
+              </div>
 
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
@@ -1415,6 +1463,139 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </button>
               </div>
             </div>
+
+            {/* Quick Type & Featured Filter Pills (shown in Listings Management) */}
+            {activeModule === 'listings' && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Type:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setListingKindFilter('all'); setListingPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: listingKindFilter === 'all' ? '#0c6253' : '#fff',
+                    color: listingKindFilter === 'all' ? '#fff' : '#374151',
+                    borderColor: listingKindFilter === 'all' ? '#0c6253' : '#e2e8f0'
+                  }}
+                >
+                  All ({listings.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setListingKindFilter('property'); setListingPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: listingKindFilter === 'property' ? '#0c6253' : '#fff',
+                    color: listingKindFilter === 'property' ? '#fff' : '#374151',
+                    borderColor: listingKindFilter === 'property' ? '#0c6253' : '#e2e8f0',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <i className="fas fa-home"></i> Properties ({propertyCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setListingKindFilter('business'); setListingPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: listingKindFilter === 'business' ? '#7c3aed' : '#fff',
+                    color: listingKindFilter === 'business' ? '#fff' : '#6d28d9',
+                    borderColor: listingKindFilter === 'business' ? '#7c3aed' : '#ddd6fe',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <i className="fas fa-store"></i> Businesses ({businessCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOnlyFeatured(!onlyFeatured); setListingPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: onlyFeatured ? '#d97706' : '#fff',
+                    color: onlyFeatured ? '#fff' : '#b45309',
+                    borderColor: onlyFeatured ? '#d97706' : '#fde68a',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    marginLeft: 'auto'
+                  }}
+                >
+                  <i className="fas fa-star"></i> Featured Only ({featuredCount})
+                </button>
+              </div>
+            )}
+
+            {/* Quick Filter in Business Directory module */}
+            {activeModule === 'businesses' && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Filter:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setOnlyFeatured(false); setListingPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: !onlyFeatured ? '#7c3aed' : '#fff',
+                    color: !onlyFeatured ? '#fff' : '#374151',
+                    borderColor: !onlyFeatured ? '#7c3aed' : '#e2e8f0'
+                  }}
+                >
+                  All Businesses ({businessCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOnlyFeatured(true); setListingPage(1); }}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    borderRadius: '20px',
+                    border: '1.5px solid',
+                    cursor: 'pointer',
+                    background: onlyFeatured ? '#d97706' : '#fff',
+                    color: onlyFeatured ? '#fff' : '#b45309',
+                    borderColor: onlyFeatured ? '#d97706' : '#fde68a',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <i className="fas fa-crown"></i> TC Favourite / Featured ({listings.filter((l) => isBusinessListing(l) && l.is_featured).length})
+                </button>
+              </div>
+            )}
 
             {/* Status Tabs */}
             <div className="admin-tabs" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '20px', overflowX: 'auto' }}>
@@ -1462,9 +1643,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
                 <div>Loading listings...</div>
               </div>
-            ) : listings.length === 0 ? (
+            ) : filteredAdminListings.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '50px 20px', color: '#6b7280' }}>
-                No {listingTab} listings found.
+                No {effectiveKind === 'business' ? 'business ' : effectiveKind === 'property' ? 'property ' : ''}{listingTab} listings found.
               </div>
             ) : (
               <>
@@ -1474,7 +1655,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '10px 8px', width: '48px', whiteSpace: 'nowrap' }}>ID</th>
                       <th style={{ padding: '10px 8px' }}>Title &amp; Location</th>
-                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Price</th>
+                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                        {effectiveKind === 'business' ? 'Category' : 'Price / Category'}
+                      </th>
                       <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Owner</th>
                       <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Status</th>
                       <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Stamp</th>
@@ -1483,32 +1666,44 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {listings
-                      .slice(
-                        (Math.min(listingPage, Math.max(1, Math.ceil(listings.length / ADMIN_ITEMS_PER_PAGE))) - 1) * ADMIN_ITEMS_PER_PAGE,
-                        Math.min(listingPage, Math.max(1, Math.ceil(listings.length / ADMIN_ITEMS_PER_PAGE))) * ADMIN_ITEMS_PER_PAGE
-                      )
-                      .map((l) => (
+                    {pagedListings.map((l) => (
                       <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td data-label="ID" style={{ padding: '10px 8px', fontWeight: 700, color: '#64748b' }}>
                           #{l.id}
                         </td>
                         <td data-label="Listing" style={{ padding: '10px 8px' }}>
-                          <button
-                            type="button"
-                            className="admin-listing-title"
-                            title="Open listing page"
-                            style={{ lineHeight: 1.45, marginBottom: '3px' }}
-                            onClick={() => onNavigate('listing-detail', l)}
-                          >
-                            {publicListingTitle(l)}
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
+                            <button
+                              type="button"
+                              className="admin-listing-title"
+                              title="Open listing page"
+                              style={{ lineHeight: 1.45, margin: 0 }}
+                              onClick={() => onNavigate('listing-detail', l)}
+                            >
+                              {publicListingTitle(l)}
+                            </button>
+                            {isBusinessListing(l) ? (
+                              <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: '#ede9fe', color: '#6d28d9', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <i className="fas fa-store" style={{ fontSize: '9px' }}></i> Business
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '10.5px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
+                                Property
+                              </span>
+                            )}
+                          </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             <i className="fas fa-map-marker-alt"></i> {l.location}
                           </div>
                         </td>
                         <td data-label="Price" style={{ padding: '10px 8px', fontWeight: 700, color: '#0c6253', whiteSpace: 'nowrap' }}>
-                          {formatListingPrice(l.price)}
+                          {isBusinessListing(l) ? (
+                            <span style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 600 }}>
+                              {getBusinessCategories(l)[0] || 'Business'}
+                            </span>
+                          ) : (
+                            formatListingPrice(l.price)
+                          )}
                         </td>
                         <td data-label="Owner" style={{ padding: '10px 8px' }}>
                           <div style={{ fontWeight: 600 }}>{l.owner_name}</div>
@@ -1520,7 +1715,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{l.owner_role}</div>
                         </td>
                         <td data-label="Status" style={{ padding: '10px 8px' }}>
-<select
+                          <select
                             className="admin-status-select"
                             value={l.status}
                             onChange={(e) => {
@@ -1553,8 +1748,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <td data-label="Featured" style={{ padding: '10px 8px' }}>
                           {l.is_featured ? (
                             <div>
-                              <span style={{ color: '#b45309', fontWeight: 700 }}>
-                                <i className="fas fa-star"></i> Featured
+                              <span style={{ color: '#b45309', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fas fa-star" style={{ color: '#f59e0b' }}></i> Featured
                               </span>
                               <div style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 4px' }}>
                                 {l.featured_until
@@ -1575,7 +1770,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                   className="btn-outline"
                                   style={{ padding: '2px 6px', fontSize: '10px', color: '#dc2626', borderColor: '#fca5a5' }}
                                   onClick={() => {
-                                    if (window.confirm(`Remove featured from listing #${l.id}?`)) void handleSetFeatured(l.id, false);
+                                    if (window.confirm(`Remove featured from ${isBusinessListing(l) ? 'business' : 'listing'} #${l.id}?`)) void handleSetFeatured(l.id, false);
                                   }}
                                 >
                                   Unfeature
@@ -1586,10 +1781,16 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <button
                               type="button"
                               className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#d97706', color: '#b45309' }}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                borderColor: isBusinessListing(l) ? '#7c3aed' : '#d97706',
+                                color: isBusinessListing(l) ? '#6d28d9' : '#b45309',
+                                fontWeight: 600
+                              }}
                               onClick={() => { setFeatureDays('7'); setFeaturingListing(l); }}
                             >
-                              <i className="far fa-star"></i> Feature
+                              <i className="far fa-star"></i> {isBusinessListing(l) ? 'Feature Business' : 'Feature'}
                             </button>
                           ) : (
                             <span style={{ fontSize: '11px', color: '#94a3b8' }}>Approve first</span>
@@ -1631,16 +1832,17 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </table>
               </div>
               <AdminPagination
-                currentPage={Math.min(listingPage, Math.max(1, Math.ceil(listings.length / ADMIN_ITEMS_PER_PAGE)))}
-                totalItems={listings.length}
+                currentPage={currentPage}
+                totalItems={filteredAdminListings.length}
                 itemsPerPage={ADMIN_ITEMS_PER_PAGE}
                 onPageChange={setListingPage}
-                itemName={`${listingTab} listings`}
+                itemName={`${effectiveKind === 'business' ? 'business ' : effectiveKind === 'property' ? 'property ' : ''}${listingTab} listings`}
               />
             </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ======================================================== */}
         {/* MODULE 2: LOCATION MANAGEMENT */}
@@ -3220,7 +3422,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '420px', width: '100%', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  {featuringListing.is_featured ? 'Change Featured Period' : 'Feature Listing'}
+                  {featuringListing.is_featured
+                    ? `Change Featured Period (${isBusinessListing(featuringListing) ? 'Business' : 'Listing'})`
+                    : `Feature ${isBusinessListing(featuringListing) ? 'Business' : 'Listing'}`}
                 </h3>
                 <button
                   type="button"
@@ -3232,7 +3436,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </div>
 
               <p style={{ fontSize: '13px', color: '#475569', margin: '0 0 16px' }}>
-                #{featuringListing.id} · {publicListingTitle(featuringListing)}
+                #{featuringListing.id} · {publicListingTitle(featuringListing)} {isBusinessListing(featuringListing) ? '(Business)' : ''}
               </p>
 
               <form onSubmit={handleSubmitFeature}>
@@ -3260,7 +3464,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     Cancel
                   </button>
                   <button type="submit" className="btn-primary">
-                    <i className="fas fa-star"></i> {featuringListing.is_featured ? 'Update' : 'Feature'}
+                    <i className="fas fa-star"></i> {featuringListing.is_featured ? 'Update' : (isBusinessListing(featuringListing) ? 'Feature Business' : 'Feature Listing')}
                   </button>
                 </div>
               </form>

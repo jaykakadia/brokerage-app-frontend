@@ -157,7 +157,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       if (!haystack.includes(q)) return false;
     }
     return true;
-  });
+  }).sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0));
 
   const hasFilters = Boolean(search || category || city || newOnly);
 
@@ -397,6 +397,26 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                       />
                       {b.verified === 1 && (
                         <span className="badge-verified"><i className="fas fa-check-circle"></i> Verified</span>
+                      )}
+                      {b.is_featured && (
+                        <span
+                          className="badge-featured"
+                          style={{
+                            top: '12px',
+                            left: '12px',
+                            background: '#0d7a5f',
+                            color: '#fff',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured
+                        </span>
                       )}
                     </div>
                     <div className="card-body">
