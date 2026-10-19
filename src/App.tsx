@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
@@ -37,7 +37,8 @@ const PageLoader = () => (
 import { parseAppRoute, getListingUrl } from './utils/url';
 import { PAGE_SEO, setSeo } from './utils/seo';
 import { getCityFromSlug, getCitySlug } from './config/cities';
-import type { NavigateFunction } from './types';
+import { getPageMetadataList } from './services/api';
+import type { NavigateFunction, PageMetadata } from './types';
 
 export default function App() {
   const [initialRoute] = useState(() => parseAppRoute(window.location.pathname, window.location.hash));
@@ -64,6 +65,27 @@ export default function App() {
     icon?: string;
     onSuccess?: () => void;
   }>({ isOpen: false });
+
+  const [metaMap, setMetaMap] = useState<Map<string, PageMetadata>>(new Map());
+
+  const refreshMetaMap = useCallback(async () => {
+    try {
+      const res = await getPageMetadataList();
+      if (Array.isArray(res.data?.data)) {
+        const m = new Map<string, PageMetadata>();
+        res.data.data.forEach((item) => {
+          m.set(item.path.toLowerCase(), item);
+        });
+        setMetaMap(m);
+      }
+    } catch {
+      // gracefully keep default
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshMetaMap();
+  }, [refreshMetaMap]);
 
   const openAuthModal = (_options?: {
     title?: string;
@@ -128,6 +150,19 @@ export default function App() {
   // Listing, blog, city, and not-found pages set their own SEO once active
   useEffect(() => {
     if (activePage === 'listing-detail' || activePage === 'blog-detail') return;
+
+    // 1. Check if custom Meta Data is configured in Admin for this URL path
+    const currentPath = (window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/');
+    const customMeta = metaMap.get(currentPath);
+    if (customMeta) {
+      setSeo({
+        title: customMeta.meta_title,
+        description: customMeta.meta_description,
+        path: customMeta.path,
+      });
+      return;
+    }
+
     if (activePage === 'login' && loginTab === 'register') {
       setSeo({ title: 'Register', noindex: true });
       return;
@@ -161,7 +196,7 @@ export default function App() {
       return;
     }
     setSeo(PAGE_SEO[activePage] ?? {});
-  }, [activePage, loginTab, activeCity]);
+  }, [activePage, loginTab, activeCity, metaMap]);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;

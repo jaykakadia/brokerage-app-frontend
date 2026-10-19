@@ -30,7 +30,10 @@ import type {
   Enquiry,
   EnquiryCreate,
   EnquiryCounts,
-  EnquiryStatus
+  EnquiryStatus,
+  PageMetadata,
+  PageMetadataCreate,
+  PageMetadataUpdate
 } from '../types';
 
 // Production builds call the API on their own origin: the host forwards /api and /uploads to the
@@ -280,3 +283,19 @@ export const updateEnquiry = (id: number, data: { status?: EnquiryStatus; admin_
 
 export const deleteEnquiry = (id: number): Promise<AxiosResponse<MessageResponse>> =>
   api.delete(`/api/v1/admin/enquiries/${id}`);
+
+// --- Page Metadata (SEO) ---
+export const getPageMetadataList = (): Promise<AxiosResponse<ApiResponse<PageMetadata[]>>> =>
+  api.get('/api/v1/metadata');
+
+export const getAdminPageMetadata = (): Promise<AxiosResponse<ApiResponse<PageMetadata[]>>> =>
+  api.get('/api/v1/admin/metadata');
+
+export const createPageMetadata = (data: PageMetadataCreate): Promise<AxiosResponse<ApiResponse<PageMetadata>>> =>
+  api.post('/api/v1/admin/metadata', data);
+
+export const updatePageMetadata = (id: number, data: PageMetadataUpdate): Promise<AxiosResponse<ApiResponse<PageMetadata>>> =>
+  api.put(`/api/v1/admin/metadata/${id}`, data);
+
+export const deletePageMetadata = (id: number): Promise<AxiosResponse<MessageResponse>> =>
+  api.delete(`/api/v1/admin/metadata/${id}`);

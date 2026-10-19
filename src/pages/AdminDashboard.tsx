@@ -29,6 +29,7 @@ import AdminLocationsByState from '../components/AdminLocationsByState';
 import { getListingCity, isBusinessListing, publicListingTitle } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
+import AdminMetadataManager from '../components/AdminMetadataManager';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
 import { normalizeExternalUrl } from '../utils/url';
@@ -163,6 +164,7 @@ type AdminModule =
   | 'tracker'
   | 'blogs'
   | 'enquiries'
+  | 'metadata'
   | 'settings'
   | 'cashfree';
 
@@ -177,6 +179,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'tracker', label: 'Business Associates', icon: 'fas fa-chart-line' },
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
+  { key: 'metadata', label: 'Meta Data', icon: 'fas fa-globe' },
   { key: 'settings', label: 'Settings', icon: 'fas fa-cog' },
   { key: 'cashfree', label: 'Cashfree Settings', icon: 'fas fa-credit-card' }
 ];
@@ -324,7 +327,6 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   });
   const [listingTab, setListingTab] = useState<string>('pending');
   const [listingSearch, setListingSearch] = useState<string>('');
-  const [listingKindFilter, setListingKindFilter] = useState<'all' | 'property' | 'business'>('all');
   const [onlyFeatured, setOnlyFeatured] = useState<boolean>(false);
   const [listingsLoading, setListingsLoading] = useState<boolean>(false);
   const [listingPage, setListingPage] = useState<number>(1);
@@ -448,9 +450,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   }, []);
 
   // --- FETCH LISTINGS & COUNTS ---
-  const fetchListingCounts = async () => {
+  const fetchListingCounts = async (mod = activeModule) => {
     try {
-      const res = await api.get('/api/v1/listings/counts');
+      const kind = mod === 'businesses' ? 'business' : 'property';
+      const res = await api.get('/api/v1/listings/counts', { params: { kind } });
       if (res.data?.status === 'success' && res.data?.data) {
         setListingCounts(res.data.data);
       }
@@ -459,13 +462,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  const fetchAdminListings = async () => {
+  const fetchAdminListings = async (mod = activeModule, tab = listingTab, query = listingSearch) => {
     setListingsLoading(true);
     try {
+      const kind = mod === 'businesses' ? 'business' : 'property';
       const res = await api.get('/api/v1/listings', {
         params: {
-          status: listingTab,
-          search: listingSearch.trim() || undefined
+          status: tab,
+          search: query.trim() || undefined,
+          kind
         }
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
@@ -1249,8 +1254,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
   useEffect(() => {
     if (activeModule === 'listings' || activeModule === 'businesses') {
-      fetchListingCounts();
-      fetchAdminListings();
+      setListingPage(1);
+      fetchListingCounts(activeModule);
+      fetchAdminListings(activeModule);
     } else if (activeModule === 'locations') {
       fetchLocations();
     } else if (activeModule === 'categories') {
@@ -1392,18 +1398,21 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           />
         )}
 
+        {activeModule === 'metadata' && (
+          <AdminMetadataManager showToast={showToast} />
+        )}
+
         {/* ======================================================== */}
         {/* MODULE 1: LISTINGS MANAGEMENT */}
         {/* ======================================================== */}
         {(activeModule === 'listings' || activeModule === 'businesses') && (() => {
-          const effectiveKind = activeModule === 'businesses' ? 'business' : listingKindFilter;
-          const propertyCount = listings.filter((l) => !isBusinessListing(l)).length;
-          const businessCount = listings.filter(isBusinessListing).length;
+          const isBusiness = activeModule === 'businesses';
+          const effectiveKind = isBusiness ? 'business' : 'property';
           const featuredCount = listings.filter((l) => l.is_featured).length;
 
           const filteredAdminListings = listings.filter((l) => {
-            if (effectiveKind === 'property' && isBusinessListing(l)) return false;
-            if (effectiveKind === 'business' && !isBusinessListing(l)) return false;
+            if (isBusiness && !isBusinessListing(l)) return false;
+            if (!isBusiness && isBusinessListing(l)) return false;
             if (onlyFeatured && !l.is_featured) return false;
             return true;
           });
@@ -1432,7 +1441,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#6b7280' }}>
                   {activeModule === 'businesses'
                     ? 'Review, verify, and promote local businesses on TC Favourite Businesses'
-                    : 'Manage property and business listings across TradeCall'}
+                    : 'Manage property listings across TradeCall'}
                 </p>
               </div>
 
@@ -1467,66 +1476,6 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             {/* Quick Type & Featured Filter Pills (shown in Listings Management) */}
             {activeModule === 'listings' && (
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Type:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => { setListingKindFilter('all'); setListingPage(1); }}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    cursor: 'pointer',
-                    background: listingKindFilter === 'all' ? '#0c6253' : '#fff',
-                    color: listingKindFilter === 'all' ? '#fff' : '#374151',
-                    borderColor: listingKindFilter === 'all' ? '#0c6253' : '#e2e8f0'
-                  }}
-                >
-                  All ({listings.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setListingKindFilter('property'); setListingPage(1); }}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    cursor: 'pointer',
-                    background: listingKindFilter === 'property' ? '#0c6253' : '#fff',
-                    color: listingKindFilter === 'property' ? '#fff' : '#374151',
-                    borderColor: listingKindFilter === 'property' ? '#0c6253' : '#e2e8f0',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <i className="fas fa-home"></i> Properties ({propertyCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setListingKindFilter('business'); setListingPage(1); }}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    borderRadius: '20px',
-                    border: '1.5px solid',
-                    cursor: 'pointer',
-                    background: listingKindFilter === 'business' ? '#7c3aed' : '#fff',
-                    color: listingKindFilter === 'business' ? '#fff' : '#6d28d9',
-                    borderColor: listingKindFilter === 'business' ? '#7c3aed' : '#ddd6fe',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <i className="fas fa-store"></i> Businesses ({businessCount})
-                </button>
                 <button
                   type="button"
                   onClick={() => { setOnlyFeatured(!onlyFeatured); setListingPage(1); }}
@@ -1542,8 +1491,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     borderColor: onlyFeatured ? '#d97706' : '#fde68a',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '5px',
-                    marginLeft: 'auto'
+                    gap: '5px'
                   }}
                 >
                   <i className="fas fa-star"></i> Featured Only ({featuredCount})
@@ -1572,7 +1520,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     borderColor: !onlyFeatured ? '#7c3aed' : '#e2e8f0'
                   }}
                 >
-                  All Businesses ({businessCount})
+                  All Businesses ({listings.length})
                 </button>
                 <button
                   type="button"
