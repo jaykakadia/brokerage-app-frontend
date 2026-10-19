@@ -1599,7 +1599,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
             {/* Status Tabs */}
             <div className="admin-tabs" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '20px', overflowX: 'auto' }}>
-              {['pending', 'approved', 'sold', 'rented', 'suspended', 'deleted'].map((st) => (
+              {(activeModule === 'businesses' ? ['pending', 'approved', 'suspended', 'deleted'] : ['pending', 'approved', 'sold', 'rented', 'suspended', 'deleted']).map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -1650,71 +1650,73 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             ) : (
               <>
               <div style={{ overflowX: 'auto' }}>
-                <table className="admin-table admin-listings-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <table className="admin-table admin-listings-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                      <th style={{ padding: '10px 8px', width: '48px', whiteSpace: 'nowrap' }}>ID</th>
-                      <th style={{ padding: '10px 8px' }}>Title &amp; Location</th>
-                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                      <th style={{ padding: '8px 10px', width: '48px', whiteSpace: 'nowrap' }}>ID</th>
+                      <th style={{ padding: '8px 10px', minWidth: '220px' }}>Title &amp; Location</th>
+                      <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                         {effectiveKind === 'business' ? 'Category' : 'Price / Category'}
                       </th>
-                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Owner</th>
-                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Status</th>
-                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Stamp</th>
-                      <th style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>Featured</th>
-                      <th style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                      <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Owner</th>
+                      <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Status</th>
+                      <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Stamp</th>
+                      <th style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>Featured</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pagedListings.map((l) => (
                       <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td data-label="ID" style={{ padding: '10px 8px', fontWeight: 700, color: '#64748b' }}>
+                        <td data-label="ID" style={{ padding: '8px 10px', fontWeight: 700, color: '#64748b', verticalAlign: 'middle' }}>
                           #{l.id}
                         </td>
-                        <td data-label="Listing" style={{ padding: '10px 8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '3px' }}>
+                        <td data-label="Listing" style={{ padding: '8px 10px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
                             <button
                               type="button"
                               className="admin-listing-title"
                               title="Open listing page"
-                              style={{ lineHeight: 1.45, margin: 0 }}
+                              style={{ lineHeight: 1.35, margin: 0, fontSize: '13px' }}
                               onClick={() => onNavigate('listing-detail', l)}
                             >
                               {publicListingTitle(l)}
                             </button>
-                            {isBusinessListing(l) ? (
-                              <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: '#ede9fe', color: '#6d28d9', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                <i className="fas fa-store" style={{ fontSize: '9px' }}></i> Business
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '10.5px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
-                                Property
-                              </span>
+                            {activeModule !== 'businesses' && (
+                              isBusinessListing(l) ? (
+                                <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: '#ede9fe', color: '#6d28d9', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                  <i className="fas fa-store" style={{ fontSize: '8.5px' }}></i> Business
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 5px', borderRadius: '4px', background: '#f1f5f9', color: '#475569' }}>
+                                  Property
+                                </span>
+                              )
                             )}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            <i className="fas fa-map-marker-alt"></i> {l.location}
+                          <div style={{ fontSize: '11.5px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <i className="fas fa-map-marker-alt" style={{ fontSize: '10.5px', color: '#9ca3af' }}></i> {l.location}
                           </div>
                         </td>
-                        <td data-label="Price" style={{ padding: '10px 8px', fontWeight: 700, color: '#0c6253', whiteSpace: 'nowrap' }}>
+                        <td data-label="Price" style={{ padding: '8px 10px', fontWeight: 700, color: '#0c6253', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                           {isBusinessListing(l) ? (
-                            <span style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 600 }}>
+                            <span style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 600, background: '#f5f3ff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
                               {getBusinessCategories(l)[0] || 'Business'}
                             </span>
                           ) : (
-                            formatListingPrice(l.price)
+                            <span style={{ fontSize: '12.5px' }}>{formatListingPrice(l.price)}</span>
                           )}
                         </td>
-                        <td data-label="Owner" style={{ padding: '10px 8px' }}>
-                          <div style={{ fontWeight: 600 }}>{l.owner_name}</div>
+                        <td data-label="Owner" style={{ padding: '8px 10px', verticalAlign: 'middle' }}>
+                          <div style={{ fontWeight: 600, fontSize: '12.5px' }}>{l.owner_name}</div>
                           {l.assigned_email && (
-                            <div style={{ fontSize: 11, color: '#b45309' }} title="Moves to this user when they sign up">
+                            <div style={{ fontSize: '10.5px', color: '#b45309' }} title="Moves to this user when they sign up">
                               <i className="fas fa-clock"></i> For {l.assigned_email}
                             </div>
                           )}
                           <div style={{ fontSize: '11px', color: '#64748b' }}>{l.owner_role}</div>
                         </td>
-                        <td data-label="Status" style={{ padding: '10px 8px' }}>
+                        <td data-label="Status" style={{ padding: '8px 10px', verticalAlign: 'middle' }}>
                           <select
                             className="admin-status-select"
                             value={l.status}
@@ -1723,57 +1725,70 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               if (next === 'deleted' && !window.confirm(`Mark listing #${l.id} as deleted?`)) return;
                               void handleUpdateListingStatus(l.id, statusAction(next));
                             }}
-                            style={{ background: STATUS_COLORS[l.status]?.bg || '#f1f5f9', color: STATUS_COLORS[l.status]?.fg || '#334155' }}
+                            style={{
+                              background: STATUS_COLORS[l.status]?.bg || '#f1f5f9',
+                              color: STATUS_COLORS[l.status]?.fg || '#334155',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: 700
+                            }}
                             aria-label={`Status of listing #${l.id}`}
                           >
-                            {LISTING_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
+                            {(isBusinessListing(l) ? ['pending', 'approved', 'suspended', 'deleted'] : LISTING_STATUSES).map((st) => (
+                              <option key={st} value={st}>{st}</option>
+                            ))}
                           </select>
                         </td>
-                        <td data-label="Stamp" style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                        <td data-label="Stamp" style={{ padding: '8px 10px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                           {l.verified === 1 ? (
-                            <span style={{ color: '#16a34a', fontWeight: 700 }}>
+                            <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                               <i className="fas fa-check-circle"></i> Verified
                             </span>
                           ) : (
                             <button
                               type="button"
                               className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#ea580c', color: '#ea580c' }}
+                              style={{ padding: '3px 8px', fontSize: '11px', height: '26px', borderColor: '#ea580c', color: '#ea580c', borderRadius: '5px' }}
                               onClick={() => handleUpdateListingStatus(l.id, 'stamp')}
                             >
                               <i className="fas fa-stamp"></i> Verify
                             </button>
                           )}
                         </td>
-                        <td data-label="Featured" style={{ padding: '10px 8px' }}>
+                        <td data-label="Featured" style={{ padding: '8px 10px', verticalAlign: 'middle' }}>
                           {l.is_featured ? (
-                            <div>
-                              <span style={{ color: '#b45309', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <i className="fas fa-star" style={{ color: '#f59e0b' }}></i> Featured
-                              </span>
-                              <div style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 4px' }}>
-                                {l.featured_until
-                                  ? `Until ${new Date(l.featured_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                                  : 'No expiry'}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                <span style={{ color: '#b45309', fontWeight: 700, fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#fef3c7', padding: '2px 6px', borderRadius: '4px' }}>
+                                  <i className="fas fa-star" style={{ color: '#f59e0b', fontSize: '10px' }}></i> Featured
+                                </span>
+                                <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+                                  {l.featured_until
+                                    ? `${new Date(l.featured_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                                    : 'Lifetime'}
+                                </span>
                               </div>
                               <div style={{ display: 'inline-flex', gap: '4px' }}>
                                 <button
                                   type="button"
                                   className="btn-outline"
-                                  style={{ padding: '2px 6px', fontSize: '10px' }}
+                                  style={{ padding: '2px 6px', fontSize: '10px', height: '22px', borderRadius: '4px' }}
                                   onClick={() => { setFeatureDays('7'); setFeaturingListing(l); }}
+                                  title="Change duration"
                                 >
-                                  Change
+                                  Edit
                                 </button>
                                 <button
                                   type="button"
                                   className="btn-outline"
-                                  style={{ padding: '2px 6px', fontSize: '10px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                  style={{ padding: '2px 6px', fontSize: '10px', height: '22px', color: '#dc2626', borderColor: '#fca5a5', borderRadius: '4px' }}
                                   onClick={() => {
                                     if (window.confirm(`Remove featured from ${isBusinessListing(l) ? 'business' : 'listing'} #${l.id}?`)) void handleSetFeatured(l.id, false);
                                   }}
+                                  title="Remove featured"
                                 >
-                                  Unfeature
+                                  Remove
                                 </button>
                               </div>
                             </div>
@@ -1782,27 +1797,33 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               type="button"
                               className="btn-outline"
                               style={{
-                                padding: '4px 8px',
+                                padding: '3px 8px',
                                 fontSize: '11px',
+                                height: '26px',
                                 borderColor: isBusinessListing(l) ? '#7c3aed' : '#d97706',
                                 color: isBusinessListing(l) ? '#6d28d9' : '#b45309',
-                                fontWeight: 600
+                                fontWeight: 600,
+                                borderRadius: '5px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
                               }}
                               onClick={() => { setFeatureDays('7'); setFeaturingListing(l); }}
                             >
-                              <i className="far fa-star"></i> {isBusinessListing(l) ? 'Feature Business' : 'Feature'}
+                              <i className="far fa-star"></i> {isBusinessListing(l) ? 'Feature' : 'Feature'}
                             </button>
                           ) : (
                             <span style={{ fontSize: '11px', color: '#94a3b8' }}>Approve first</span>
                           )}
                         </td>
-                        <td data-label="Actions" style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <td data-label="Actions" style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'inline-flex', gap: '5px', alignItems: 'center' }}>
                             <button
                               type="button"
                               className="btn-outline"
-                              style={{ padding: '4px 10px', fontSize: '11px' }}
+                              style={{ padding: '3px 8px', fontSize: '11px', height: '26px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               onClick={() => setEditingListing(l)}
+                              title="Edit listing details"
                             >
                               <i className="fas fa-pen"></i> Edit
                             </button>
@@ -1810,7 +1831,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               <button
                                 type="button"
                                 className="btn-primary"
-                                style={{ padding: '4px 8px', fontSize: '11px' }}
+                                style={{ padding: '3px 8px', fontSize: '11px', height: '26px', borderRadius: '5px' }}
                                 onClick={() => handleUpdateListingStatus(l.id, 'approve')}
                               >
                                 Approve
@@ -1819,8 +1840,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                             <button
                               type="button"
                               className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '11px', color: '#dc2626', borderColor: '#fca5a5' }}
+                              style={{ padding: '3px 8px', fontSize: '11px', height: '26px', color: '#dc2626', borderColor: '#fca5a5', borderRadius: '5px' }}
                               onClick={() => handleDeleteListing(l.id)}
+                              title="Delete listing"
                             >
                               <i className="fas fa-trash"></i>
                             </button>
