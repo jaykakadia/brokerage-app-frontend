@@ -188,8 +188,8 @@ export function listingTitle(form: PropertyFormState, isBuyer = false): string {
   const rooms = form.propType === 'flat' || form.propType === 'house' ? `${form.bhk} ` : '';
   const label = propTypeLabel(form.propType);
   const title = isBuyer
-    // Buyer listings ask for a property, e.g. "Looking to Buy Plot in Sector-12, Palwal"
-    ? `Looking to ${form.forWhat === 'rent' ? 'Rent' : 'Buy'} ${rooms}${label === 'Commercial' ? 'Commercial Property' : label}`
+    // Buyer listings ask for a property, e.g. "Looking for Rent Plot in Sector-12, Palwal" or "Looking to Buy..."
+    ? `${form.forWhat === 'rent' ? 'Looking for Rent' : 'Looking to Buy'} ${rooms}${label === 'Commercial' ? 'Commercial Property' : label}`
     : `${rooms}${label} ${form.forWhat === 'rent' ? 'for Rent' : 'for Sale'}`;
   return `${title}${place ? ` in ${place}` : ''}`.replace(/\s+/g, ' ').trim();
 }
