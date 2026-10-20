@@ -1600,97 +1600,140 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       {/* Listings Section */}
       <section className="listings-section" id="listings">
         <div className="container">
-          <div className="section-header">
-            <div>
-              <h2>
-                <i className="fas fa-clock" style={{ color: '#0c6253', marginRight: '8px' }}></i>
-                Recent Listings
-              </h2>
-              <p>Latest properties posted on TradeCall</p>
+          <div className="listings-header-bar">
+            <div className="listings-header-info">
+              <div className="listings-title-row">
+                <h2>
+                  <span className="listings-title-icon">
+                    <i className="fas fa-clock"></i>
+                  </span>
+                  Recent Listings
+                </h2>
+                {!loading && (
+                  <span className="listings-count-badge">
+                    {filteredListings.length} {filteredListings.length === 1 ? 'property' : 'properties'}
+                  </span>
+                )}
+              </div>
+              <p className="listings-header-sub">Latest verified properties posted on TradeCall</p>
+            </div>
+
+            <div className="listings-header-actions">
+              <div className="category-tabs" role="tablist" aria-label="Listing Category">
+                <button
+                  type="button"
+                  className={`cat-tab ${activeCategoryTab === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveCategoryTab('all')}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${activeCategoryTab === 'sale' ? 'active' : ''}`}
+                  onClick={() => setActiveCategoryTab('sale')}
+                >
+                  For Sale
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${activeCategoryTab === 'rent' ? 'active' : ''}`}
+                  onClick={() => setActiveCategoryTab('rent')}
+                >
+                  For Rent
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${activeCategoryTab === 'buy' ? 'active' : ''}`}
+                  onClick={() => setActiveCategoryTab('buy')}
+                >
+                  For Buy
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${activeCategoryTab === 'verified' ? 'active' : ''}`}
+                  onClick={() => setActiveCategoryTab('verified')}
+                >
+                  <i className="fas fa-shield-alt" style={{ marginRight: '5px' }}></i>
+                  Verified Only
+                </button>
+              </div>
+
+              <div className="listings-divider"></div>
+
+              <div className="view-toggles" aria-label="View toggle">
+                <button
+                  type="button"
+                  className={`view-btn ${viewType === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewType('grid')}
+                  title="Grid View"
+                  aria-label="Grid View"
+                >
+                  <i className="fas fa-th"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`view-btn ${viewType === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewType('list')}
+                  title="List View"
+                  aria-label="List View"
+                >
+                  <i className="fas fa-list"></i>
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="listings-main">
-            <div className="listings-controls">
-              <div className="listing-count" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {(newOnly || hasActiveFilters) && (
+            <div className="listings-filter-bar">
+              <div className="listings-filter-chips">
+                <span className="listings-filter-label">Active filters:</span>
                 {newOnly && (
                   <span className="listing-filter-chip">
+                    <i className="fas fa-bolt" style={{ color: '#0c6253', marginRight: '4px' }}></i>
                     New today
                     <button type="button" onClick={() => setNewOnly(false)} title="Show all listings">
                       <i className="fas fa-times"></i>
                     </button>
                   </span>
                 )}
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    className="btn-clear-filter"
-                    style={{ fontSize: '12.5px', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
-                    onClick={handleClearFilters}
-                  >
-                    <i className="fas fa-undo" style={{ marginRight: '4px' }}></i> Reset Filters
-                  </button>
+                {activeCategoryTab !== 'all' && (
+                  <span className="listing-filter-chip">
+                    {activeCategoryTab === 'sale' ? 'For Sale' : activeCategoryTab === 'rent' ? 'For Rent' : activeCategoryTab === 'buy' ? 'For Buy' : 'Verified'}
+                    <button type="button" onClick={() => setActiveCategoryTab('all')} title="Show all">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {heroCity && (
+                  <span className="listing-filter-chip">
+                    <i className="fas fa-map-marker-alt" style={{ marginRight: '4px' }}></i>
+                    {heroCity}
+                    <button type="button" onClick={() => setHeroCity('')} title="Clear city">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {heroType && (
+                  <span className="listing-filter-chip">
+                    <i className="fas fa-home" style={{ marginRight: '4px' }}></i>
+                    {typeInput || heroType}
+                    <button type="button" onClick={() => { setHeroType(''); setTypeInput(''); }} title="Clear type">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
                 )}
               </div>
-              <div className="listings-actions">
-                <div className="category-tabs">
-                  <button
-                    type="button"
-                    className={`cat-tab ${activeCategoryTab === 'all' ? 'active' : ''}`}
-                    onClick={() => setActiveCategoryTab('all')}
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    className={`cat-tab ${activeCategoryTab === 'sale' ? 'active' : ''}`}
-                    onClick={() => setActiveCategoryTab('sale')}
-                  >
-                    For Sale
-                  </button>
-                  <button
-                    type="button"
-                    className={`cat-tab ${activeCategoryTab === 'rent' ? 'active' : ''}`}
-                    onClick={() => setActiveCategoryTab('rent')}
-                  >
-                    For Rent
-                  </button>
-                  <button
-                    type="button"
-                    className={`cat-tab ${activeCategoryTab === 'buy' ? 'active' : ''}`}
-                    onClick={() => setActiveCategoryTab('buy')}
-                  >
-                    For Buy
-                  </button>
-                  <button
-                    type="button"
-                    className={`cat-tab ${activeCategoryTab === 'verified' ? 'active' : ''}`}
-                    onClick={() => setActiveCategoryTab('verified')}
-                  >
-                    Verified Only
-                  </button>
-                </div>
-
-                <div className="view-toggles">
-                  <button
-                    type="button"
-                    className={`view-btn ${viewType === 'grid' ? 'active' : ''}`}
-                    onClick={() => setViewType('grid')}
-                    title="Grid View"
-                  >
-                    <i className="fas fa-th"></i>
-                  </button>
-                  <button
-                    type="button"
-                    className={`view-btn ${viewType === 'list' ? 'active' : ''}`}
-                    onClick={() => setViewType('list')}
-                    title="List View"
-                  >
-                    <i className="fas fa-list"></i>
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                className="btn-clear-filter"
+                onClick={handleClearFilters}
+              >
+                <i className="fas fa-undo"></i> Reset Filters
+              </button>
             </div>
+          )}
+
+          <div className="listings-main">
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>

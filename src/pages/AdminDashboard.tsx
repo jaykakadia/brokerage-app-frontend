@@ -94,6 +94,24 @@ interface UserFormState {
   youtube_url: string;
 }
 
+interface BulkUserUploadResult {
+  total_rows: number;
+  created_count: number;
+  skipped_count: number;
+  created_users: Array<{
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+    role: string;
+  }>;
+  errors: Array<{
+    row: number;
+    email?: string;
+    reason: string;
+  }>;
+}
+
 const EMPTY_USER_FORM: UserFormState = {
   id: null, name: '', email: '', phone: '', password: '', role: 'Owner', status: 'active',
   business_name: '', whatsapp: '', whatsappSameAsPhone: true,
@@ -363,6 +381,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [userForm, setUserForm] = useState<UserFormState>(EMPTY_USER_FORM);
   const [showUserPassword, setShowUserPassword] = useState<boolean>(false);
   const [userSaving, setUserSaving] = useState<boolean>(false);
+  const [bulkUserModalOpen, setBulkUserModalOpen] = useState<boolean>(false);
+  const [bulkUserFile, setBulkUserFile] = useState<File | null>(null);
+  const [bulkUserUploading, setBulkUserUploading] = useState<boolean>(false);
+  const [bulkUserResult, setBulkUserResult] = useState<BulkUserUploadResult | null>(null);
+  const [bulkUploadError, setBulkUploadError] = useState<string | null>(null);
 
   // === ROLE LIMITS STATE ===
   const [roleLimits, setRoleLimits] = useState<RoleLimitsMap>({ Owner: 0, Agent: 0, Builder: 0 });
@@ -741,6 +764,58 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `tradecall-users-${new Date().toISOString().slice(0, 10)}.csv` });
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const downloadSampleTemplate = () => {
+    const headers = ['Name', 'Email', 'Phone', 'Role', 'Business Name', 'WhatsApp'];
+    const sampleRows = [
+      ['Rajesh Sharma', 'rajesh.sharma@example.com', '9876543210', 'Owner', 'Sharma Properties', '9876543210'],
+      ['Amit Verma', 'amit.verma@example.com', '9812345678', 'Agent', 'Verma Associates', '9812345678'],
+      ['Pooja Patel', 'pooja.patel@example.com', '9988776655', 'Builder', 'Patel Constructions', '9988776655']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'tradecall-bulk-users-sample.csv'
+    });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const handleBulkUserUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkUserFile) {
+      showToast('Please select an Excel or CSV file first', 'error');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', bulkUserFile);
+
+    setBulkUserUploading(true);
+    setBulkUploadError(null);
+    try {
+      const res = await api.post('/api/v1/admin/users/bulk-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const result: BulkUserUploadResult = res.data?.data;
+      setBulkUserResult(result);
+      if (result.created_count > 0 && result.skipped_count === 0) {
+        showToast(`Successfully created all ${result.created_count} user(s)!`);
+        fetchUsers();
+      } else if (result.created_count > 0 && result.skipped_count > 0) {
+        showToast(`Created ${result.created_count} user(s). ${result.skipped_count} row(s) skipped due to missing fields or duplicates.`);
+        fetchUsers();
+      } else {
+        showToast('No users could be created. Required fields are missing or invalid in your file.', 'error');
+      }
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err) || 'Failed to upload and import users. Please verify required fields and try again.';
+      setBulkUploadError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setBulkUserUploading(false);
+    }
   };
 
   const handleUserRoleChange = async (userId: number, newRole: string) => {
@@ -2247,6 +2322,20 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <button
                     type="button"
                     className="btn-outline"
+                    style={{ padding: '8px 14px', fontSize: '13px', whiteSpace: 'nowrap', borderColor: '#0c6253', color: '#0c6253' }}
+                    onClick={() => {
+                      setBulkUserFile(null);
+                      setBulkUserResult(null);
+                      setBulkUserModalOpen(true);
+                    }}
+                    title="Bulk import users from Excel or CSV"
+                  >
+                    <i className="fas fa-file-excel"></i> Bulk Import
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-outline"
                     style={{ padding: '8px 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
                     onClick={downloadUsersCSV}
                     disabled={usersLoading || usersList.length === 0}
@@ -3375,6 +3464,198 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     {userSaving
                       ? <><i className="fas fa-spinner fa-spin"></i> Saving...</>
                       : (userForm.id ? 'Save Changes' : 'Create User')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Bulk User Import */}
+        {bulkUserModalOpen && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}>
+            <div style={{
+              background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '640px',
+              maxHeight: '90vh', overflowY: 'auto', padding: '26px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-file-excel" style={{ color: '#0c6253' }}></i> Bulk User Creation
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { setBulkUserModalOpen(false); setBulkUserResult(null); setBulkUserFile(null); setBulkUploadError(null); }}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              {/* Missing Fields Error Alert */}
+              {bulkUploadError && (
+                <div style={{
+                  background: '#fef2f2', border: '1px solid #f87171', borderRadius: '8px',
+                  padding: '14px 16px', marginBottom: '18px', color: '#991b1b', fontSize: '13px'
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fas fa-exclamation-triangle"></i> Required Fields Missing
+                  </div>
+                  <div style={{ lineHeight: '1.5' }}>{bulkUploadError}</div>
+                </div>
+              )}
+
+              {/* Instructions Card */}
+              <div style={{ background: '#f0faf7', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '14px 16px', marginBottom: '18px', fontSize: '13px', color: '#064e3b' }}>
+                <div style={{ fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fas fa-info-circle"></i> Instructions &amp; Required Format:
+                </div>
+                <ul style={{ margin: '0 0 10px 18px', padding: 0, lineHeight: '1.6' }}>
+                  <li>Supports <strong>Excel (.xlsx, .xls)</strong> and <strong>CSV (.csv)</strong> files.</li>
+                  <li><strong>Required columns:</strong> <code>Name</code> (or <code>Username</code>), <code>Email</code>, <code>Phone</code>.</li>
+                  <li><strong>Optional columns:</strong> <code>Role</code> (Owner, Agent, Builder), <code>Business Name</code>, <code>WhatsApp</code>.</li>
+                  <li><strong>Password:</strong> Automatically set to each user's <strong>Email address</strong>.</li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={downloadSampleTemplate}
+                  style={{
+                    background: '#0c6253', color: '#fff', border: 'none', borderRadius: '6px',
+                    padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-download"></i> Download Sample Excel / CSV Template
+                </button>
+              </div>
+
+              {/* Upload Form */}
+              <form onSubmit={handleBulkUserUpload}>
+                <div style={{
+                  border: '2px dashed #d1d5db', borderRadius: '10px', padding: '24px 16px',
+                  textAlign: 'center', marginBottom: '18px', background: '#fafafa'
+                }}>
+                  <input
+                    type="file"
+                    id="bulk-user-file-input"
+                    accept=".xlsx, .xls, .csv"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setBulkUserFile(e.target.files[0]);
+                        setBulkUserResult(null);
+                        setBulkUploadError(null);
+                      }
+                    }}
+                  />
+                  <label htmlFor="bulk-user-file-input" style={{ cursor: 'pointer', display: 'block' }}>
+                    <i className="fas fa-cloud-upload-alt fa-3x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                      {bulkUserFile ? bulkUserFile.name : 'Click to select Excel (.xlsx) or CSV (.csv) file'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                      {bulkUserFile ? `${(bulkUserFile.size / 1024).toFixed(1)} KB` : 'Maximum file size: 10MB'}
+                    </div>
+                  </label>
+                  {bulkUserFile && (
+                    <button
+                      type="button"
+                      onClick={() => { setBulkUserFile(null); setBulkUserResult(null); setBulkUploadError(null); }}
+                      style={{
+                        marginTop: '10px', background: 'none', border: 'none',
+                        color: '#dc2626', fontSize: '12px', cursor: 'pointer'
+                      }}
+                    >
+                      <i className="fas fa-times-circle"></i> Remove file
+                    </button>
+                  )}
+                </div>
+
+                {/* Results Section */}
+                {bulkUserResult && (
+                  <div style={{ marginBottom: '18px' }}>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                      <div style={{ flex: 1, background: '#dcfce7', border: '1px solid #86efac', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#166534' }}>{bulkUserResult.created_count}</div>
+                        <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 600 }}>Users Created</div>
+                      </div>
+                      <div style={{
+                        flex: 1,
+                        background: bulkUserResult.skipped_count > 0 ? '#fee2e2' : '#f3f4f6',
+                        border: `1px solid ${bulkUserResult.skipped_count > 0 ? '#fca5a5' : '#e5e7eb'}`,
+                        borderRadius: '8px', padding: '12px', textAlign: 'center'
+                      }}>
+                        <div style={{
+                          fontSize: '20px', fontWeight: 800,
+                          color: bulkUserResult.skipped_count > 0 ? '#991b1b' : '#374151'
+                        }}>
+                          {bulkUserResult.skipped_count}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: bulkUserResult.skipped_count > 0 ? '#b91c1c' : '#6b7280',
+                          fontWeight: 600
+                        }}>
+                          Skipped / Errors
+                        </div>
+                      </div>
+                    </div>
+
+                    {bulkUserResult.skipped_count > 0 && (
+                      <div style={{
+                        background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px',
+                        padding: '12px 14px', marginBottom: '12px', color: '#92400e', fontSize: '13px',
+                        display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.5'
+                      }}>
+                        <i className="fas fa-exclamation-circle" style={{ fontSize: '16px', marginTop: '2px', flexShrink: 0 }}></i>
+                        <div>
+                          <strong>Action Required: Missing or Invalid Data in Some Rows</strong>
+                          <div>Please review the skipped row details below. Fill in the required fields (Name, Email, Phone) in your spreadsheet and resubmit.</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {bulkUserResult.errors.length > 0 && (
+                      <div style={{
+                        maxHeight: '160px', overflowY: 'auto', border: '1px solid #fca5a5',
+                        borderRadius: '8px', background: '#fff5f5', padding: '12px', fontSize: '12px', color: '#991b1b'
+                      }}>
+                        <div style={{ fontWeight: 700, marginBottom: '6px' }}>Skipped Rows Details:</div>
+                        <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: '1.5' }}>
+                          {bulkUserResult.errors.map((err, i) => (
+                            <li key={i}>
+                              Row {err.row}{err.email ? ` (${err.email})` : ''}: {err.reason}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ flex: 1, padding: '12px' }}
+                    onClick={() => { setBulkUserModalOpen(false); setBulkUserResult(null); setBulkUserFile(null); setBulkUploadError(null); }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '12px' }}
+                    disabled={!bulkUserFile || bulkUserUploading}
+                  >
+                    {bulkUserUploading ? (
+                      <><i className="fas fa-spinner fa-spin"></i> Processing File...</>
+                    ) : (
+                      <><i className="fas fa-upload"></i> Upload &amp; Create Users</>
+                    )}
                   </button>
                 </div>
               </form>
