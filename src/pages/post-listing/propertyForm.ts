@@ -213,6 +213,7 @@ export function validatePropertyStep(form: PropertyFormState, step: PropertyStep
     if (!form.propType) return 'Please select a Property Type';
     if (!form.city) return 'Please select a City';
     if (!form.state.trim()) return 'State is missing. Pick a city that has a state.';
+    if (form.locality && form.locality.trim().length > 50) return 'Locality / Project / Society cannot exceed 50 characters';
   }
   if (step === 3) {
     if (propertyPriceNumber(form) <= 0) return 'Please enter Price/Budget';

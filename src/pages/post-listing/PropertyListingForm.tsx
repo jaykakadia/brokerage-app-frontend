@@ -246,7 +246,12 @@ export default function PropertyListingForm({
               <StateOptions current={form.state} />
             </FloatSelect>
           </div>
-          <FloatField label="Locality / Project / Society" value={form.locality} onChange={(locality) => onChange({ locality })} />
+          <FloatField
+            label="Locality / Project / Society"
+            maxLength={50}
+            value={form.locality}
+            onChange={(locality) => onChange({ locality: locality.slice(0, 50) })}
+          />
 
           <div className="ref-code-box" style={{ marginTop: 18, padding: 14, border: '1.5px dashed #cbd5e1', borderRadius: 12, background: '#f8fafc' }}>
             <div className="bf-heading" style={{ marginBottom: 12, fontSize: 15 }}><i className="fas fa-id-badge"></i> Reference Code</div>
