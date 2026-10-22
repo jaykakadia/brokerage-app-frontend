@@ -62,7 +62,11 @@ export function toMetaDescription(text?: string | null, max = 160): string {
 
 /** Updates the title, description, canonical URL and social-preview tags for the current page. */
 export function setSeo({ title, description, path, image, noindex = false, jsonLd }: SeoOptions = {}): void {
-  const fullTitle = !title ? DEFAULT_TITLE : title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+  let raw = (title || DEFAULT_TITLE).trim();
+  raw = raw.replace(/\s*\|\s*Tradecall\s*\|\s*TradeCall India$/i, '');
+  raw = raw.replace(/\s*\|\s*TradeCall India$/i, '');
+  raw = raw.replace(/\s*\|\s*Tradecall$/i, '');
+  const fullTitle = `${raw} | ${SITE_NAME}`;
   const desc = description || DEFAULT_DESCRIPTION;
   const url = `${SITE_URL}${path ?? window.location.pathname}`;
 

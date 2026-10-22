@@ -173,7 +173,7 @@ export default function App() {
       const serverRobots = document.querySelector('meta[name="robots"]')?.getAttribute('content');
       const isServerNoIndex = serverRobots?.includes('noindex') ?? false;
       setSeo({
-        title: `Properties in ${activeCity} | Buy, Rent & Commercial | Tradecall`,
+        title: `Properties in ${activeCity} | Buy, Rent & Commercial`,
         description: `Find the best residential and commercial properties in ${activeCity} on Tradecall...`,
         path: `/properties/${slug}`,
         noindex: isServerNoIndex,
@@ -182,7 +182,7 @@ export default function App() {
     }
     if (activePage === 'cities') {
       setSeo({
-        title: 'Properties by City | All Indian Cities | Tradecall',
+        title: 'Properties by City | All Indian Cities',
         description: 'Explore verified residential and commercial properties across all major cities and states in India on Tradecall.',
         path: '/cities',
       });
@@ -190,7 +190,7 @@ export default function App() {
     }
     if (activePage === 'not-found') {
       setSeo({
-        title: 'Page Not Found | Tradecall',
+        title: 'Page Not Found',
         description: 'The requested page or city could not be found.',
         noindex: true,
       });

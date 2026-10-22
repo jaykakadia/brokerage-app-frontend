@@ -715,7 +715,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       });
       const count = match?.count ?? 0;
       setSeo({
-        title: `Properties in ${activeCity} | Buy, Rent & Commercial | Tradecall`,
+        title: `Properties in ${activeCity} | Buy, Rent & Commercial`,
         description: count > 0
           ? `${count} properties for sale and rent in ${activeCity}. Explore verified flats, plots and houses with zero brokerage on TradeCall India.`
           : `Explore properties in ${activeCity}. Contact verified owners directly on TradeCall India.`,
@@ -1278,7 +1278,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       <section className="hero">
         <div className="hero-overlay"></div>
         <div className="container hero-content">
-          <h1>{activeCity ? `Properties in ${activeCity}` : 'Find Properties & Related Businesses'}</h1>
+          <h1>{activeCity ? `Properties in ${activeCity}` : 'Buy, Rent & Sell Property in Palwal & NCR'}</h1>
 
           <div className="search-box">
             <div className="search-form">
