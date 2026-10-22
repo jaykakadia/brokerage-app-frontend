@@ -7,6 +7,7 @@ import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
 import { propTypeLabel } from './post-listing/propertyForm';
+import { getListingUrl } from '../utils/url';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
 export { formatListingPrice, getFirstImageUrl };
@@ -56,7 +57,12 @@ const BUDGET_PRESETS: BudgetPreset[] = [
   { label: '₹20L - ₹50 Lakh', min: '2000000', max: '5000000' },
   { label: '₹50L - ₹1 Crore', min: '5000000', max: '10000000' },
   { label: '₹1 Cr - ₹2 Crore', min: '10000000', max: '20000000' },
-  { label: 'Above ₹2 Crore', min: '20000000', max: '' }
+  { label: '₹2 Cr - ₹5 Crore', min: '20000000', max: '50000000' },
+  { label: '₹5 Cr - ₹10 Crore', min: '50000000', max: '100000000' },
+  { label: '₹10 Cr - ₹20 Crore', min: '100000000', max: '200000000' },
+  { label: '₹20 Cr - ₹50 Crore', min: '200000000', max: '500000000' },
+  { label: '₹50 Cr - ₹100 Crore', min: '500000000', max: '1000000000' },
+  { label: 'Above ₹100 Crore', min: '1000000000', max: '' }
 ];
 
 export const DEFAULT_FEATURED_LISTINGS: Listing[] = [
@@ -214,15 +220,34 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     }
   };
 
+  // Read initial filter values from URL search params (if present) to support shared links
+  const initialUrlParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const initialCity = initialUrlParams.get('city') || activeCity || '';
+  const initialType = initialUrlParams.get('type') || initialUrlParams.get('propType') || '';
+  const initialMinPrice = initialUrlParams.get('minPrice') || '';
+  const initialMaxPrice = initialUrlParams.get('maxPrice') || '';
+  const initialKeyword = initialUrlParams.get('q') || initialUrlParams.get('keyword') || '';
+  const initialTabParam = initialUrlParams.get('tab');
+  const initialTab: 'all' | 'sale' | 'rent' | 'buy' | 'verified' = (
+    initialTabParam && ['all', 'sale', 'rent', 'buy', 'verified'].includes(initialTabParam)
+      ? (initialTabParam as 'all' | 'sale' | 'rent' | 'buy' | 'verified')
+      : 'all'
+  );
+  const initialNewOnly = initialUrlParams.get('new') === '1' || initialUrlParams.get('new') === 'true';
+
   // Search & filter state
-  const [heroCity, setHeroCity] = useState(activeCity || '');
-  const [cityInput, setCityInput] = useState(activeCity || '');
+  const [heroCity, setHeroCity] = useState(initialCity);
+  const [cityInput, setCityInput] = useState(initialCity);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const cityWrapperRef = useRef<HTMLDivElement>(null);
 
-  const [heroType, setHeroType] = useState('');
-  const [typeInput, setTypeInput] = useState('');
+  const [heroType, setHeroType] = useState(initialType);
+  const [typeInput, setTypeInput] = useState(() => {
+    if (!initialType) return '';
+    const found = PROPERTY_TYPES.find((t) => t.value === initialType);
+    return found ? found.label : initialType;
+  });
   const [showTypeSuggestions, setShowTypeSuggestions] = useState(false);
   const [typeHighlightedIndex, setTypeHighlightedIndex] = useState(-1);
   const typeWrapperRef = useRef<HTMLDivElement>(null);
@@ -230,20 +255,74 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const budgetWrapperRef = useRef<HTMLDivElement>(null);
 
-  const [heroKeyword, setHeroKeyword] = useState('');
-  const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'buy' | 'verified'>('all');
-  const [budgetMin, setBudgetMin] = useState('');
-  const [budgetMax, setBudgetMax] = useState('');
-  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [heroKeyword, setHeroKeyword] = useState(initialKeyword);
+  const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'buy' | 'verified'>(initialTab);
+  const [budgetMin, setBudgetMin] = useState(initialMinPrice);
+  const [budgetMax, setBudgetMax] = useState(initialMaxPrice);
+  const [selectedCities, setSelectedCities] = useState<string[]>(initialCity ? [initialCity] : []);
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
-  const [newOnly, setNewOnly] = useState(false);
+  const [newOnly, setNewOnly] = useState(initialNewOnly);
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [copiedFilters, setCopiedFilters] = useState(false);
   // Set when the user explicitly picks the "All …" / "Any …" option, so the box shows it instead of the placeholder
   const [allCitiesPicked, setAllCitiesPicked] = useState(false);
   const [allTypesPicked, setAllTypesPicked] = useState(false);
   const [anyBudgetPicked, setAnyBudgetPicked] = useState(false);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
+
+  // Keep URL query params synchronized with active filters (for sharing & bookmarking)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (heroCity) params.set('city', heroCity);
+    if (heroType) params.set('type', heroType);
+    if (budgetMin) params.set('minPrice', budgetMin);
+    if (budgetMax) params.set('maxPrice', budgetMax);
+    if (heroKeyword.trim()) params.set('q', heroKeyword.trim());
+    if (activeCategoryTab !== 'all') params.set('tab', activeCategoryTab);
+    if (newOnly) params.set('new', '1');
+
+    const searchStr = params.toString();
+    const newPathAndSearch = searchStr ? `${window.location.pathname}?${searchStr}` : window.location.pathname;
+    const currentPathAndSearch = `${window.location.pathname}${window.location.search}`;
+
+    if (newPathAndSearch !== currentPathAndSearch) {
+      window.history.replaceState(null, '', newPathAndSearch);
+    }
+  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, newOnly]);
+
+  // Support browser Back/Forward buttons updating filters
+  useEffect(() => {
+    const handlePopState = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const c = sp.get('city') || activeCity || '';
+      const t = sp.get('type') || sp.get('propType') || '';
+      const minP = sp.get('minPrice') || '';
+      const maxP = sp.get('maxPrice') || '';
+      const q = sp.get('q') || sp.get('keyword') || '';
+      const tabParam = sp.get('tab');
+      const tab: 'all' | 'sale' | 'rent' | 'buy' | 'verified' = (
+        tabParam && ['all', 'sale', 'rent', 'buy', 'verified'].includes(tabParam)
+          ? (tabParam as 'all' | 'sale' | 'rent' | 'buy' | 'verified')
+          : 'all'
+      );
+      const nOnly = sp.get('new') === '1' || sp.get('new') === 'true';
+
+      setHeroCity(c);
+      setSelectedCities(c ? [c] : []);
+      setHeroType(t);
+      const foundType = PROPERTY_TYPES.find((item) => item.value === t);
+      setTypeInput(foundType ? foundType.label : t);
+      setBudgetMin(minP);
+      setBudgetMax(maxP);
+      setHeroKeyword(q);
+      setActiveCategoryTab(tab);
+      setNewOnly(nOnly);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeCity]);
 
   // Featured Listings are hidden while the user is filtering or searching
   const hasActiveFilters = !!(heroCity || heroType || budgetMin || budgetMax || heroKeyword.trim()
@@ -816,10 +895,21 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     onNavigate('listing-detail', listing);
   };
 
+  // Industry standard navigation handler: preserves native browser right-click & middle-click
+  const handleListingLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, listing: Listing): void => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
+      return;
+    }
+    e.preventDefault();
+    openListing(listing);
+  };
+
   const listingCardProps = (listing: Listing): React.HTMLAttributes<HTMLDivElement> => ({
-    role: 'link',
-    tabIndex: 0,
-    onClick: () => openListing(listing),
+    role: 'group',
+    onClick: (e) => {
+      if ((e.target as HTMLElement).closest('a, button, .btn-wishlist')) return;
+      openListing(listing);
+    },
     onKeyDown: (e) => {
       if (e.target !== e.currentTarget) return;
       if (e.key === 'Enter' || e.key === ' ') {
@@ -835,6 +925,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     const pType = propTypeLabel(listing.form_data?.propType || '') || 'Property';
     const title = publicListingTitle(listing);
 
+    const listingUrl = getListingUrl(listing);
+
     return (
       <div
         key={listing.id}
@@ -846,16 +938,24 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           className="card-img-wrap"
           style={{ ...cardImageBackdrop(imgSrc), ...(asList ? { width: '280px', flexShrink: 0 } : {}) }}
         >
-          <img
-            src={imgSrc}
-            alt={title}
-            className="card-img"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.onerror = null;
-              target.src = '/placeholder-property.svg';
-            }}
-          />
+          <a
+            href={listingUrl}
+            onClick={(e) => handleListingLinkClick(e, listing)}
+            style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
+            tabIndex={-1}
+            aria-label={title}
+          >
+            <img
+              src={imgSrc}
+              alt={title}
+              className="card-img"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = '/placeholder-property.svg';
+              }}
+            />
+          </a>
           {listing.verified === 1 && (
             <span className="badge-verified">
               <i className="fas fa-check-circle"></i> Verified
@@ -907,7 +1007,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
         <div className="card-body" style={{ flex: 1 }}>
           <div className="card-price">{priceStr}</div>
-          <h3 className="card-title">{title}</h3>
+          <h3 className="card-title">
+            <a
+              href={listingUrl}
+              onClick={(e) => handleListingLinkClick(e, listing)}
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              {title}
+            </a>
+          </h3>
           <div className="card-location">
             <i className="fas fa-map-marker-alt"></i>
             <span>{listing.location}</span>
@@ -916,13 +1024,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
           </div>
           <div className="card-footer card-footer-actions">
-            <button
-              type="button"
+            <a
+              href={listingUrl}
               className="btn-view"
-              onClick={(e) => { e.stopPropagation(); openListing(listing); }}
+              onClick={(e) => handleListingLinkClick(e, listing)}
             >
               <i className="fas fa-info-circle"></i> Details
-            </button>
+            </a>
             <button
               type="button"
               className={`btn-wishlist ${wishlistIds.has(listing.id) ? 'active' : ''}`}
@@ -943,6 +1051,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     const categoryName: string = categories[0] || (typeof business.form_data?.categoryName === 'string' ? business.form_data.categoryName : '') || 'Business';
     const isSaved = wishlistIds.has(business.id);
 
+    const businessUrl = getListingUrl(business);
+
     return (
       <div
         key={`business-${business.id}`}
@@ -950,16 +1060,24 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         {...listingCardProps(business)}
       >
         <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
-          <img
-            src={imgSrc}
-            alt={business.title}
-            className="card-img"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.onerror = null;
-              target.src = '/placeholder-property.svg';
-            }}
-          />
+          <a
+            href={businessUrl}
+            onClick={(e) => handleListingLinkClick(e, business)}
+            style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
+            tabIndex={-1}
+            aria-label={business.title}
+          >
+            <img
+              src={imgSrc}
+              alt={business.title}
+              className="card-img"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = '/placeholder-property.svg';
+              }}
+            />
+          </a>
           {business.verified === 1 && (
             <span className="badge-verified">
               <i className="fas fa-check-circle"></i> Verified
@@ -1030,7 +1148,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               {categoryName}
             </span>
           </div>
-          <h3 className="card-title" title={business.title}>{business.title}</h3>
+          <h3 className="card-title" title={business.title}>
+            <a
+              href={businessUrl}
+              onClick={(e) => handleListingLinkClick(e, business)}
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              {business.title}
+            </a>
+          </h3>
           <div className="card-location">
             <i className="fas fa-map-marker-alt"></i>
             <span>{business.location}</span>
@@ -1039,13 +1165,13 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             Contact: <strong>{business.owner_name}</strong>
           </div>
           <div className="card-footer card-footer-actions">
-            <button
-              type="button"
+            <a
+              href={businessUrl}
               className="btn-view"
-              onClick={(e) => { e.stopPropagation(); openListing(business); }}
+              onClick={(e) => handleListingLinkClick(e, business)}
             >
               <i className="fas fa-info-circle"></i> Details
-            </button>
+            </a>
             <button
               type="button"
               className={`btn-wishlist ${isSaved ? 'active' : ''}`}
@@ -1480,75 +1606,93 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 const title = publicListingTitle(listing);
                 const isSaved = wishlistIds.has(listing.id);
 
-                return (
-                  <div
-                    key={`featured-${listing.id}-${index}`}
-                    className="listing-card featured-card"
-                    {...listingCardProps(listing)}
-                  >
-                    <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
-                      <img
-                        src={imgSrc}
-                        alt={title}
-                        className="card-img"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          target.onerror = null;
-                          target.src = '/placeholder-property.svg';
-                        }}
-                      />
-                      {listing.verified === 1 && (
-                        <span className="badge-verified">
-                          <i className="fas fa-check-circle"></i> Verified
-                        </span>
-                      )}
-                      <span
-                        className="badge-featured"
-                        style={{
-                          top: '12px',
-                          left: '12px',
-                          background: 'rgba(0,0,0,0.65)',
-                          color: '#fff',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
-                          fontSize: '11px',
-                          textTransform: 'capitalize'
-                        }}
-                      >
-                        {pType}
-                      </span>
-                    </div>
+                  const itemUrl = getListingUrl(listing);
 
-                    <div className="card-body">
-                      <div className="card-price">{priceStr}</div>
-                      <h3 className="card-title">{title}</h3>
-                      <div className="card-location">
-                        <i className="fas fa-map-marker-alt"></i>
-                        <span>{listing.location}</span>
-                      </div>
-                      <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-                        Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
-                      </div>
-                      <div className="card-footer card-footer-actions">
-                        <button
-                          type="button"
-                          className="btn-view"
-                          onClick={(e) => { e.stopPropagation(); openListing(listing); }}
+                  return (
+                    <div
+                      key={`featured-${listing.id}-${index}`}
+                      className="listing-card featured-card"
+                      {...listingCardProps(listing)}
+                    >
+                      <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
+                        <a
+                          href={itemUrl}
+                          onClick={(e) => handleListingLinkClick(e, listing)}
+                          style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
+                          tabIndex={-1}
+                          aria-label={title}
                         >
-                          <i className="fas fa-info-circle"></i> Details
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn-wishlist ${isSaved ? 'active' : ''}`}
-                          onClick={(e) => void handleToggleWishlist(e, listing.id)}
+                          <img
+                            src={imgSrc}
+                            alt={title}
+                            className="card-img"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.onerror = null;
+                              target.src = '/placeholder-property.svg';
+                            }}
+                          />
+                        </a>
+                        {listing.verified === 1 && (
+                          <span className="badge-verified">
+                            <i className="fas fa-check-circle"></i> Verified
+                          </span>
+                        )}
+                        <span
+                          className="badge-featured"
+                          style={{
+                            top: '12px',
+                            left: '12px',
+                            background: 'rgba(0,0,0,0.65)',
+                            color: '#fff',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '11px',
+                            textTransform: 'capitalize'
+                          }}
                         >
-                          <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
-                          <span>Wishlist</span>
-                        </button>
+                          {pType}
+                        </span>
+                      </div>
+
+                      <div className="card-body">
+                        <div className="card-price">{priceStr}</div>
+                        <h3 className="card-title">
+                          <a
+                            href={itemUrl}
+                            onClick={(e) => handleListingLinkClick(e, listing)}
+                            style={{ color: 'inherit', textDecoration: 'none' }}
+                          >
+                            {title}
+                          </a>
+                        </h3>
+                        <div className="card-location">
+                          <i className="fas fa-map-marker-alt"></i>
+                          <span>{listing.location}</span>
+                        </div>
+                        <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+                          Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
+                        </div>
+                        <div className="card-footer card-footer-actions">
+                          <a
+                            href={itemUrl}
+                            className="btn-view"
+                            onClick={(e) => handleListingLinkClick(e, listing)}
+                          >
+                            <i className="fas fa-info-circle"></i> Details
+                          </a>
+                          <button
+                            type="button"
+                            className={`btn-wishlist ${isSaved ? 'active' : ''}`}
+                            onClick={(e) => void handleToggleWishlist(e, listing.id)}
+                          >
+                            <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
+                            <span>Wishlist</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
+                  );
               })}
             </div>
             )}
@@ -1723,13 +1867,58 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                className="btn-clear-filter"
-                onClick={handleClearFilters}
-              >
-                <i className="fas fa-undo"></i> Reset Filters
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-share-filter"
+                  onClick={async () => {
+                    const url = window.location.href;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({
+                          title: 'Properties on TradeCall',
+                          text: 'Check out these filtered properties on TradeCall',
+                          url,
+                        });
+                        return;
+                      } catch {
+                        // ignore share cancel
+                      }
+                    }
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setCopiedFilters(true);
+                      setTimeout(() => setCopiedFilters(false), 2500);
+                    } catch {
+                      window.prompt('Copy this link to share with filters applied:', url);
+                    }
+                  }}
+                  title="Share or copy link with active filters"
+                  style={{
+                    background: '#e6f4ea',
+                    color: '#0c6253',
+                    border: '1px solid #a7f3d0',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className={copiedFilters ? "fas fa-check" : "fas fa-share-alt"}></i>
+                  {copiedFilters ? 'Link Copied!' : 'Share Filters'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-clear-filter"
+                  onClick={handleClearFilters}
+                >
+                  <i className="fas fa-undo"></i> Reset Filters
+                </button>
+              </div>
             </div>
           )}
 

@@ -6,6 +6,7 @@ import PlansModal from '../components/PlansModal';
 import EditProfileModal from '../components/EditProfileModal';
 import UserEditListingModal from '../components/UserEditListingModal';
 import { publicListingTitle } from '../utils/listingKind';
+import { getListingUrl } from '../utils/url';
 import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
 
 // Website shows as a domain link; social profiles show as brand icon buttons.
@@ -551,14 +552,18 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                         >
                           <i className="fas fa-pen"></i> Edit
                         </button>
-                        <button
-                          type="button"
+                        <a
+                          href={getListingUrl(listing)}
                           className="btn-outline"
-                          style={{ padding: '8px 14px', fontSize: '12px' }}
-                          onClick={() => onNavigate('listing-detail', listing)}
+                          style={{ padding: '8px 14px', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          onClick={(e) => {
+                            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+                            e.preventDefault();
+                            onNavigate('listing-detail', listing);
+                          }}
                         >
                           <i className="fas fa-eye"></i> View
-                        </button>
+                        </a>
                         <button
                           type="button"
                           className="btn-outline"
@@ -653,14 +658,18 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
                       </div>
 
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          type="button"
+                        <a
+                          href={getListingUrl(item)}
                           className="btn-primary"
-                          style={{ padding: '8px 16px', fontSize: '13px' }}
-                          onClick={() => onNavigate('listing-detail', item)}
+                          style={{ padding: '8px 16px', fontSize: '13px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          onClick={(e) => {
+                            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+                            e.preventDefault();
+                            onNavigate('listing-detail', item);
+                          }}
                         >
                           <i className="fas fa-eye"></i> View Details
-                        </button>
+                        </a>
                         <button
                           type="button"
                           className="btn-outline"

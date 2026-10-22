@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
+import { getListingUrl } from '../utils/url';
 import type { AuthModalOptions } from './ListingDetailPage';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
@@ -95,13 +96,46 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       // leave the heart as it was
     }
   };
+  // Read initial filter values from URL query parameters (if present) to support shared links
+  const initialUrlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const [businesses, setBusinesses] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [city, setCity] = useState('');
-  const [newOnly, setNewOnly] = useState(false);
+  const [search, setSearch] = useState(() => initialUrlParams.get('q') || initialUrlParams.get('search') || '');
+  const [category, setCategory] = useState(() => initialUrlParams.get('category') || '');
+  const [city, setCity] = useState(() => initialUrlParams.get('city') || '');
+  const [newOnly, setNewOnly] = useState(() => initialUrlParams.get('new') === '1' || initialUrlParams.get('new') === 'true');
+  const [copiedFilters, setCopiedFilters] = useState(false);
+
+  // Keep URL query params synchronized with active filters
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set('q', search.trim());
+    if (category) params.set('category', category);
+    if (city) params.set('city', city);
+    if (newOnly) params.set('new', '1');
+
+    const searchStr = params.toString();
+    const newPathAndSearch = searchStr ? `${window.location.pathname}?${searchStr}` : window.location.pathname;
+    const currentPathAndSearch = `${window.location.pathname}${window.location.search}`;
+
+    if (newPathAndSearch !== currentPathAndSearch) {
+      window.history.replaceState(null, '', newPathAndSearch);
+    }
+  }, [search, category, city, newOnly]);
+
+  // Support browser Back/Forward navigation with filters
+  useEffect(() => {
+    const handlePopState = () => {
+      const sp = new URLSearchParams(window.location.search);
+      setSearch(sp.get('q') || sp.get('search') || '');
+      setCategory(sp.get('category') || '');
+      setCity(sp.get('city') || '');
+      setNewOnly(sp.get('new') === '1' || sp.get('new') === 'true');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -211,18 +245,43 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Industry standard navigation handler: preserves native browser right-click & middle-click
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, item: Listing): void => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
+      return;
+    }
+    e.preventDefault();
+    onNavigate('listing-detail', item);
+  };
+
   const renderBusinessCard = (b: Listing) => {
     const info = businessInfo(b);
+    const bUrl = getListingUrl(b);
     return (
-      <div key={b.id} className="listing-card business-dir-card">
+      <div
+        key={b.id}
+        className="listing-card business-dir-card"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('a, button, .btn-wishlist')) return;
+          onNavigate('listing-detail', b);
+        }}
+      >
         <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
-          <img
-            src={getFirstImageUrl(b)}
-            alt={b.title}
-            className="card-img"
-            loading="lazy"
-            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
-          />
+          <a
+            href={bUrl}
+            onClick={(e) => handleLinkClick(e, b)}
+            style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
+            tabIndex={-1}
+            aria-label={b.title}
+          >
+            <img
+              src={getFirstImageUrl(b)}
+              alt={b.title}
+              className="card-img"
+              loading="lazy"
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
+            />
+          </a>
           {b.verified === 1 && (
             <span
               className="badge-verified"
@@ -243,39 +302,27 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               <i className="fas fa-check-circle"></i> Verified
             </span>
           )}
-          {b.is_featured && (
-            <span
-              className="badge-featured"
-              style={{
-                position: 'absolute',
-                top: '10px',
-                left: '10px',
-                zIndex: 2,
-                background: '#0d7a5f',
-                color: '#fff',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured
-            </span>
-          )}
         </div>
         <div className="card-body">
           <h3 className="card-title business-dir-title">
-            {b.title}
+            <a
+              href={bUrl}
+              onClick={(e) => handleLinkClick(e, b)}
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              {b.title}
+            </a>
             {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
           </h3>
           <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
           <div className="card-footer card-footer-actions">
-            <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
+            <a
+              href={bUrl}
+              className="btn-view"
+              onClick={(e) => handleLinkClick(e, b)}
+            >
               <i className="fas fa-info-circle"></i> Details
-            </button>
+            </a>
             <button
               type="button"
               className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
@@ -513,10 +560,54 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               {newOnly && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#0c6253', fontWeight: 600 }}>(Filtered: Posted Today)</span>}
             </strong>
             {hasFilters && (
-              <button type="button" className="btn-outline" style={{ padding: '6px 12px', fontSize: 13 }}
-                onClick={clearAllFilters}>
-                <i className="fas fa-times"></i> Clear filters
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const url = window.location.href;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({
+                          title: 'Businesses on TradeCall',
+                          text: 'Check out these businesses on TradeCall',
+                          url,
+                        });
+                        return;
+                      } catch {
+                        // ignore share cancel
+                      }
+                    }
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setCopiedFilters(true);
+                      setTimeout(() => setCopiedFilters(false), 2500);
+                    } catch {
+                      window.prompt('Copy this link to share with filters applied:', url);
+                    }
+                  }}
+                  title="Share or copy link with active filters"
+                  style={{
+                    background: '#e6f4ea',
+                    color: '#0c6253',
+                    border: '1px solid #a7f3d0',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <i className={copiedFilters ? "fas fa-check" : "fas fa-share-alt"}></i>
+                  {copiedFilters ? 'Link Copied!' : 'Share'}
+                </button>
+                <button type="button" className="btn-outline" style={{ padding: '6px 12px', fontSize: 13 }}
+                  onClick={clearAllFilters}>
+                  <i className="fas fa-times"></i> Clear filters
+                </button>
+              </div>
             )}
           </div>
 
