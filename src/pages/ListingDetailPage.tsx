@@ -135,12 +135,10 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     if (!listing) return;
     const isBuyer = listing.form_data?.kind === 'buyer';
     const isThinBusiness = listing.form_data?.kind === 'business' && !getListingDescription(listing) && !listing.location;
-    // Business listings have no price
-    const price = Number(listing.price) > 0 ? formatListingPrice(listing.price) : '';
+    const isBiz = listing.form_data?.kind === 'business';
+    const price = isBiz ? '' : formatListingPrice(listing.price);
     const summary = [price, listing.location].filter(Boolean).join(' · ');
-    const code = getListingUniqueId(listing);
-    const titleBase = publicListingTitle(listing);
-    const fullTitle = `${titleBase}${code ? ` (${code})` : ''} | TradeCall India`;
+    const fullTitle = listing.seo_title || `${publicListingTitle(listing)} | TradeCall India`;
     setSeo({
       title: fullTitle,
       description: toMetaDescription(`${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`),
@@ -341,7 +339,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
   const isBusiness = formData.kind === 'business';
   const keyDetails = buildKeyDetails(formData);
   const amenities = Array.isArray(formData.amenities) ? formData.amenities.filter((a) => typeof a === 'string' && a) : [];
-  const showPrice = Number(listing.price) > 0;
+  const showPrice = !isBusiness;
   const postedOn = listing.created_at
     ? new Date(listing.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
         .replace(/^(\w+) (\d+), (\d+)$/, '$2 $1 $3')

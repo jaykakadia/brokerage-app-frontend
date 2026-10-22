@@ -65,6 +65,7 @@ export interface Listing {
   /** Admin only: email the listing is held for until that user signs up */
   assigned_email?: string | null;
   created_at: string;
+  seo_title?: string | null;
   images: ListingImage[];
 }
 

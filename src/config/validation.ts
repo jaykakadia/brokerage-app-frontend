@@ -81,9 +81,6 @@ export function validatePriceInput(
   if (!price || price <= 0) {
     return { valid: false, error: 'Price must be a positive number greater than zero.', suspicious: false };
   }
-  if (price > INVALID_PRICE_MAX) {
-    return { valid: false, error: 'Price exceeds maximum allowable limit of ₹1,000 Crore.', suspicious: false };
-  }
 
   const isRent = forWhat === 'rent';
   const propLower = propType.toLowerCase();

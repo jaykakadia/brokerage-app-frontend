@@ -5,7 +5,7 @@ import type { Listing } from '../types';
 export const formatListingPrice = (raw: number | string | null | undefined): string => {
   if (raw == null || raw === '') return 'Price on request';
   const num = Number(raw);
-  if (!Number.isFinite(num) || num <= 0) return '₹ ' + String(raw);
+  if (!Number.isFinite(num) || num <= 0) return 'Price on request';
 
   if (num >= 10000000) {
     const cr = num / 10000000;
