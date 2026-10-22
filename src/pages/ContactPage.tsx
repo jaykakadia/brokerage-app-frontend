@@ -50,16 +50,16 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
       <section style={{ padding: '60px 20px', background: '#f4f6f9' }}>
         <div className="container" style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '50px' }}>
-            {/* Email Card */}
+            {/* Phone Card */}
             <div style={{ background: '#fff', borderRadius: '16px', padding: '30px', textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#f0fdf4', color: '#0c6253', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', margin: '0 auto 16px auto' }}>
-                <i className="far fa-envelope"></i>
+                <i className="fas fa-phone-alt"></i>
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Email Us</h3>
-              <a href="mailto:support.tradecall@gmail.com" style={{ color: '#0c6253', fontWeight: 600, fontSize: '15px', textDecoration: 'none' }}>
-                support.tradecall@gmail.com
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Phone Support</h3>
+              <a href="tel:+919992292828" style={{ color: '#0c6253', fontWeight: 600, fontSize: '16px', textDecoration: 'none' }}>
+                +91 99922 92828
               </a>
-              <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '6px' }}>We reply within 24 hours</p>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '6px' }}>Mon - Sat: 9:00 AM - 8:00 PM</p>
             </div>
 
             {/* WhatsApp Card */}
@@ -81,7 +81,7 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Office Address</h3>
               <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
-                Main Market, Palwal, Haryana 121102
+                Village Joharkhera, PO Mandkola, Palwal, Haryana 121102
               </p>
               <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '6px' }}>Mon - Sat: 9:00 AM - 7:00 PM</p>
             </div>

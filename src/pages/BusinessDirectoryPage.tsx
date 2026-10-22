@@ -5,6 +5,7 @@ import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
 import { getListingUrl } from '../utils/url';
+import { setSeo } from '../utils/seo';
 import type { AuthModalOptions } from './ListingDetailPage';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
 
@@ -48,6 +49,14 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setSeo({
+      title: 'Local Business Directory in Palwal & NCR | TradeCall India',
+      description: 'Explore verified local businesses, shops, and services across Palwal, Faridabad, and Haryana NCR. Free local business directory on TradeCall India.',
+      path: '/business-directory'
+    });
+  }, []);
 
   useEffect(() => {
     if (!user) {

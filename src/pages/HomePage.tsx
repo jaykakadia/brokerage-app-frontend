@@ -145,6 +145,33 @@ function getPaginationItems(current: number, total: number): Array<number | '...
   return [1, '...', current - 1, current, current + 1, '...', total];
 }
 
+const HOMEPAGE_FAQS = [
+  {
+    q: 'How does TradeCall India ensure zero brokerage on property transactions?',
+    a: 'TradeCall India directly connects verified property owners, buyers, and tenants without intermediaries. You get direct contact access to genuine owners and sellers without paying any brokerage or commission.'
+  },
+  {
+    q: 'How are property listings verified on TradeCall India?',
+    a: 'Every listing undergoes an initial verification process checking owner contact details, property specifics, and photos. Verified listings are marked with our verified badge after confirming details with the owner.'
+  },
+  {
+    q: 'Can I list my property for free on TradeCall India?',
+    a: 'Yes, genuine owners and individuals can post their property for sale or rent completely free of charge. You can list residential flats, houses, plots, agricultural land, or commercial properties.'
+  },
+  {
+    q: 'What types of properties can I find in Palwal and NCR on TradeCall India?',
+    a: 'You can find residential apartments, builder floors, independent houses, residential plots, commercial shops, office spaces, and agricultural or industrial land across Palwal, Faridabad, Gurugram, and neighboring NCR corridors.'
+  },
+  {
+    q: 'How do I contact property owners or local businesses on TradeCall India?',
+    a: 'Each property and business listing features direct call and WhatsApp buttons. Once you click to reveal contact details, you can speak or chat directly with the owner or business representative.'
+  },
+  {
+    q: 'Where is TradeCall India located and how can I get support?',
+    a: 'TradeCall India is based in Village Joharkhera, PO Mandkola, Palwal, Haryana 121102. For customer assistance, you can call or WhatsApp our support desk at +91 9992292828.'
+  }
+];
+
 export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
@@ -157,6 +184,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const touchStartX = useRef<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
   const newListingsCount = useMemo(() => listings.filter(isNewListing).length, [listings]);
 
@@ -628,7 +656,49 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     ];
   }, [cityCounts]);
 
-  // Ensure client-side setSeo is consistent with server: noindex for cities with 0 listings
+  // Price statistics and city FAQs for City Hub
+  const cityPriceList = useMemo(() => {
+    if (!activeCity) return [];
+    return listings
+      .filter((l) => l.location?.toLowerCase().includes(activeCity.toLowerCase()) && Number(l.price) > 0)
+      .map((l) => Number(l.price))
+      .sort((a, b) => a - b);
+  }, [activeCity, listings]);
+
+  const hasCityPriceGuide = cityPriceList.length >= 5;
+  const minCityPrice = cityPriceList.length > 0 ? formatListingPrice(cityPriceList[0]) : '';
+  const medCityPrice = cityPriceList.length > 0 ? formatListingPrice(cityPriceList[Math.floor(cityPriceList.length / 2)]) : '';
+  const maxCityPrice = cityPriceList.length > 0 ? formatListingPrice(cityPriceList[cityPriceList.length - 1]) : '';
+
+  const cityFaqs = useMemo(() => {
+    if (!activeCity) return [];
+    return [
+      {
+        q: `What are property prices like in ${activeCity} on TradeCall India?`,
+        a: hasCityPriceGuide
+          ? `In ${activeCity}, verified property listings currently range from ${minCityPrice} up to ${maxCityPrice}, with a median listing price around ${medCityPrice}.`
+          : `Property prices in ${activeCity} vary across property types. Explore individual verified listings on TradeCall India for genuine direct owner pricing.`
+      },
+      {
+        q: `Can I buy or rent property in ${activeCity} with zero brokerage?`,
+        a: `Yes, all property listings in ${activeCity} on TradeCall India connect you directly with genuine owners and verified sellers with zero brokerage commission.`
+      },
+      {
+        q: `Which are the most popular localities in ${activeCity}?`,
+        a: `Explore verified listings across key residential sectors, colonies, and commercial markets in ${activeCity} on TradeCall India.`
+      },
+      {
+        q: `How can I list my property in ${activeCity} for sale or rent?`,
+        a: `Property owners can list free of charge in ${activeCity} on TradeCall India. Click 'Post Property', select ${activeCity}, and enter your property dimensions, photos, and contact info.`
+      },
+      {
+        q: `How does TradeCall India verify listings in ${activeCity}?`,
+        a: `TradeCall India verifies owner contact numbers and reviews property photos and descriptions to maintain genuine listings across ${activeCity}.`
+      }
+    ];
+  }, [activeCity, hasCityPriceGuide, minCityPrice, maxCityPrice, medCityPrice]);
+
+  // Ensure client-side setSeo is consistent with server: noindex for cities with 0 listings + FAQPage schema
   useEffect(() => {
     if (activeCity && !loading) {
       const slug = getCitySlug(activeCity);
@@ -651,9 +721,40 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           : `Explore properties in ${activeCity}. Contact verified owners directly on TradeCall India.`,
         path: `/properties/${slug}`,
         noindex: count === 0,
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: cityFaqs.map((f) => ({
+            '@type': 'Question',
+            name: f.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: f.a
+            }
+          }))
+        }
+      });
+    } else if (!activeCity && !loading) {
+      setSeo({
+        title: 'Property in Palwal, Faridabad & NCR | TradeCall India',
+        description:
+          'Buy, sell or rent flats, plots, houses and commercial property in Palwal, Faridabad and the NCR with zero brokerage. Contact verified owners directly and find local businesses on TradeCall India.',
+        path: '/',
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: HOMEPAGE_FAQS.map((f) => ({
+            '@type': 'Question',
+            name: f.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: f.a
+            }
+          }))
+        }
       });
     }
-  }, [activeCity, loading, cityCounts]);
+  }, [activeCity, loading, cityCounts, cityFaqs]);
 
   // Until the listings load, show the site-wide stats
   const listingsLoaded = !loading && !error;
@@ -2056,6 +2157,268 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </nav>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Batch 2 SEO Sections: Verification Policy, Hub Links, Property Types, FAQs, Contact */}
+      <section style={{ background: '#f8fafc', padding: '48px 0', borderTop: '1px solid #e2e8f0' }}>
+        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          {activeCity ? (
+            /* City Hub Sections */
+            <div>
+              {hasCityPriceGuide && (
+                <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '28px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>
+                    <i className="fas fa-chart-line" style={{ color: '#0c6253', marginRight: '8px' }}></i>
+                    Price Guide for Properties in {activeCity}
+                  </h2>
+                  <p style={{ color: '#475569', fontSize: '15px', lineHeight: 1.6, margin: 0 }}>
+                    Verified listings in {activeCity} range from <strong>{minCityPrice}</strong> up to <strong>{maxCityPrice}</strong>, with a median listing price of approximately <strong>{medCityPrice}</strong>.
+                  </p>
+                </div>
+              )}
+
+              <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '28px', border: '1px solid #e2e8f0' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>
+                  Explore Property Types in {activeCity}
+                </h2>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: `Flats & Apartments in ${activeCity}`, type: 'flat' },
+                    { label: `Houses & Villas in ${activeCity}`, type: 'house' },
+                    { label: `Plots & Land in ${activeCity}`, type: 'plot' },
+                    { label: `Commercial Properties in ${activeCity}`, type: 'commercial' },
+                    { label: `Agricultural Land in ${activeCity}`, type: 'agriculture' }
+                  ].map((item) => (
+                    <button
+                      key={item.type}
+                      type="button"
+                      onClick={() => {
+                        setHeroType(item.type);
+                        setTypeInput(item.label);
+                        setCurrentPage(1);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        color: '#0c6253',
+                        borderRadius: '20px',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* City FAQs */}
+              <div style={{ background: '#fff', borderRadius: '12px', padding: '28px', border: '1px solid #e2e8f0' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', marginBottom: '20px' }}>
+                  Frequently Asked Questions about {activeCity} Real Estate
+                </h2>
+                <div>
+                  {cityFaqs.map((faq, idx) => {
+                    const isOpen = openFaqIdx === idx;
+                    return (
+                      <div key={faq.q} style={{ borderBottom: '1px solid #e2e8f0', padding: '14px 0' }}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenFaqIdx(isOpen ? null : idx)}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '16px',
+                            fontWeight: 700,
+                            color: '#1e293b',
+                            padding: 0
+                          }}
+                        >
+                          <span>{faq.q}</span>
+                          <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ color: '#0c6253', marginLeft: '12px' }}></i>
+                        </button>
+                        {isOpen && (
+                          <p style={{ marginTop: '10px', color: '#475569', fontSize: '14px', lineHeight: 1.6, margin: '10px 0 0 0' }}>
+                            {faq.a}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Homepage Sections */
+            <div>
+              {/* Verification & Zero Brokerage Policy */}
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', marginBottom: '32px', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ display: 'inline-block', padding: '4px 12px', background: '#dcfce7', color: '#166534', borderRadius: '20px', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '10px' }}>
+                      Verification Policy
+                    </span>
+                    <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>
+                      Zero Brokerage & Direct Contact Guarantee
+                    </h2>
+                    <p style={{ color: '#475569', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
+                      TradeCall India directly connects genuine property owners, buyers, and tenants. Every listing is reviewed by our moderation team with verified owner contact details, ensuring 100% transparency with zero middleman commissions across Palwal, Faridabad, and NCR.
+                    </p>
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                      <i className="fas fa-headset" style={{ color: '#0c6253', marginRight: '8px' }}></i> TradeCall India Support Desk
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
+                      <strong>WhatsApp / Phone:</strong> <a href="https://wa.me/919992292828" target="_blank" rel="noreferrer" style={{ color: '#0c6253', fontWeight: 600 }}>+91 9992292828</a>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                      <strong>Office:</strong> Village Joharkhera, PO Mandkola, Palwal, Haryana 121102
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* City Hubs Links */}
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', marginBottom: '32px', border: '1px solid #e2e8f0' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
+                  Explore Real Estate by City Hub
+                </h2>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {sortedBrowseCities.filter(c => c.count >= 5).map((c) => (
+                    <a
+                      key={c.slug}
+                      href={`/properties/${c.slug}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onNavigate('properties-city', c.slug);
+                      }}
+                      style={{
+                        padding: '10px 18px',
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        color: '#0c6253',
+                        borderRadius: '20px',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Properties in {c.name} ({c.count} listings)
+                    </a>
+                  ))}
+                  <a
+                    href="/cities"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onNavigate('cities');
+                    }}
+                    style={{
+                      padding: '10px 18px',
+                      background: '#e0f2fe',
+                      border: '1px solid #bae6fd',
+                      color: '#0369a1',
+                      borderRadius: '20px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      fontSize: '14px'
+                    }}
+                  >
+                    View All Indian Cities →
+                  </a>
+                </div>
+              </div>
+
+              {/* Property Types Block */}
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', marginBottom: '32px', border: '1px solid #e2e8f0' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
+                  Explore Property Types
+                </h2>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Flats & Apartments in Palwal', type: 'flat' },
+                    { label: 'Houses & Luxury Villas', type: 'house' },
+                    { label: 'Residential Plots', type: 'plot' },
+                    { label: 'Commercial Shops & Offices', type: 'commercial' },
+                    { label: 'Agricultural & Farm Land', type: 'agriculture' }
+                  ].map((item) => (
+                    <button
+                      key={item.type}
+                      type="button"
+                      onClick={() => {
+                        setHeroType(item.type);
+                        setTypeInput(item.label);
+                        setCurrentPage(1);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        color: '#334155',
+                        borderRadius: '20px',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Homepage FAQ */}
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginBottom: '20px' }}>
+                  Frequently Asked Questions
+                </h2>
+                <div>
+                  {HOMEPAGE_FAQS.map((faq, idx) => {
+                    const isOpen = openFaqIdx === idx;
+                    return (
+                      <div key={faq.q} style={{ borderBottom: '1px solid #e2e8f0', padding: '16px 0' }}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenFaqIdx(isOpen ? null : idx)}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '16px',
+                            fontWeight: 700,
+                            color: '#1e293b',
+                            padding: 0
+                          }}
+                        >
+                          <span>{faq.q}</span>
+                          <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ color: '#0c6253', marginLeft: '12px' }}></i>
+                        </button>
+                        {isOpen && (
+                          <p style={{ marginTop: '12px', color: '#475569', fontSize: '14px', lineHeight: 1.6, margin: '12px 0 0 0' }}>
+                            {faq.a}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </div>

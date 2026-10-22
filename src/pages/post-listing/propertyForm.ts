@@ -1,4 +1,5 @@
 import { normalizeExternalUrl } from '../../utils/url';
+import { validateLocality, validatePriceInput } from '../../config/validation';
 
 export type ListingRole = 'business' | 'buyer' | 'owner';
 export type PosterRole = 'real_owner' | 'real_buyer' | 'agent' | 'builder';
@@ -213,10 +214,15 @@ export function validatePropertyStep(form: PropertyFormState, step: PropertyStep
     if (!form.propType) return 'Please select a Property Type';
     if (!form.city) return 'Please select a City';
     if (!form.state.trim()) return 'State is missing. Pick a city that has a state.';
-    if (form.locality && form.locality.trim().length > 50) return 'Locality / Project / Society cannot exceed 50 characters';
+    if (form.locality) {
+      const locRes = validateLocality(form.locality);
+      if (!locRes.valid && locRes.error) return locRes.error;
+    }
   }
   if (step === 3) {
-    if (propertyPriceNumber(form) <= 0) return 'Please enter Price/Budget';
+    const priceNum = propertyPriceNumber(form);
+    const priceRes = validatePriceInput(priceNum, form.forWhat, form.propType);
+    if (!priceRes.valid && priceRes.error) return priceRes.error;
   }
   return null;
 }

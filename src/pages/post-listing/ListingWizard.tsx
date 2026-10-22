@@ -20,6 +20,7 @@ import {
   type PropertyFormState,
   type PropertyStep
 } from './propertyForm';
+import { validatePriceInput, cleanAndNormalizeLocality } from '../../config/validation';
 import type { Listing, Location, ApiResponse, RefCodeItem } from '../../types';
 
 const LISTING_ROLES: ListingRole[] = ['business', 'buyer', 'owner'];
@@ -187,12 +188,24 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
       }
     }
     const price = propertyPriceNumber(form);
+    if (role !== 'business') {
+      const priceCheck = validatePriceInput(price, form.forWhat, form.propType);
+      if (priceCheck.suspicious && priceCheck.warning) {
+        const confirmed = window.confirm(`${priceCheck.warning}\n\nDo you want to proceed with this price?`);
+        if (!confirmed) {
+          goToStep(3);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const location = [form.locality, form.city, form.state].filter(Boolean).join(', ');
+      const normalizedLocality = cleanAndNormalizeLocality(form.locality);
+      const location = [normalizedLocality, form.city, form.state].filter(Boolean).join(', ');
       const fd = new FormData();
-      fd.append('title', listingTitle(form, role === 'buyer'));
+      fd.append('title', listingTitle({ ...form, locality: normalizedLocality }, role === 'buyer'));
       fd.append('location', location);
       fd.append('price', String(price));
       fd.append('description', form.description.trim());
@@ -209,6 +222,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
       fd.append('form_data', JSON.stringify({
         kind: role,
         ...form,
+        locality: normalizedLocality,
         whatsapp: form.sameAsMobile ? form.mobile : form.whatsapp,
         ...normalizedSocialLinks(form),
         amenities: form.amenities.filter((a) => amenitiesFor(form.propType).includes(a)),

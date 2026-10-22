@@ -14,6 +14,23 @@ export interface SeoOptions {
   image?: string;
   /** Keep private pages (account, admin, login…) out of search results. */
   noindex?: boolean;
+  /** Structured data schema (JSON-LD) for the page. */
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+function setJsonLd(id: string, data?: Record<string, unknown> | Array<Record<string, unknown>>): void {
+  let el = document.getElementById(id) as HTMLScriptElement | null;
+  if (!data) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('script');
+    el.id = id;
+    el.type = 'application/ld+json';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(data);
 }
 
 function setMeta(attr: 'name' | 'property', key: string, content: string): void {
@@ -44,7 +61,7 @@ export function toMetaDescription(text?: string | null, max = 160): string {
 }
 
 /** Updates the title, description, canonical URL and social-preview tags for the current page. */
-export function setSeo({ title, description, path, image, noindex = false }: SeoOptions = {}): void {
+export function setSeo({ title, description, path, image, noindex = false, jsonLd }: SeoOptions = {}): void {
   const fullTitle = !title ? DEFAULT_TITLE : title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
   const desc = description || DEFAULT_DESCRIPTION;
   const url = `${SITE_URL}${path ?? window.location.pathname}`;
@@ -63,6 +80,9 @@ export function setSeo({ title, description, path, image, noindex = false }: Seo
     const absolute = image.startsWith('/') ? `${SITE_URL}${image}` : image;
     setMeta('property', 'og:image', absolute);
     setMeta('name', 'twitter:image', absolute);
+  }
+  if (jsonLd) {
+    setJsonLd('dynamic-page-jsonld', jsonLd);
   }
 }
 
