@@ -234,6 +234,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       : 'all'
   );
   const initialNewOnly = initialUrlParams.get('new') === '1' || initialUrlParams.get('new') === 'true';
+  const initialPage = Math.max(1, parseInt(initialUrlParams.get('page') || '1', 10) || 1);
 
   // Search & filter state
   const [heroCity, setHeroCity] = useState(initialCity);
@@ -263,7 +264,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
   const [newOnly, setNewOnly] = useState(initialNewOnly);
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const isInitialFilterMount = useRef(true);
   const [copiedFilters, setCopiedFilters] = useState(false);
   // Set when the user explicitly picks the "All …" / "Any …" option, so the box shows it instead of the placeholder
   const [allCitiesPicked, setAllCitiesPicked] = useState(false);
@@ -281,6 +283,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     if (heroKeyword.trim()) params.set('q', heroKeyword.trim());
     if (activeCategoryTab !== 'all') params.set('tab', activeCategoryTab);
     if (newOnly) params.set('new', '1');
+    if (currentPage > 1) params.set('page', String(currentPage));
 
     const searchStr = params.toString();
     const newPathAndSearch = searchStr ? `${window.location.pathname}?${searchStr}` : window.location.pathname;
@@ -289,9 +292,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     if (newPathAndSearch !== currentPathAndSearch) {
       window.history.replaceState(null, '', newPathAndSearch);
     }
-  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, newOnly]);
+  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, newOnly, currentPage]);
 
-  // Support browser Back/Forward buttons updating filters
+  // Support browser Back/Forward buttons updating filters & page
   useEffect(() => {
     const handlePopState = () => {
       const sp = new URLSearchParams(window.location.search);
@@ -307,6 +310,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
           : 'all'
       );
       const nOnly = sp.get('new') === '1' || sp.get('new') === 'true';
+      const p = Math.max(1, parseInt(sp.get('page') || '1', 10) || 1);
 
       setHeroCity(c);
       setSelectedCities(c ? [c] : []);
@@ -318,6 +322,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       setHeroKeyword(q);
       setActiveCategoryTab(tab);
       setNewOnly(nOnly);
+      setCurrentPage(p);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -877,8 +882,12 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     return true;
   });
 
-  // Back to the first page whenever the filters change
+  // Back to the first page whenever the filters change (skip initial mount to honor URL ?page=)
   useEffect(() => {
+    if (isInitialFilterMount.current) {
+      isInitialFilterMount.current = false;
+      return;
+    }
     setCurrentPage(1);
   }, [newOnly, selectedCities, heroCity, heroKeyword, heroType, activeCategoryTab, budgetMin, budgetMax]);
 
@@ -886,8 +895,21 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const page = Math.min(currentPage, totalPages);
   const pagedListings = filteredListings.slice((page - 1) * LISTINGS_PER_PAGE, page * LISTINGS_PER_PAGE);
 
+  const getPageUrl = (targetPage: number): string => {
+    const params = new URLSearchParams(window.location.search);
+    if (targetPage > 1) {
+      params.set('page', String(targetPage));
+    } else {
+      params.delete('page');
+    }
+    const qs = params.toString();
+    return qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  };
+
   const goToPage = (next: number): void => {
     setCurrentPage(next);
+    const nextUrl = getPageUrl(next);
+    window.history.pushState(null, '', nextUrl);
     scrollToSection('listings');
   };
 
@@ -1975,10 +1997,19 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </div>
             )}
             {!loading && !error && totalPages > 1 && (
-              <div className="pagination">
-                <button type="button" className="page-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>
+              <nav className="pagination" aria-label="Pagination">
+                <a
+                  href={getPageUrl(Math.max(1, page - 1))}
+                  className={`page-btn ${page === 1 ? 'disabled' : ''}`}
+                  style={page === 1 ? { pointerEvents: 'none', opacity: 0.5 } : {}}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page > 1) goToPage(page - 1);
+                  }}
+                  aria-label="Previous Page"
+                >
                   <i className="fas fa-chevron-left"></i> Prev
-                </button>
+                </a>
                 {getPaginationItems(page, totalPages).map((item, idx) =>
                   item === '...' ? (
                     <span
@@ -1996,20 +2027,33 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                       &hellip;
                     </span>
                   ) : (
-                    <button
+                    <a
                       key={item}
-                      type="button"
+                      href={getPageUrl(item)}
                       className={`page-btn ${item === page ? 'active' : ''}`}
-                      onClick={() => goToPage(item)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goToPage(item);
+                      }}
+                      aria-current={item === page ? 'page' : undefined}
                     >
                       {item}
-                    </button>
+                    </a>
                   )
                 )}
-                <button type="button" className="page-btn" disabled={page === totalPages} onClick={() => goToPage(page + 1)}>
+                <a
+                  href={getPageUrl(Math.min(totalPages, page + 1))}
+                  className={`page-btn ${page === totalPages ? 'disabled' : ''}`}
+                  style={page === totalPages ? { pointerEvents: 'none', opacity: 0.5 } : {}}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (page < totalPages) goToPage(page + 1);
+                  }}
+                  aria-label="Next Page"
+                >
                   Next <i className="fas fa-chevron-right"></i>
-                </button>
-              </div>
+                </a>
+              </nav>
             )}
           </div>
         </div>

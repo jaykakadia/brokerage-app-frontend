@@ -19,16 +19,10 @@ Allow: /api/v1/locations
 Allow: /api/v1/categories
 Allow: /api/v1/blogs
 Allow: /api/v1/settings/signup-guide
-Allow: /api/v1/auth/csrf
-Allow: /api/v1/auth/me
 Disallow: /api/
-Disallow: /admin
-Disallow: /adminpanel
-Disallow: /admin-panel
-Disallow: /admin-login
 Disallow: /login
 Disallow: /register
 Disallow: /account
 Disallow: /dashboard
 
-Sitemap: https://tradecall.in/sitemap.xml
+Sitemap: https://tradecall.in/sitemap_index.xml

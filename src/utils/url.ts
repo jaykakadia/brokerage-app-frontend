@@ -2,13 +2,17 @@ import { getCityFromSlug } from '../config/cities';
 
 export function slugify(text?: string | null): string {
   if (!text) return '';
-  return text
+  let s = text
     .toString()
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
+  s = s.replace(/panchwati-raod/g, 'panchwati-road')
+       .replace(/palwal-nuh-roa(?=-|$)/g, 'palwal-nuh-road')
+       .replace(/hospitcal/g, 'hospital');
+  return s;
 }
 
 /**
