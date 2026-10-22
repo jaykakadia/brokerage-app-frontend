@@ -180,6 +180,7 @@ export default function Header({ onNavigate, activePage, activeCity }: HeaderPro
               <a href="/blog" className={`drawer-nav-item ${activePage === 'blog' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('blog'); setDrawerOpen(false); }}>Blog</a>
               <a href="/about" className={`drawer-nav-item ${activePage === 'about' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('about'); setDrawerOpen(false); }}>About Us</a>
               <a href="/contact" className={`drawer-nav-item ${activePage === 'contact' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('contact'); setDrawerOpen(false); }}>Contact Us</a>
+              <a href="/faq" className={`drawer-nav-item ${activePage === 'faq' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); onNavigate('faq'); setDrawerOpen(false); }}>FAQs</a>
               {!onAuthPage && (
                 <a href="/post-listing" className="drawer-nav-item" onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); setDrawerOpen(false); }}>Post Free Listing</a>
               )}

@@ -158,6 +158,8 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return rawCityOptions;
   }, [city, rawCityOptions]);
 
+  const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
+
   const visible = businesses.filter((b) => {
     const info = businessInfo(b);
     if (newOnly && !isNewListing(b)) return false;
@@ -173,7 +175,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       if (!haystack.includes(q)) return false;
     }
     return true;
-  }).sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0));
+  });
 
   const hasFilters = Boolean(search || category || city || newOnly);
 
@@ -207,6 +209,85 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     setShowCitiesPanel(false);
     const el = document.getElementById('business-listings-section');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const renderBusinessCard = (b: Listing) => {
+    const info = businessInfo(b);
+    return (
+      <div key={b.id} className="listing-card business-dir-card">
+        <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
+          <img
+            src={getFirstImageUrl(b)}
+            alt={b.title}
+            className="card-img"
+            loading="lazy"
+            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
+          />
+          {b.verified === 1 && (
+            <span
+              className="badge-verified"
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                zIndex: 2,
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <i className="fas fa-check-circle"></i> Verified
+            </span>
+          )}
+          {b.is_featured && (
+            <span
+              className="badge-featured"
+              style={{
+                position: 'absolute',
+                top: '10px',
+                left: '10px',
+                zIndex: 2,
+                background: '#0d7a5f',
+                color: '#fff',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                fontSize: '11px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured
+            </span>
+          )}
+        </div>
+        <div className="card-body">
+          <h3 className="card-title business-dir-title">
+            {b.title}
+            {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
+          </h3>
+          <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
+          <div className="card-footer card-footer-actions">
+            <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
+              <i className="fas fa-info-circle"></i> Details
+            </button>
+            <button
+              type="button"
+              className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
+              onClick={() => void toggleSaved(b.id)}
+            >
+              <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+              <span>Wishlist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -389,8 +470,38 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
         </section>
       )}
 
-      <section id="business-listings-section" style={{ background: '#f4f6f9', minHeight: '60vh', padding: '24px 0 48px' }}>
+      {/* Featured Businesses Section (Matches Home Page Featured section) */}
+      {!hasFilters && featuredBusinesses.length > 0 && (
+        <section className="featured-section" id="featured-businesses" style={{ padding: '28px 0 32px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+          <div className="container">
+            <div className="section-header" style={{ marginBottom: '18px' }}>
+              <div>
+                <h2>
+                  <i className="fas fa-star" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
+                  Featured Businesses
+                </h2>
+                <p>Promoted businesses across all cities</p>
+              </div>
+            </div>
+            <div className="listings-grid">
+              {featuredBusinesses.map((b) => renderBusinessCard(b))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section id="business-listings-section" style={{ background: '#f4f6f9', minHeight: '60vh', padding: '28px 0 48px' }}>
         <div className="container">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <div>
+              <h2>
+                <i className="fas fa-clock" style={{ color: '#0d7a5f', marginRight: '8px' }}></i>
+                {hasFilters ? 'Filtered Businesses' : 'Recent Businesses'}
+              </h2>
+              <p>{hasFilters ? 'Businesses matching your search and filter criteria' : 'Latest verified businesses posted on TradeCall'}</p>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
             <strong style={{ color: '#111827' }}>
               {loading ? 'Loading businesses...' : `${visible.length} ${visible.length === 1 ? 'business' : 'businesses'} found`}
@@ -423,65 +534,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
           ) : (
             <>
               <div className="listings-grid">
-                {pagedBusinesses.map((b) => {
-                  const info = businessInfo(b);
-                  return (
-                    <div key={b.id} className="listing-card business-dir-card">
-                      <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
-                        <img
-                          src={getFirstImageUrl(b)}
-                          alt={b.title}
-                          className="card-img"
-                          loading="lazy"
-                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
-                        />
-                        {b.verified === 1 && (
-                          <span className="badge-verified"><i className="fas fa-check-circle"></i> Verified</span>
-                        )}
-                        {b.is_featured && (
-                          <span
-                            className="badge-featured"
-                            style={{
-                              top: '12px',
-                              left: '12px',
-                              background: '#0d7a5f',
-                              color: '#fff',
-                              borderRadius: '4px',
-                              padding: '4px 8px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '10px' }}></i> Featured
-                          </span>
-                        )}
-                      </div>
-                      <div className="card-body">
-                        <h3 className="card-title business-dir-title">
-                          {b.title}
-                          {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
-                        </h3>
-                        <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
-                        <div className="card-footer card-footer-actions">
-                          <button type="button" className="btn-view" onClick={() => onNavigate('listing-detail', b)}>
-                            <i className="fas fa-info-circle"></i> Details
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
-                            onClick={() => void toggleSaved(b.id)}
-                          >
-                            <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
-                            <span>Wishlist</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {pagedBusinesses.map((b) => renderBusinessCard(b))}
               </div>
 
               {!loading && !error && totalPages > 1 && (

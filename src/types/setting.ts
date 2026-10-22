@@ -33,3 +33,11 @@ export interface SignupGuideSettings {
   blog_url: string;
   video_url: string;
 }
+
+export interface SocialLinksSettings {
+  facebook_url: string;
+  instagram_url: string;
+  youtube_url: string;
+  whatsapp_number: string;
+  support_email: string;
+}

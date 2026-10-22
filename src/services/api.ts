@@ -25,6 +25,7 @@ import type {
   MailSettings,
   MailSettingsUpdate,
   SignupGuideSettings,
+  SocialLinksSettings,
   ToggleWishlistResponse,
   ListingStatsResponse,
   Enquiry,
@@ -261,6 +262,16 @@ export const getAdminSignupGuide = (): Promise<AxiosResponse<ApiResponse<SignupG
 
 export const saveSignupGuide = (settings: SignupGuideSettings): Promise<AxiosResponse<ApiResponse<SignupGuideSettings>>> =>
   api.post('/api/v1/admin/settings/signup-guide', settings);
+
+// Social & footer links
+export const getSocialLinks = (): Promise<AxiosResponse<ApiResponse<SocialLinksSettings>>> =>
+  api.get('/api/v1/settings/social-links');
+
+export const getAdminSocialLinks = (): Promise<AxiosResponse<ApiResponse<SocialLinksSettings>>> =>
+  api.get('/api/v1/admin/settings/social-links');
+
+export const saveSocialLinks = (settings: SocialLinksSettings): Promise<AxiosResponse<ApiResponse<SocialLinksSettings>>> =>
+  api.post('/api/v1/admin/settings/social-links', settings);
 
 // Listings Stats
 export const getListingStats = (): Promise<AxiosResponse<ListingStatsResponse>> =>

@@ -106,5 +106,10 @@ export const PAGE_SEO: Record<string, SeoOptions> = {
   },
   account: { title: 'My Account', noindex: true },
   admin: { title: 'Admin Dashboard', noindex: true },
-  dashboard: { title: 'Admin Dashboard', noindex: true }
+  dashboard: { title: 'Admin Dashboard', noindex: true },
+  faq: {
+    title: 'Frequently Asked Questions (FAQ) | TradeCall India',
+    description: 'Find answers to 35 frequently asked questions about buying, selling, renting properties, and registering real estate businesses on TradeCall India.',
+    path: '/faq'
+  }
 };

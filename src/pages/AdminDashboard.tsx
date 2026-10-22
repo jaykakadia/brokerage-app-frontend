@@ -20,9 +20,12 @@ import api, {
   sendTestMail,
   getAdminSignupGuide,
   saveSignupGuide,
+  getAdminSocialLinks,
+  saveSocialLinks,
   getApiErrorMessage,
   getEnquiryCounts
 } from '../services/api';
+import type { SocialLinksSettings } from '../types/setting';
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import AdminLocationsByState from '../components/AdminLocationsByState';
@@ -443,6 +446,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [showSmtpPassword, setShowSmtpPassword] = useState<boolean>(false);
   const [signupGuide, setSignupGuide] = useState<{ blog_url: string; video_url: string }>({ blog_url: '', video_url: '' });
   const [signupGuideSaving, setSignupGuideSaving] = useState<boolean>(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLinksSettings>({
+    facebook_url: '',
+    instagram_url: '',
+    youtube_url: '',
+    whatsapp_number: '',
+    support_email: ''
+  });
+  const [socialLinksLoading, setSocialLinksLoading] = useState<boolean>(false);
+  const [socialLinksSaving, setSocialLinksSaving] = useState<boolean>(false);
   const [credForm, setCredForm] = useState<CredFormState>({
     newUsername: '',
     currPassword: '',
@@ -1294,6 +1306,34 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const fetchSocialLinks = async () => {
+    setSocialLinksLoading(true);
+    try {
+      const res = await getAdminSocialLinks();
+      if (res.data?.data) {
+        setSocialLinks(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load social links', err);
+    } finally {
+      setSocialLinksLoading(false);
+    }
+  };
+
+  const handleSaveSocialLinks = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSocialLinksSaving(true);
+    try {
+      await saveSocialLinks(socialLinks);
+      showToast('Social media & footer links updated successfully!');
+      fetchSocialLinks();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to save social links', 'error');
+    } finally {
+      setSocialLinksSaving(false);
+    }
+  };
+
   const handleSendTestMail = async () => {
     const testEmail = window.prompt('Where should the test email be sent?', smtpSettings.email || user?.email || '');
     if (!testEmail) return;
@@ -1350,6 +1390,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     } else if (activeModule === 'settings') {
       fetchMailSettings();
       fetchSignupGuide();
+      fetchSocialLinks();
       fetchCashfreeSettings();
     } else if (activeModule === 'cashfree') {
       fetchCashfreeSettings();
@@ -3115,6 +3156,102 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   {signupGuideSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Guide Links'}
                 </button>
               </form>
+            </div>
+
+            {/* Social Media & Footer Links Card */}
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <i className="fas fa-share-nodes" style={{ color: '#0c6253', fontSize: '20px' }}></i>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                  Social Media &amp; Footer Links
+                </h2>
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
+                Manage the public social media links (Facebook, Instagram, YouTube) and contact information displayed in the website footer.
+              </p>
+
+              {socialLinksLoading ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
+                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
+                  <div>Loading links...</div>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveSocialLinks}>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      <i className="fab fa-facebook-f" style={{ marginRight: '6px', color: '#1877f2', width: '16px' }}></i>Facebook Link
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://facebook.com/yourpage"
+                      value={socialLinks.facebook_url}
+                      onChange={(e) => setSocialLinks({ ...socialLinks, facebook_url: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      <i className="fab fa-instagram" style={{ marginRight: '6px', color: '#e1306c', width: '16px' }}></i>Instagram Link
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://instagram.com/yourprofile"
+                      value={socialLinks.instagram_url}
+                      onChange={(e) => setSocialLinks({ ...socialLinks, instagram_url: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      <i className="fab fa-youtube" style={{ marginRight: '6px', color: '#dc2626', width: '16px' }}></i>YouTube Link
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="https://youtube.com/@yourchannel"
+                      value={socialLinks.youtube_url}
+                      onChange={(e) => setSocialLinks({ ...socialLinks, youtube_url: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      <i className="fab fa-whatsapp" style={{ marginRight: '6px', color: '#16a34a', width: '16px' }}></i>WhatsApp Contact Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9992292828"
+                      value={socialLinks.whatsapp_number}
+                      onChange={(e) => setSocialLinks({ ...socialLinks, whatsapp_number: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
+                      <i className="fas fa-envelope" style={{ marginRight: '6px', color: '#0c6253', width: '16px' }}></i>Support Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="support.tradecall@gmail.com"
+                      value={socialLinks.support_email}
+                      onChange={(e) => setSocialLinks({ ...socialLinks, support_email: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ width: '100%', padding: '11px', fontSize: '13px' }}
+                    disabled={socialLinksSaving}
+                  >
+                    {socialLinksSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Social &amp; Footer Links'}
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* SMTP Mail Configuration Card */}

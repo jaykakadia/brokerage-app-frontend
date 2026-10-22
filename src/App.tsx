@@ -21,6 +21,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 const CitiesPage = lazy(() => import('./pages/CitiesPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
 
 const PageLoader = () => (
   <div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
@@ -248,6 +249,9 @@ export default function App() {
     } else if (page === 'privacy') {
       path = '/privacy';
       setActivePage('privacy');
+    } else if (page === 'faq' || page === 'faqs') {
+      path = '/faq';
+      setActivePage('faq');
     } else {
       setActivePage(page);
       path = `/${page}`;
@@ -405,6 +409,12 @@ export default function App() {
           {activePage === 'blog-detail' && (
             <BlogDetailPage
               blogIdentifier={selectedBlogId}
+              onNavigate={navigateTo}
+            />
+          )}
+
+          {activePage === 'faq' && (
+            <FAQPage
               onNavigate={navigateTo}
             />
           )}

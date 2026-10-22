@@ -67,8 +67,11 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     if (['admin-login', 'admin-login.php'].includes(cleanHash.toLowerCase())) {
       return { page: 'admin-login', param: null };
     }
-    if (['home', 'business-directory', 'advertise', 'blog', 'about', 'contact', 'post-listing', 'account', 'admin', 'login'].includes(cleanHash)) {
+    if (['home', 'business-directory', 'advertise', 'blog', 'about', 'contact', 'post-listing', 'account', 'admin', 'login', 'faq'].includes(cleanHash)) {
       return { page: cleanHash, param: null };
+    }
+    if (cleanHash === 'faqs' || cleanHash === 'frequently-asked-questions') {
+      return { page: 'faq', param: null };
     }
   }
 
@@ -113,7 +116,10 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     'post-free': 'post-listing',
     'account': 'account',
     'admin': 'admin',
-    'dashboard': 'admin'
+    'dashboard': 'admin',
+    'faq': 'faq',
+    'faqs': 'faq',
+    'frequently-asked-questions': 'faq'
   };
 
   if (singleRoutes[cleanPath.toLowerCase()]) {

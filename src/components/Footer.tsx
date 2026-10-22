@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { FOOTER_TOP_CITIES } from '../config/cities';
 import type { NavigateFunction } from '../types';
+import { getSocialLinks } from '../services/api';
+import type { SocialLinksSettings } from '../types/setting';
 
 export interface FooterProps {
   onCitySelect: (city: string) => void;
@@ -7,6 +10,29 @@ export interface FooterProps {
 }
 
 export default function Footer({ onNavigate }: FooterProps) {
+  const [links, setLinks] = useState<SocialLinksSettings>({
+    facebook_url: 'https://facebook.com',
+    instagram_url: 'https://instagram.com',
+    youtube_url: 'https://youtube.com',
+    whatsapp_number: '9992292828',
+    support_email: 'support.tradecall@gmail.com',
+  });
+
+  useEffect(() => {
+    let active = true;
+    getSocialLinks()
+      .then((res) => {
+        if (active && res.data?.data) {
+          setLinks((prev) => ({ ...prev, ...res.data.data }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const cleanPhone = (links.whatsapp_number || '9992292828').replace(/\D/g, '').slice(-10);
 
   return (
     <footer className="footer">
@@ -20,17 +46,36 @@ export default function Footer({ onNavigate }: FooterProps) {
           </div>
           <p>Palwal's trusted property and business directory serving the NCR/Haryana corridor.</p>
           <div className="footer-email" style={{ marginBottom: '8px' }}>
-            <a href="mailto:support.tradecall@gmail.com" style={{ color: 'inherit', textDecoration: 'none' }}>
-              <i className="fas fa-envelope"></i> support.tradecall@gmail.com
+            <a href={`mailto:${links.support_email || 'support.tradecall@gmail.com'}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+              <i className="fas fa-envelope"></i> {links.support_email || 'support.tradecall@gmail.com'}
             </a>
           </div>
           <div className="footer-phone" style={{ fontSize: '15px', color: 'rgba(255,255,255,0.8)' }}>
-            <i className="fab fa-whatsapp"></i> 9992292828 (WhatsApp)
+            <a
+              href={`https://wa.me/91${cleanPhone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              <i className="fab fa-whatsapp"></i> {links.whatsapp_number || '9992292828'} (WhatsApp)
+            </a>
           </div>
           <div className="footer-social" style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
-            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }}><i className="fab fa-facebook-f"></i></a>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }}><i className="fab fa-instagram"></i></a>
-            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }}><i className="fab fa-youtube"></i></a>
+            {links.facebook_url && (
+              <a href={links.facebook_url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title="Facebook">
+                <i className="fab fa-facebook-f"></i>
+              </a>
+            )}
+            {links.instagram_url && (
+              <a href={links.instagram_url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title="Instagram">
+                <i className="fab fa-instagram"></i>
+              </a>
+            )}
+            {links.youtube_url && (
+              <a href={links.youtube_url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title="YouTube">
+                <i className="fab fa-youtube"></i>
+              </a>
+            )}
           </div>
         </div>
 
@@ -86,6 +131,7 @@ export default function Footer({ onNavigate }: FooterProps) {
             <li><a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>
             <li><a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }}>About Us</a></li>
             <li><a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}>Contact Us</a></li>
+            <li><a href="/faq" onClick={(e) => { e.preventDefault(); onNavigate('faq'); }}>FAQs</a></li>
           </ul>
         </div>
       </div>
@@ -96,6 +142,7 @@ export default function Footer({ onNavigate }: FooterProps) {
           <div className="footer-legal" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <a href="/privacy" onClick={(e) => { e.preventDefault(); onNavigate('privacy'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Privacy Policy</a>
             <a href="/terms-of-use" onClick={(e) => { e.preventDefault(); onNavigate('terms'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Terms of Use</a>
+            <a href="/faq" onClick={(e) => { e.preventDefault(); onNavigate('faq'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>FAQs</a>
             <a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Blog</a>
             <a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>About Us</a>
             <a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }} style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>Contact</a>
