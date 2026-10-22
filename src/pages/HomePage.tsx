@@ -904,21 +904,6 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     openListing(listing);
   };
 
-  const listingCardProps = (listing: Listing): React.HTMLAttributes<HTMLDivElement> => ({
-    role: 'group',
-    onClick: (e) => {
-      if ((e.target as HTMLElement).closest('a, button, .btn-wishlist')) return;
-      openListing(listing);
-    },
-    onKeyDown: (e) => {
-      if (e.target !== e.currentTarget) return;
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openListing(listing);
-      }
-    }
-  });
-
   const renderListingCard = (listing: Listing, asList = false) => {
     const imgSrc = getFirstImageUrl(listing);
     const priceStr = formatListingPrice(listing.price);
@@ -932,30 +917,27 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
         key={listing.id}
         className="listing-card"
         style={asList ? { display: 'flex', flexDirection: 'row' } : {}}
-        {...listingCardProps(listing)}
       >
+        <a
+          href={listingUrl}
+          className="card-stretched-link"
+          aria-label={title}
+          onClick={(e) => handleListingLinkClick(e, listing)}
+        />
         <div
           className="card-img-wrap"
           style={{ ...cardImageBackdrop(imgSrc), ...(asList ? { width: '280px', flexShrink: 0 } : {}) }}
         >
-          <a
-            href={listingUrl}
-            onClick={(e) => handleListingLinkClick(e, listing)}
-            style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
-            tabIndex={-1}
-            aria-label={title}
-          >
-            <img
-              src={imgSrc}
-              alt={title}
-              className="card-img"
-              onError={(e) => {
-                const target = e.currentTarget;
-                target.onerror = null;
-                target.src = '/placeholder-property.svg';
-              }}
-            />
-          </a>
+          <img
+            src={imgSrc}
+            alt={title}
+            className="card-img"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = '/placeholder-property.svg';
+            }}
+          />
           {listing.verified === 1 && (
             <span className="badge-verified">
               <i className="fas fa-check-circle"></i> Verified
@@ -997,7 +979,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               justifyContent: 'center',
               color: wishlistIds.has(listing.id) ? '#dc2626' : '#9ca3af',
               fontSize: '15px',
-              zIndex: 2,
+              zIndex: 3,
               transition: 'transform 0.15s ease'
             }}
           >
@@ -1007,15 +989,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
         <div className="card-body" style={{ flex: 1 }}>
           <div className="card-price">{priceStr}</div>
-          <h3 className="card-title">
-            <a
-              href={listingUrl}
-              onClick={(e) => handleListingLinkClick(e, listing)}
-              style={{ color: 'inherit', textDecoration: 'none' }}
-            >
-              {title}
-            </a>
-          </h3>
+          <h3 className="card-title">{title}</h3>
           <div className="card-location">
             <i className="fas fa-map-marker-alt"></i>
             <span>{listing.location}</span>
@@ -1057,27 +1031,24 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       <div
         key={`business-${business.id}`}
         className="listing-card business-featured-card"
-        {...listingCardProps(business)}
       >
+        <a
+          href={businessUrl}
+          className="card-stretched-link"
+          aria-label={business.title}
+          onClick={(e) => handleListingLinkClick(e, business)}
+        />
         <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
-          <a
-            href={businessUrl}
-            onClick={(e) => handleListingLinkClick(e, business)}
-            style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
-            tabIndex={-1}
-            aria-label={business.title}
-          >
-            <img
-              src={imgSrc}
-              alt={business.title}
-              className="card-img"
-              onError={(e) => {
-                const target = e.currentTarget;
-                target.onerror = null;
-                target.src = '/placeholder-property.svg';
-              }}
-            />
-          </a>
+          <img
+            src={imgSrc}
+            alt={business.title}
+            className="card-img"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = '/placeholder-property.svg';
+            }}
+          />
           {business.verified === 1 && (
             <span className="badge-verified">
               <i className="fas fa-check-circle"></i> Verified
@@ -1122,7 +1093,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               justifyContent: 'center',
               color: isSaved ? '#dc2626' : '#9ca3af',
               fontSize: '15px',
-              zIndex: 2,
+              zIndex: 3,
               transition: 'transform 0.15s ease'
             }}
           >
@@ -1148,15 +1119,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               {categoryName}
             </span>
           </div>
-          <h3 className="card-title" title={business.title}>
-            <a
-              href={businessUrl}
-              onClick={(e) => handleListingLinkClick(e, business)}
-              style={{ color: 'inherit', textDecoration: 'none' }}
-            >
-              {business.title}
-            </a>
-          </h3>
+          <h3 className="card-title" title={business.title}>{business.title}</h3>
           <div className="card-location">
             <i className="fas fa-map-marker-alt"></i>
             <span>{business.location}</span>
@@ -1612,27 +1575,24 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                     <div
                       key={`featured-${listing.id}-${index}`}
                       className="listing-card featured-card"
-                      {...listingCardProps(listing)}
                     >
+                      <a
+                        href={itemUrl}
+                        className="card-stretched-link"
+                        aria-label={title}
+                        onClick={(e) => handleListingLinkClick(e, listing)}
+                      />
                       <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
-                        <a
-                          href={itemUrl}
-                          onClick={(e) => handleListingLinkClick(e, listing)}
-                          style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
-                          tabIndex={-1}
-                          aria-label={title}
-                        >
-                          <img
-                            src={imgSrc}
-                            alt={title}
-                            className="card-img"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              target.onerror = null;
-                              target.src = '/placeholder-property.svg';
-                            }}
-                          />
-                        </a>
+                        <img
+                          src={imgSrc}
+                          alt={title}
+                          className="card-img"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = '/placeholder-property.svg';
+                          }}
+                        />
                         {listing.verified === 1 && (
                           <span className="badge-verified">
                             <i className="fas fa-check-circle"></i> Verified
@@ -1657,15 +1617,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
                       <div className="card-body">
                         <div className="card-price">{priceStr}</div>
-                        <h3 className="card-title">
-                          <a
-                            href={itemUrl}
-                            onClick={(e) => handleListingLinkClick(e, listing)}
-                            style={{ color: 'inherit', textDecoration: 'none' }}
-                          >
-                            {title}
-                          </a>
-                        </h3>
+                        <h3 className="card-title">{title}</h3>
                         <div className="card-location">
                           <i className="fas fa-map-marker-alt"></i>
                           <span>{listing.location}</span>

@@ -258,30 +258,21 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     const info = businessInfo(b);
     const bUrl = getListingUrl(b);
     return (
-      <div
-        key={b.id}
-        className="listing-card business-dir-card"
-        onClick={(e) => {
-          if ((e.target as HTMLElement).closest('a, button, .btn-wishlist')) return;
-          onNavigate('listing-detail', b);
-        }}
-      >
+      <div key={b.id} className="listing-card business-dir-card">
+        <a
+          href={bUrl}
+          className="card-stretched-link"
+          aria-label={b.title}
+          onClick={(e) => handleLinkClick(e, b)}
+        />
         <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
-          <a
-            href={bUrl}
-            onClick={(e) => handleLinkClick(e, b)}
-            style={{ display: 'block', width: '100%', height: '100%', position: 'relative' }}
-            tabIndex={-1}
-            aria-label={b.title}
-          >
-            <img
-              src={getFirstImageUrl(b)}
-              alt={b.title}
-              className="card-img"
-              loading="lazy"
-              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
-            />
-          </a>
+          <img
+            src={getFirstImageUrl(b)}
+            alt={b.title}
+            className="card-img"
+            loading="lazy"
+            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
+          />
           {b.verified === 1 && (
             <span
               className="badge-verified"
@@ -305,13 +296,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
         </div>
         <div className="card-body">
           <h3 className="card-title business-dir-title">
-            <a
-              href={bUrl}
-              onClick={(e) => handleLinkClick(e, b)}
-              style={{ color: 'inherit', textDecoration: 'none' }}
-            >
-              {b.title}
-            </a>
+            {b.title}
             {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
           </h3>
           <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>

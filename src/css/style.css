@@ -898,6 +898,7 @@ ul { list-style: none; }
 
 /* ===================== LISTING CARDS ===================== */
 .listing-card {
+  position: relative;
   background: #fff;
   border-radius: 14px;
   overflow: hidden;
@@ -908,6 +909,27 @@ ul { list-style: none; }
   border: 1.5px solid #f0f4f8;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+}
+.card-stretched-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  text-decoration: none;
+  cursor: pointer;
+}
+.listing-card button,
+.listing-card .btn-wishlist,
+.listing-card .card-img-count,
+.listing-card .card-footer-actions,
+.listing-card .btn-view {
+  position: relative;
+  z-index: 3;
 }
 .listing-card[role="link"] { cursor: pointer; }
 .listing-card:hover {
