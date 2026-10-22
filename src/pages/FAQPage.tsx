@@ -15,7 +15,7 @@ export interface FAQPageProps {
 export default function FAQPage({ onNavigate }: FAQPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<FaqCategoryKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [openIds, setOpenIds] = useState<Set<number>>(() => new Set([1, 2, 3]));
+  const [openIds, setOpenIds] = useState<Set<number>>(() => new Set());
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, 'yes' | 'no'>>({});
 
@@ -260,11 +260,7 @@ export default function FAQPage({ onNavigate }: FAQPageProps) {
                   className={`faq-category-tab ${isActive ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedCategory(cat.key);
-                    // Open first few of new category
-                    const matched = FAQ_ITEMS.filter(
-                      (item) => cat.key === 'all' || item.category === cat.key
-                    );
-                    setOpenIds(new Set(matched.slice(0, 3).map((it) => it.id)));
+                    setOpenIds(new Set());
                   }}
                 >
                   <i className={cat.icon} aria-hidden="true"></i>
