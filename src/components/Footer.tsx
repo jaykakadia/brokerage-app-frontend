@@ -111,18 +111,20 @@ export default function Footer({ onNavigate }: FooterProps) {
                 All Cities in India →
               </a>
             </li>
+            <li style={{ marginTop: '6px' }}><a href="/hi/properties/palwal">पलवल में प्रॉपर्टी (हिंदी)</a></li>
+            <li><a href="/hi/properties/faridabad">फरीदाबाद में प्रॉपर्टी (हिंदी)</a></li>
           </ul>
         </div>
 
         <div className="footer-col">
-          <h4>Property Types</h4>
+          <h4>Popular Localities</h4>
           <ul>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Flats / Apartments</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Independent Houses</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Residential Plots</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Commercial Shops</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Office Space</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Agricultural Land</a></li>
+            <li><a href="/palwal/omaxe-city-phase-ii">Omaxe City Phase-II</a></li>
+            <li><a href="/palwal/village-mandkola">Village Mandkola</a></li>
+            <li><a href="/palwal/kailash-nagar">Kailash Nagar Palwal</a></li>
+            <li><a href="/palwal/panchwati-colony">Panchwati Colony</a></li>
+            <li><a href="/faridabad/sector-85">Sector 85 Faridabad</a></li>
+            <li><a href="/faridabad/nit-5">NIT-5 Faridabad</a></li>
           </ul>
         </div>
 
@@ -131,7 +133,8 @@ export default function Footer({ onNavigate }: FooterProps) {
           <ul>
             <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
             <li><a href="/business-directory" onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}>Business Directory</a></li>
-            <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Blog</a></li>
+            <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Buyer Guides & Blog</a></li>
+            <li><a href="/listed-on-tradecall.svg" target="_blank" rel="noopener noreferrer" title="Get TradeCall Partner Badge">Listed on TradeCall Badge</a></li>
             <li><a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>
             <li><a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }}>About Us</a></li>
             <li><a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}>Contact Us</a></li>

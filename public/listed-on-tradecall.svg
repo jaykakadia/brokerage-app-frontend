@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 54" width="220" height="54">
+  <defs>
+    <linearGradient id="tcBadgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c6253" />
+      <stop offset="100%" stop-color="#084338" />
+    </linearGradient>
+    <filter id="badgeShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- Background Pill -->
+  <rect x="2" y="2" width="216" height="50" rx="10" fill="url(#tcBadgeGrad)" stroke="#14b8a6" stroke-width="1.5" filter="url(#badgeShadow)" />
+
+  <!-- Shield / Check Icon -->
+  <g transform="translate(14, 12)">
+    <circle cx="15" cy="15" r="14" fill="#ffffff" fill-opacity="0.12" />
+    <path d="M15 4 L24 8 L24 16 C24 21 20 25 15 27 C10 25 6 21 6 16 L6 8 Z" fill="#14b8a6" />
+    <path d="M11 15 L14 18 L20 11" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Typography -->
+  <!-- Label -->
+  <text x="54" y="19" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#99f6e4" letter-spacing="1">LISTED ON</text>
+  <!-- Brand Name -->
+  <text x="54" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="800" fill="#ffffff" letter-spacing="0.2">TradeCall.in</text>
+  <!-- Sub-caption -->
+  <text x="54" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="500" fill="#cbd5e1">Zero Brokerage Portal</text>
+</svg>

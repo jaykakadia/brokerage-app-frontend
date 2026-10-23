@@ -142,6 +142,22 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     return { page: 'properties-city', param: citySlug };
   }
 
+  // Hindi Pilot Hub: /hi/properties/:city
+  if (parts.length === 3 && parts[0].toLowerCase() === 'hi' && parts[1].toLowerCase() === 'properties') {
+    const citySlug = parts[2].toLowerCase();
+    const resolvedCity = getCityFromSlug(citySlug);
+    if (!resolvedCity) {
+      return { page: 'not-found', param: citySlug };
+    }
+    return { page: 'properties-city', param: citySlug };
+  }
+
+  // Sub-locality Hub: /:city/:locality (e.g. /palwal/omaxe-city-phase-ii)
+  if (parts.length === 2 && getCityFromSlug(parts[0].toLowerCase())) {
+    const citySlug = parts[0].toLowerCase();
+    return { page: 'properties-city', param: citySlug };
+  }
+
   // Blog detail: /blog/:slug
   if (parts.length === 2 && parts[0].toLowerCase() === 'blog') {
     return { page: 'blog-detail', param: parts[1] };
