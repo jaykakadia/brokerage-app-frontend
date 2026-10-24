@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
+import ALL_CITIES_DATA from '../config/allCities.json';
 import { getListingUrl } from '../utils/url';
 import { setSeo } from '../utils/seo';
 import type { AuthModalOptions } from './ListingDetailPage';
@@ -70,12 +71,18 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       .catch(() => {});
   }, [user]);
 
-  // Click outside listener for cities covered dropdown
+  // Click outside listener for dropdowns
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       if (citiesPanelRef.current && !citiesPanelRef.current.contains(target)) {
         setShowCitiesPanel(false);
+      }
+      if (cityWrapperRef.current && !cityWrapperRef.current.contains(target)) {
+        setShowCitySuggestions(false);
+      }
+      if (categoryWrapperRef.current && !categoryWrapperRef.current.contains(target)) {
+        setShowCategorySuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -105,6 +112,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       // leave the heart as it was
     }
   };
+
   // Read initial filter values from URL query parameters (if present) to support shared links
   const initialUrlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const [businesses, setBusinesses] = useState<Listing[]>([]);
@@ -112,9 +120,22 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(() => initialUrlParams.get('q') || initialUrlParams.get('search') || '');
   const [category, setCategory] = useState(() => initialUrlParams.get('category') || '');
+  const [categoryInput, setCategoryInput] = useState(() => initialUrlParams.get('category') || '');
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [categoryHighlightedIndex, setCategoryHighlightedIndex] = useState(-1);
+  const [allCategoriesPicked, setAllCategoriesPicked] = useState(false);
+  const categoryWrapperRef = useRef<HTMLDivElement>(null);
+
   const [city, setCity] = useState(() => initialUrlParams.get('city') || '');
+  const [cityInput, setCityInput] = useState(() => initialUrlParams.get('city') || '');
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [cityHighlightedIndex, setCityHighlightedIndex] = useState(-1);
+  const [allCitiesPicked, setAllCitiesPicked] = useState(false);
+  const cityWrapperRef = useRef<HTMLDivElement>(null);
+
   const [newOnly, setNewOnly] = useState(() => initialUrlParams.get('new') === '1' || initialUrlParams.get('new') === 'true');
   const [copiedFilters, setCopiedFilters] = useState(false);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
 
   // Keep URL query params synchronized with active filters
   useEffect(() => {
@@ -137,9 +158,16 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   useEffect(() => {
     const handlePopState = () => {
       const sp = new URLSearchParams(window.location.search);
-      setSearch(sp.get('q') || sp.get('search') || '');
-      setCategory(sp.get('category') || '');
-      setCity(sp.get('city') || '');
+      const q = sp.get('q') || sp.get('search') || '';
+      const cat = sp.get('category') || '';
+      const c = sp.get('city') || '';
+      setSearch(q);
+      setCategory(cat);
+      setCategoryInput(cat);
+      setAllCategoriesPicked(false);
+      setCity(c);
+      setCityInput(c);
+      setAllCitiesPicked(false);
       setNewOnly(sp.get('new') === '1' || sp.get('new') === 'true');
     };
     window.addEventListener('popstate', handlePopState);
@@ -163,6 +191,13 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
         if (res.data) setStats(res.data);
       })
       .catch(() => {});
+    api.get<{ status: string; data: Array<{ name: string }> }>('/api/v1/categories')
+      .then((res) => {
+        if (Array.isArray(res.data?.data)) {
+          setAllCategories(res.data.data.map((c) => c.name).filter(Boolean));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Compute business counts per city from approved businesses only
@@ -180,33 +215,146 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return Array.from(byKey.values()).sort((a, b) => b.count - a.count);
   }, [businesses]);
 
-
   const activeBusinessesCount = businesses.length;
   const activeUsersCount = stats?.registered_users ? `${stats.registered_users}+` : '73+';
   const citiesCoveredCount = cityCounts.length;
   const newBusinessesCount = useMemo(() => businesses.filter(isNewListing).length, [businesses]);
 
-  const categoryOptions = useMemo(
-    () => [...new Set(businesses.flatMap((b) => businessInfo(b).categories))].sort(),
-    [businesses]
-  );
-  const rawCityOptions = useMemo(
-    () => [...new Set(businesses.map((b) => businessInfo(b).city || getListingCity(b)).filter(Boolean))].sort(),
-    [businesses]
-  );
-  const cityOptions = useMemo(() => {
-    if (city && !rawCityOptions.includes(city)) {
-      return [city, ...rawCityOptions].sort();
+  const categoryOptions = useMemo(() => {
+    const fromBusinesses = businesses.flatMap((b) => businessInfo(b).categories);
+    const combined = [...new Set([...allCategories, ...fromBusinesses])].filter(Boolean).sort();
+    return combined;
+  }, [allCategories, businesses]);
+
+  const categorySuggestions = useMemo(() => {
+    const q = categoryInput.trim().toLowerCase();
+    if (!q || (allCategoriesPicked && q === 'all categories')) {
+      return categoryOptions;
     }
-    return rawCityOptions;
-  }, [city, rawCityOptions]);
+    return categoryOptions.filter((c) => c.toLowerCase().includes(q));
+  }, [categoryInput, categoryOptions, allCategoriesPicked]);
+
+  const citySuggestions = useMemo(() => {
+    const q = cityInput.trim().toLowerCase();
+    const all = ALL_CITIES_DATA as string[];
+    if (!q || (allCitiesPicked && q === 'all cities')) {
+      return all.slice(0, 100);
+    }
+    return all.filter((name) => name.toLowerCase().includes(q)).slice(0, 100);
+  }, [cityInput, allCitiesPicked]);
+
+  const handleSelectCity = (c: string): void => {
+    const isAll = c === 'All Cities' || !c;
+    setAllCitiesPicked(isAll);
+    if (isAll) {
+      setCityInput('');
+      setCity('');
+    } else {
+      setCityInput(c);
+      setCity(c);
+    }
+    setShowCitySuggestions(false);
+    setCityHighlightedIndex(-1);
+    setCurrentPage(1);
+    setShowCitiesPanel(false);
+  };
+
+  const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const val = allCitiesPicked ? e.target.value.replace(/^All Cities/, '') : e.target.value;
+    setAllCitiesPicked(false);
+    setCityInput(val);
+    setCity(val.trim());
+    setShowCitySuggestions(true);
+    setCityHighlightedIndex(-1);
+  };
+
+  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (!showCitySuggestions) {
+      if (e.key === 'ArrowDown') setShowCitySuggestions(true);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCityHighlightedIndex((prev) => (prev < citySuggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCityHighlightedIndex((prev) => (prev > 0 ? prev - 1 : citySuggestions.length - 1));
+    } else if (e.key === 'Enter') {
+      if (cityHighlightedIndex >= 0 && cityHighlightedIndex < citySuggestions.length) {
+        e.preventDefault();
+        handleSelectCity(citySuggestions[cityHighlightedIndex]);
+      } else if (cityInput.trim()) {
+        const exact = citySuggestions.find((c) => c.toLowerCase() === cityInput.trim().toLowerCase());
+        e.preventDefault();
+        handleSelectCity(exact || citySuggestions[0] || cityInput.trim());
+      } else {
+        setShowCitySuggestions(false);
+      }
+    } else if (e.key === 'Escape') {
+      setShowCitySuggestions(false);
+    }
+  };
+
+  const handleSelectCategory = (cat: string): void => {
+    const isAll = cat === 'All Categories' || !cat;
+    setAllCategoriesPicked(isAll);
+    if (isAll) {
+      setCategoryInput('');
+      setCategory('');
+    } else {
+      setCategoryInput(cat);
+      setCategory(cat);
+    }
+    setShowCategorySuggestions(false);
+    setCategoryHighlightedIndex(-1);
+    setCurrentPage(1);
+  };
+
+  const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const val = allCategoriesPicked ? e.target.value.replace(/^All Categories/, '') : e.target.value;
+    setAllCategoriesPicked(false);
+    setCategoryInput(val);
+    setCategory(val.trim());
+    setShowCategorySuggestions(true);
+    setCategoryHighlightedIndex(-1);
+  };
+
+  const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (!showCategorySuggestions) {
+      if (e.key === 'ArrowDown') setShowCategorySuggestions(true);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCategoryHighlightedIndex((prev) => (prev < categorySuggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCategoryHighlightedIndex((prev) => (prev > 0 ? prev - 1 : categorySuggestions.length - 1));
+    } else if (e.key === 'Enter') {
+      if (categoryHighlightedIndex >= 0 && categoryHighlightedIndex < categorySuggestions.length) {
+        e.preventDefault();
+        handleSelectCategory(categorySuggestions[categoryHighlightedIndex]);
+      } else if (categoryInput.trim()) {
+        const exact = categorySuggestions.find((c) => c.toLowerCase() === categoryInput.trim().toLowerCase());
+        e.preventDefault();
+        handleSelectCategory(exact || categorySuggestions[0] || categoryInput.trim());
+      } else {
+        setShowCategorySuggestions(false);
+      }
+    } else if (e.key === 'Escape') {
+      setShowCategorySuggestions(false);
+    }
+  };
 
   const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
 
   const visible = businesses.filter((b) => {
     const info = businessInfo(b);
     if (newOnly && !isNewListing(b)) return false;
-    if (category && !info.categories.includes(category)) return false;
+    if (category) {
+      const targetCat = category.toLowerCase();
+      if (!info.categories.some((c) => c.toLowerCase() === targetCat || c.toLowerCase().includes(targetCat))) return false;
+    }
     if (city) {
       const bCity = (info.city || getListingCity(b)).toLowerCase();
       const targetVariants = cityNameVariants(city).map((v) => v.toLowerCase());
@@ -220,7 +368,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return true;
   });
 
-  const hasFilters = Boolean(search || category || city || newOnly);
+  const hasFilters = Boolean(search.trim() || category || city || newOnly);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -240,16 +388,17 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const clearAllFilters = () => {
     setSearch('');
     setCategory('');
+    setCategoryInput('');
+    setAllCategoriesPicked(false);
     setCity('');
+    setCityInput('');
+    setAllCitiesPicked(false);
     setNewOnly(false);
     setCurrentPage(1);
   };
 
   const handleCitySelect = (selectedCityName: string) => {
-    const matched = rawCityOptions.find((c) => c.toLowerCase() === selectedCityName.toLowerCase()) || selectedCityName;
-    setCity(matched);
-    setCurrentPage(1);
-    setShowCitiesPanel(false);
+    handleSelectCity(selectedCityName);
     const el = document.getElementById('business-listings-section');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
@@ -334,28 +483,181 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   return (
     <>
       <section className="page-hero green-hero">
-        <div className="container">
-          <h1><i className="fas fa-store"></i> Business Directory</h1>
-          <p>Find trusted local businesses, services and shops near you</p>
-
-          <div className="business-dir-filters" style={{ margin: '24px auto 24px', maxWidth: '1000px', textAlign: 'left' }}>
-            <input
-              type="text"
-              placeholder="Search business name, category or area..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">All Categories</option>
-              {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={city} onChange={(e) => setCity(e.target.value)}>
-              <option value="">All Cities</option>
-              {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <button type="button" className="btn-primary" onClick={() => onNavigate('post-listing')}>
+        <div className="container hero-content">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '8px' }}>
+            <div style={{ textAlign: 'left' }}>
+              <h1 style={{ margin: 0 }}><i className="fas fa-store"></i> Business Directory</h1>
+              <p style={{ margin: '6px 0 0', opacity: 0.9 }}>Find trusted local businesses, services and shops near you</p>
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => onNavigate('post-listing')}
+              style={{
+                background: '#ffffff',
+                color: '#0c6253',
+                fontWeight: 700,
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
               <i className="fas fa-plus"></i> List Your Business
             </button>
+          </div>
+
+          <div className="search-box" style={{ margin: '24px auto 24px', maxWidth: '1100px', textAlign: 'left' }}>
+            <div className="search-form">
+              {/* City Searchable Autocomplete */}
+              <div className="city-autocomplete-wrap" ref={cityWrapperRef}>
+                <div className="city-autocomplete-box">
+                  <i className="fas fa-map-marker-alt city-autocomplete-icon"></i>
+                  <input
+                    type="text"
+                    id="businessCityInput"
+                    className="city-autocomplete-input"
+                    placeholder="Select City / Locality"
+                    value={cityInput || (allCitiesPicked ? 'All Cities' : '')}
+                    onChange={handleCityInputChange}
+                    onFocus={(e) => { if (allCitiesPicked) e.target.select(); setShowCitySuggestions(true); }}
+                    onKeyDown={handleCityKeyDown}
+                    autoComplete="off"
+                  />
+                  {cityInput || allCitiesPicked ? (
+                    <button
+                      type="button"
+                      className="city-autocomplete-clear"
+                      onClick={() => { handleSelectCity('All Cities'); setAllCitiesPicked(false); }}
+                      title="Clear city"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  ) : (
+                    <i className="fas fa-chevron-down city-autocomplete-chevron"></i>
+                  )}
+                </div>
+
+                {showCitySuggestions && (
+                  <ul className="city-autocomplete-dropdown">
+                    {!cityInput.trim() && (
+                      <li
+                        className={`city-autocomplete-item ${!city ? 'active' : ''}`}
+                        onMouseDown={() => handleSelectCity('All Cities')}
+                      >
+                        <i className="fas fa-globe"></i>
+                        <span>All Cities</span>
+                      </li>
+                    )}
+                    {citySuggestions.map((cityName, idx) => (
+                      <li
+                        key={cityName}
+                        className={`city-autocomplete-item ${cityHighlightedIndex === idx || city === cityName ? 'active' : ''}`}
+                        onMouseDown={() => handleSelectCity(cityName)}
+                      >
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span>{cityName}</span>
+                      </li>
+                    ))}
+                    {citySuggestions.length === 0 && (
+                      <li className="city-autocomplete-empty">
+                        No matching cities found
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+
+              {/* Category Searchable Autocomplete */}
+              <div className="type-autocomplete-wrap" ref={categoryWrapperRef}>
+                <div className="type-autocomplete-box">
+                  <i className="fas fa-th-large type-autocomplete-icon"></i>
+                  <input
+                    type="text"
+                    id="businessCategoryInput"
+                    className="type-autocomplete-input"
+                    placeholder="Select Category"
+                    value={categoryInput || (allCategoriesPicked ? 'All Categories' : '')}
+                    onChange={handleCategoryInputChange}
+                    onFocus={(e) => { if (allCategoriesPicked) e.target.select(); setShowCategorySuggestions(true); }}
+                    onKeyDown={handleCategoryKeyDown}
+                    autoComplete="off"
+                  />
+                  {categoryInput || allCategoriesPicked ? (
+                    <button
+                      type="button"
+                      className="type-autocomplete-clear"
+                      onClick={() => { handleSelectCategory('All Categories'); setAllCategoriesPicked(false); }}
+                      title="Clear category"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  ) : (
+                    <i className="fas fa-chevron-down type-autocomplete-chevron"></i>
+                  )}
+                </div>
+
+                {showCategorySuggestions && (
+                  <ul className="type-autocomplete-dropdown">
+                    {!categoryInput.trim() && (
+                      <li
+                        className={`type-autocomplete-item ${!category ? 'active' : ''}`}
+                        onMouseDown={() => handleSelectCategory('All Categories')}
+                      >
+                        <i className="fas fa-layer-group"></i>
+                        <span>All Categories</span>
+                      </li>
+                    )}
+                    {categorySuggestions.map((catName, idx) => (
+                      <li
+                        key={catName}
+                        className={`type-autocomplete-item ${categoryHighlightedIndex === idx || category === catName ? 'active' : ''}`}
+                        onMouseDown={() => handleSelectCategory(catName)}
+                      >
+                        <i className="fas fa-tag"></i>
+                        <span>{catName}</span>
+                      </li>
+                    ))}
+                    {categorySuggestions.length === 0 && (
+                      <li className="type-autocomplete-empty">
+                        No matching categories found
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+
+              {/* Keyword Search Input */}
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search business name or keyword..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const el = document.getElementById('business-listings-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              />
+
+              {/* Search Button */}
+              <button
+                type="button"
+                className="btn-search"
+                onClick={() => {
+                  const el = document.getElementById('business-listings-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                <i className="fas fa-search"></i> Search
+              </button>
+            </div>
           </div>
 
           {/* Business Directory Metrics Bar (Derived from business listings only) */}
@@ -543,20 +845,51 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <strong style={{ color: '#111827' }}>
-              {loading ? 'Loading businesses...' : `${visible.length} ${visible.length === 1 ? 'business' : 'businesses'} found`}
-              {!loading && visible.length > BUSINESSES_PER_PAGE && (
-                <span style={{ marginLeft: '8px', fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
-                  (Page {page} of {totalPages})
-                </span>
-              )}
-              {newOnly && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#0c6253', fontWeight: 600 }}>(Filtered: Posted Today)</span>}
-            </strong>
-            {hasFilters && (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {hasFilters && (
+            <div className="listings-filter-bar" style={{ marginBottom: '16px' }}>
+              <div className="listings-filter-chips">
+                <span className="listings-filter-label">Active filters:</span>
+                {newOnly && (
+                  <span className="listing-filter-chip">
+                    <i className="fas fa-bolt" style={{ color: '#0c6253', marginRight: '4px' }}></i>
+                    New today
+                    <button type="button" onClick={() => setNewOnly(false)} title="Show all businesses">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {city && (
+                  <span className="listing-filter-chip">
+                    <i className="fas fa-map-marker-alt" style={{ marginRight: '4px' }}></i>
+                    {city}
+                    <button type="button" onClick={() => handleSelectCity('All Cities')} title="Clear city">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {category && (
+                  <span className="listing-filter-chip">
+                    <i className="fas fa-tag" style={{ marginRight: '4px' }}></i>
+                    {category}
+                    <button type="button" onClick={() => handleSelectCategory('All Categories')} title="Clear category">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {search.trim() && (
+                  <span className="listing-filter-chip">
+                    <i className="fas fa-search" style={{ marginRight: '4px' }}></i>
+                    &ldquo;{search.trim()}&rdquo;
+                    <button type="button" onClick={() => setSearch('')} title="Clear keyword">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   type="button"
+                  className="btn-share-filter"
                   onClick={async () => {
                     const url = window.location.href;
                     if (navigator.share) {
@@ -586,7 +919,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                     border: '1px solid #a7f3d0',
                     borderRadius: '6px',
                     padding: '6px 12px',
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -597,12 +930,28 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                   <i className={copiedFilters ? "fas fa-check" : "fas fa-share-alt"}></i>
                   {copiedFilters ? 'Link Copied!' : 'Share'}
                 </button>
-                <button type="button" className="btn-outline" style={{ padding: '6px 12px', fontSize: 13 }}
-                  onClick={clearAllFilters}>
-                  <i className="fas fa-times"></i> Clear filters
+                <button
+                  type="button"
+                  className="btn-outline"
+                  style={{ padding: '6px 12px', fontSize: 12 }}
+                  onClick={clearAllFilters}
+                >
+                  <i className="fas fa-times"></i> Clear all
                 </button>
               </div>
-            )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <strong style={{ color: '#111827' }}>
+              {loading ? 'Loading businesses...' : `${visible.length} ${visible.length === 1 ? 'business' : 'businesses'} found`}
+              {!loading && visible.length > BUSINESSES_PER_PAGE && (
+                <span style={{ marginLeft: '8px', fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+                  (Page {page} of {totalPages})
+                </span>
+              )}
+              {newOnly && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#0c6253', fontWeight: 600 }}>(Filtered: Posted Today)</span>}
+            </strong>
           </div>
 
           {error ? (
