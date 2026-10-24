@@ -1,9 +1,9 @@
 export const SITE_URL = 'https://tradecall.in';
 export const SITE_NAME = 'TradeCall India';
 
-const DEFAULT_TITLE = 'Property in Palwal, Faridabad & NCR | TradeCall India';
+const DEFAULT_TITLE = 'Buy, Sell & Rent Property - TradeCall India';
 const DEFAULT_DESCRIPTION =
-  'Buy, sell or rent flats, plots, houses and commercial property in Palwal, Faridabad and the NCR with zero brokerage. Contact verified owners directly and find local businesses on TradeCall India.';
+  'Buy, sell or rent flats, plots, houses and commercial property all over India with zero brokerage. Contact verified owners directly.';
 
 export interface SeoOptions {
   /** Page title; the site name is appended unless it is already in it. */
@@ -62,11 +62,19 @@ export function toMetaDescription(text?: string | null, max = 160): string {
 
 /** Updates the title, description, canonical URL and social-preview tags for the current page. */
 export function setSeo({ title, description, path, image, noindex = false, jsonLd }: SeoOptions = {}): void {
-  let raw = (title || DEFAULT_TITLE).trim();
-  raw = raw.replace(/\s*\|\s*Tradecall\s*\|\s*TradeCall India$/i, '');
-  raw = raw.replace(/\s*\|\s*TradeCall India$/i, '');
-  raw = raw.replace(/\s*\|\s*Tradecall$/i, '');
-  const fullTitle = `${raw} | ${SITE_NAME}`;
+  let fullTitle: string;
+  if (!title) {
+    fullTitle = DEFAULT_TITLE;
+  } else {
+    let raw = title.trim();
+    raw = raw.replace(/\s*\|\s*Tradecall\s*\|\s*TradeCall India$/i, '');
+    raw = raw.replace(/\s*\|\s*TradeCall India$/i, '');
+    raw = raw.replace(/\s*\|\s*Tradecall$/i, '');
+    raw = raw.replace(/\s*-\s*TradeCall India$/i, '');
+    raw = raw.replace(/\s*-\s*Tradecall$/i, '');
+    const isHyphenBrand = title.includes(' - TradeCall');
+    fullTitle = isHyphenBrand ? `${raw} - ${SITE_NAME}` : `${raw} | ${SITE_NAME}`;
+  }
   const desc = description || DEFAULT_DESCRIPTION;
   const url = `${SITE_URL}${path ?? window.location.pathname}`;
 

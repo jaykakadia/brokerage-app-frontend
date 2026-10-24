@@ -168,7 +168,7 @@ const HOMEPAGE_FAQS = [
   },
   {
     q: 'Where is TradeCall India located and how can I get support?',
-    a: 'TradeCall India is based in Village Joharkhera, PO Mandkola, Palwal, Haryana 121102. For customer assistance, you can call or WhatsApp our support desk at +91 9992292828.'
+    a: 'TradeCall India is based in Palwal, Haryana. For customer assistance, you can call or WhatsApp our support desk at +91 9992292828.'
   }
 ];
 
@@ -736,9 +736,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       });
     } else if (!activeCity && !loading) {
       setSeo({
-        title: 'Property in Palwal, Faridabad & NCR | TradeCall India',
+        title: 'Buy, Sell & Rent Property - TradeCall India',
         description:
-          'Buy, sell or rent flats, plots, houses and commercial property in Palwal, Faridabad and the NCR with zero brokerage. Contact verified owners directly and find local businesses on TradeCall India.',
+          'Buy, sell or rent flats, plots, houses and commercial property all over India with zero brokerage. Contact verified owners directly.',
         path: '/',
         jsonLd: {
           '@context': 'https://schema.org',
@@ -1278,7 +1278,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       <section className="hero">
         <div className="hero-overlay"></div>
         <div className="container hero-content">
-          <h1>{activeCity ? `Properties in ${activeCity}` : 'Buy, Rent & Sell Property in Palwal & NCR'}</h1>
+          <h1>{activeCity ? `Properties in ${activeCity}` : 'Buy, Rent & Sell Property'}</h1>
 
           <div className="search-box">
             <div className="search-form">
@@ -2282,7 +2282,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                       <strong>WhatsApp / Phone:</strong> <a href="https://wa.me/919992292828" target="_blank" rel="noreferrer" style={{ color: '#0c6253', fontWeight: 600 }}>+91 9992292828</a>
                     </div>
                     <div style={{ fontSize: '13px', color: '#64748b' }}>
-                      <strong>Office:</strong> Village Joharkhera, PO Mandkola, Palwal, Haryana 121102
+                      <strong>Office:</strong> Palwal, Haryana
                     </div>
                   </div>
                 </div>

@@ -25,7 +25,6 @@ export const POPULAR_BROWSE_CITIES: CityInfo[] = [
   { name: 'Hasanpur', slug: 'hasanpur', state: 'Haryana' },
   { name: 'Faridabad', slug: 'faridabad', state: 'Haryana' },
   { name: 'Ballabgarh', slug: 'ballabgarh', state: 'Haryana' },
-  { name: 'Sohna', slug: 'sohna', state: 'Haryana' },
 ];
 
 export const ALL_INDIAN_CITIES: CityInfo[] = [

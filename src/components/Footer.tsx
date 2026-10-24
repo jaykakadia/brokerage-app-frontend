@@ -62,7 +62,7 @@ export default function Footer({ onNavigate }: FooterProps) {
           </div>
           <div className="footer-address" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginTop: '8px', lineHeight: 1.4 }}>
             <i className="fas fa-map-marker-alt" style={{ marginRight: '6px' }}></i>
-            Village Joharkhera, PO Mandkola, Palwal, Haryana 121102
+            Palwal, Haryana
           </div>
           <div className="footer-social" style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
             {links.facebook_url && (

@@ -84,7 +84,10 @@ export const getListingDeal = (listing: Pick<Listing, 'form_data' | 'description
 export const publicListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>): string => {
   const fd = listing.form_data;
   if (fd?.kind !== 'buyer') {
-    return (listing.title || '').replace(/\bLooking to Rent\b/gi, 'Looking for Rent');
+    let t = (listing.title || '').replace(/\bLooking to Rent\b/gi, 'Looking for Rent');
+    t = t.replace(/\bCommercial for Sale\b/gi, 'Commercial Property for Sale');
+    t = t.replace(/\bCommercial for Rent\b/gi, 'Commercial Property for Rent');
+    return t;
   }
   const saved = fd as Partial<PropertyFormState>;
   return listingTitle(

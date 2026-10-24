@@ -183,7 +183,7 @@ export function propTypeLabel(value: string): string {
     agriculture: 'Agriculture Land',
     industrial_land: 'Industrial Land',
     r_zone_land: 'R - Zone Land',
-    commercial: 'Commercial',
+    commercial: 'Commercial Property',
     pg: 'PG/Guest House'
   };
   return labels[value] || value || 'Property';
@@ -193,10 +193,18 @@ export function listingTitle(form: PropertyFormState, isBuyer = false): string {
   const place = [form.locality, form.city].filter(Boolean).join(', ');
   const rooms = form.propType === 'flat' || form.propType === 'house' ? `${form.bhk} ` : '';
   const label = propTypeLabel(form.propType);
-  const title = isBuyer
-    // Buyer listings ask for a property, e.g. "Looking for Rent Plot in Sector-12, Palwal" or "Looking to Buy..."
-    ? `${form.forWhat === 'rent' ? 'Looking for Rent' : 'Looking to Buy'} ${rooms}${label === 'Commercial' ? 'Commercial Property' : label}`
-    : `${rooms}${label} ${form.forWhat === 'rent' ? 'for Rent' : 'for Sale'}`;
+  const typeText = label === 'Commercial' ? 'Commercial Property' : label;
+  const isCommercial = form.propType === 'commercial' || label === 'Commercial Property';
+  let title: string;
+  if (isBuyer) {
+    if (isCommercial) {
+      title = form.forWhat === 'rent' ? 'Looking for Commercial Property for Rent' : 'Looking for Commercial Property';
+    } else {
+      title = `${form.forWhat === 'rent' ? 'Looking for Rent' : 'Looking to Buy'} ${rooms}${typeText}`;
+    }
+  } else {
+    title = `${rooms}${typeText} ${form.forWhat === 'rent' ? 'for Rent' : 'for Sale'}`;
+  }
   return `${title}${place ? ` in ${place}` : ''}`.replace(/\s+/g, ' ').trim();
 }
 

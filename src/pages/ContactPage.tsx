@@ -81,7 +81,7 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Office Address</h3>
               <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
-                Village Joharkhera, PO Mandkola, Palwal, Haryana 121102
+                Palwal, Haryana
               </p>
               <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '6px' }}>Mon - Sat: 9:00 AM - 7:00 PM</p>
             </div>
