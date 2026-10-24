@@ -117,12 +117,17 @@ export const EMPTY_PROPERTY_FORM: PropertyFormState = {
 const STATE_BY_CITY: Record<string, string> = {
   Palwal: 'Haryana',
   Faridabad: 'Haryana',
+  Ballabgarh: 'Haryana',
+  Sohna: 'Haryana',
   Gurugram: 'Haryana',
+  Hodal: 'Haryana',
+  Hathin: 'Haryana',
+  Hasanpur: 'Haryana',
   Sonipat: 'Haryana',
   Panipat: 'Haryana',
-  Hodal: 'Haryana',
   Delhi: 'Delhi',
-  Noida: 'Uttar Pradesh'
+  Noida: 'Uttar Pradesh',
+  'Greater Noida': 'Uttar Pradesh'
 };
 
 export const FALLBACK_CITIES: CityOption[] = Object.entries(STATE_BY_CITY).map(([city, state]) => ({ city, state }));

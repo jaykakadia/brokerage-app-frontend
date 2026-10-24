@@ -106,7 +106,10 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
         // Same-named towns in different states are kept apart; A-Z for the City picker
         const unique = Array.from(new Map(next.map((item) => [`${item.city.toLowerCase()}|${item.state}`, item])).values())
           .sort((a, b) => a.city.localeCompare(b.city, 'en', { sensitivity: 'base' }) || a.state.localeCompare(b.state));
-        if (unique.length > 0) setCities(unique);
+        const priorityKeys = new Set(FALLBACK_CITIES.map((item) => `${item.city.toLowerCase()}|${item.state.toLowerCase()}`));
+        const others = unique.filter((item) => !priorityKeys.has(`${item.city.toLowerCase()}|${(item.state || '').toLowerCase()}`));
+        const ordered = [...FALLBACK_CITIES, ...others];
+        if (ordered.length > 0) setCities(ordered);
       })
       .catch(() => {});
     getRefCodes()
