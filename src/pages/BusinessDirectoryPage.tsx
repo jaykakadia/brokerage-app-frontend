@@ -484,32 +484,10 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     <>
       <section className="page-hero green-hero">
         <div className="container hero-content">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '8px' }}>
-            <div style={{ textAlign: 'left' }}>
-              <h1 style={{ margin: 0 }}><i className="fas fa-store"></i> Business Directory</h1>
-              <p style={{ margin: '6px 0 0', opacity: 0.9 }}>Find trusted local businesses, services and shops near you</p>
-            </div>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => onNavigate('post-listing')}
-              style={{
-                background: '#ffffff',
-                color: '#0c6253',
-                fontWeight: 700,
-                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <i className="fas fa-plus"></i> List Your Business
-            </button>
-          </div>
+          <h1><i className="fas fa-store"></i> Business Directory</h1>
+          <p style={{ margin: '-10px auto 24px', opacity: 0.95, fontSize: '16px', color: '#e6f4ea' }}>
+            Find trusted local businesses, services and shops near you
+          </p>
 
           <div className="search-box" style={{ margin: '24px auto 24px', maxWidth: '1100px', textAlign: 'left' }}>
             <div className="search-form">
