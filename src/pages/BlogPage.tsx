@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getBlogs, getImageUrl } from '../services/api';
+import { toMetaDescription } from '../utils/seo';
+import { DEFAULT_BLOG_ARTICLES } from '../data/defaultBlogs';
 import type { NavigateFunction } from '../types';
 
 export interface BlogPageProps {
@@ -21,70 +23,7 @@ interface BlogArticle {
 }
 
 export default function BlogPage({ onNavigate }: BlogPageProps) {
-  const defaultArticles: BlogArticle[] = [
-    {
-      id: 1,
-      slug: 'property-prices-in-palwal-2025-complete-guide',
-      title: 'Property Prices in Palwal 2025: Complete Guide',
-      category: 'Buy',
-      author: 'TradeCall Team',
-      created_at: '2025-05-15',
-      featured_image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=350&fit=crop',
-      content: 'Real estate market update for 2025. Discover upcoming developments, circle rates, and price trends across prime locations in Palwal.'
-    },
-    {
-      id: 2,
-      slug: 'best-localities-to-buy-flat-in-faridabad',
-      title: 'Best Localities to Buy Flat in Faridabad',
-      category: 'Buy',
-      author: 'TradeCall Team',
-      created_at: '2025-04-28',
-      featured_image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=350&fit=crop',
-      content: 'Top residential areas for flat buyers in Greater Faridabad and Neharpar belt with proximity to Metro and Expressways.'
-    },
-    {
-      id: 3,
-      slug: 'commercial-property-investment-near-nh-19',
-      title: 'Commercial Property Investment Near NH-19',
-      category: 'Invest',
-      author: 'TradeCall Team',
-      created_at: '2025-04-10',
-      featured_image: 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=600&h=350&fit=crop',
-      content: 'High ROI opportunities along the National Highway corridor connecting Delhi, Faridabad, Palwal, and Mathura.'
-    },
-    {
-      id: 4,
-      slug: 'how-to-post-a-free-listing-on-tradecall-india',
-      title: 'How to Post a Free Listing on TradeCall India',
-      category: 'Rent',
-      author: 'TradeCall Team',
-      created_at: '2025-03-22',
-      featured_image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&h=350&fit=crop',
-      content: 'A comprehensive step-by-step guide for property owners and brokers to list residential and commercial units without fees.'
-    },
-    {
-      id: 5,
-      slug: 'gurugram-vs-faridabad-which-is-better-to-buy',
-      title: 'Gurugram vs Faridabad: Which is Better to Buy?',
-      category: 'Buy',
-      author: 'TradeCall Team',
-      created_at: '2025-03-05',
-      featured_image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&h=350&fit=crop',
-      content: 'Detailed comparison for homebuyers evaluating connectivity, price per square foot, rental yields, and future appreciation.'
-    },
-    {
-      id: 6,
-      slug: 'agricultural-land-investment-in-haryana-2025',
-      title: 'Agricultural Land Investment in Haryana 2025',
-      category: 'Invest',
-      author: 'TradeCall Team',
-      created_at: '2025-02-18',
-      featured_image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&h=350&fit=crop',
-      content: 'Legal guide and top investment locations for agricultural and farmhouse plots along KMP Expressway.'
-    }
-  ];
-
-  const [articles, setArticles] = useState<BlogArticle[]>(defaultArticles);
+  const [articles, setArticles] = useState<BlogArticle[]>(DEFAULT_BLOG_ARTICLES);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -182,7 +121,7 @@ export default function BlogPage({ onNavigate }: BlogPageProps) {
                   ? new Date(blog.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   : 'May 2025';
                 const imageSrc = blog.featured_image || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=350&fit=crop';
-                const snippet = blog.content ? (blog.content.length > 110 ? blog.content.substring(0, 110) + '...' : blog.content) : '';
+                const snippet = toMetaDescription(blog.content, 110);
 
                 return (
                   <div

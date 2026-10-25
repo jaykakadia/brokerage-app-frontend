@@ -138,7 +138,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     const isBiz = listing.form_data?.kind === 'business';
     const price = isBiz ? '' : formatListingPrice(listing.price);
     const summary = [price, listing.location].filter(Boolean).join(' · ');
-    const fullTitle = listing.seo_title || `${publicListingTitle(listing)} | TradeCall India`;
+    const rawSeoTitle = listing.seo_title || `${publicListingTitle(listing)} | TradeCall India`;
+    const fullTitle = rawSeoTitle
+      .replace(/\b\d+\s*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land')
+      .replace(/\b\d+\s*BHK\+?\s+(Plot)\b/gi, 'Plot')
+      .replace(/\b\d+\s*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property')
+      .replace(/\b\d+\s*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
     setSeo({
       title: fullTitle,
       description: toMetaDescription(`${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`),

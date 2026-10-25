@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { getBlogDetail, getImageUrl } from '../services/api';
+import { findFallbackBlog } from '../data/defaultBlogs';
 import type { NavigateFunction } from '../types';
 
 export interface BlogDetailPageProps {
@@ -36,25 +37,44 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
       setLoading(true);
       setError(null);
       try {
-        const res = await getBlogDetail(blogIdentifier);
-        const data = res.data?.data;
-        if (data && data.title) {
+        try {
+          const res = await getBlogDetail(blogIdentifier);
+          const data = res.data?.data;
+          if (data && data.title) {
+            setBlog({
+              id: data.id,
+              title: data.title,
+              category: data.category,
+              author: data.author,
+              created_at: data.created_at,
+              featured_image: data.image_url ? getImageUrl(data.image_url) : undefined,
+              content: data.content,
+              tags: data.tags || undefined,
+              views: data.views
+            });
+            return;
+          }
+        } catch {
+          // Fall back to built-in articles if API is down or article not found in DB
+        }
+
+        const fallback = findFallbackBlog(blogIdentifier);
+        if (fallback) {
           setBlog({
-            id: data.id,
-            title: data.title,
-            category: data.category,
-            author: data.author,
-            created_at: data.created_at,
-            featured_image: data.image_url ? getImageUrl(data.image_url) : undefined,
-            content: data.content,
-            tags: data.tags || undefined,
-            views: data.views
+            id: fallback.id,
+            title: fallback.title,
+            category: fallback.category,
+            author: fallback.author,
+            created_at: fallback.created_at,
+            featured_image: fallback.featured_image,
+            content: fallback.content,
+            tags: fallback.tags,
+            views: fallback.views
           });
+          setError(null);
         } else {
           setError('Article not found');
         }
-      } catch {
-        setError('Article could not be loaded.');
       } finally {
         setLoading(false);
       }
@@ -191,16 +211,29 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                 </div>
               )}
 
-              <div
-                style={{
-                  color: '#374151',
-                  fontSize: '16px',
-                  lineHeight: 1.8,
-                  whiteSpace: 'pre-line'
-                }}
-              >
-                {blog.content}
-              </div>
+              {/<[a-z][\s\S]*>/i.test(blog.content) ? (
+                <div
+                  className="blog-article-content"
+                  onClick={(e) => {
+                    const target = (e.target as HTMLElement).closest('a');
+                    if (!target) return;
+                    const href = target.getAttribute('href');
+                    if (href && href.startsWith('/') && !href.startsWith('//') && !target.getAttribute('target')) {
+                      e.preventDefault();
+                      window.history.pushState(null, '', href);
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
+                  }}
+                  dangerouslySetInnerHTML={{ __html: blog.content }}
+                />
+              ) : (
+                <div
+                  className="blog-article-content"
+                  style={{ whiteSpace: 'pre-line' }}
+                >
+                  {blog.content}
+                </div>
+              )}
 
               {/* Share & WhatsApp Callout */}
               <div

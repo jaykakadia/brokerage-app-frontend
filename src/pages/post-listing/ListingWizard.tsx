@@ -222,9 +222,12 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
       } else if (form.refCode.trim()) {
         fd.append('reference_code', form.refCode.trim());
       }
+      const isResidential = form.propType === 'flat' || form.propType === 'house';
       fd.append('form_data', JSON.stringify({
         kind: role,
         ...form,
+        bhk: isResidential ? form.bhk : '',
+        bath: isResidential ? form.bath : '',
         locality: normalizedLocality,
         whatsapp: form.sameAsMobile ? form.mobile : form.whatsapp,
         ...normalizedSocialLinks(form),

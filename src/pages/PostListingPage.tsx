@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ListingWizard from './post-listing/ListingWizard';
+import PostListingSuccessPlans from './post-listing/PostListingSuccessPlans';
 import type { Listing, NavigateFunction } from '../types';
 
 export interface PostListingPageProps {
@@ -37,21 +38,7 @@ export default function PostListingPage({ onNavigate, onOpenAuth }: PostListingP
   }
 
   if (successListing) {
-    return (
-      <div style={{ background: '#f4f6f9', minHeight: '65vh', padding: '60px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ background: '#fff', borderRadius: 20, padding: '48px 40px', maxWidth: 520, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.08)' }}>
-          <div style={{ fontSize: 56, color: '#0c6253', marginBottom: 16 }}><i className="fas fa-check-circle"></i></div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Listing Submitted Successfully!</h2>
-          <p style={{ color: '#6b7280', marginBottom: 24, lineHeight: 1.6 }}>
-            Your listing <strong>{successListing.title}</strong> has been saved and is waiting for approval.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button type="button" className="btn-primary" onClick={() => onNavigate('listing-detail', successListing)}>View Listing</button>
-            <button type="button" className="btn-outline" onClick={() => onNavigate('account')}>My Account</button>
-          </div>
-        </div>
-      </div>
-    );
+    return <PostListingSuccessPlans listing={successListing} onNavigate={onNavigate} />;
   }
 
   return (
