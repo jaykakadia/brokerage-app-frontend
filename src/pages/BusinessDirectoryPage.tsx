@@ -29,6 +29,7 @@ function businessInfo(listing: Listing): BusinessInfo {
 }
 
 const BUSINESSES_PER_PAGE = 8; // 2 rows of 4 cards on desktop
+const FEATURED_PER_VIEW = 4;
 
 function getPaginationItems(current: number, total: number): Array<number | '...'> {
   if (total <= 7) {
@@ -50,6 +51,10 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [carouselIndex, setCarouselIndex] = useState<number>(0);
+  const [withTransition, setWithTransition] = useState<boolean>(true);
+  const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
+  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     setSeo({
@@ -348,6 +353,74 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
 
   const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
 
+  const featuredSlides = featuredBusinesses.length > FEATURED_PER_VIEW;
+
+  // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
+  const circularBusinesses = useMemo(() => {
+    if (!featuredSlides) return featuredBusinesses;
+    return [...featuredBusinesses, ...featuredBusinesses, ...featuredBusinesses];
+  }, [featuredBusinesses, featuredSlides]);
+
+  // Start at the beginning of the middle clone
+  useEffect(() => {
+    setWithTransition(false);
+    setCarouselIndex(featuredSlides ? featuredBusinesses.length : 0);
+  }, [featuredBusinesses.length, featuredSlides]);
+
+  // Once a slide has moved out of the middle clone, snap back into it without animation
+  useEffect(() => {
+    const n = featuredBusinesses.length;
+    if (!featuredSlides || (carouselIndex >= n && carouselIndex < 2 * n)) return;
+    const id = window.setTimeout(() => {
+      setWithTransition(false);
+      setCarouselIndex((prev) => (((prev - n) % n) + n) % n + n);
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [carouselIndex, featuredBusinesses.length, featuredSlides]);
+
+  // Re-enable CSS transition on the next frame after an instant snap
+  useEffect(() => {
+    if (!withTransition) {
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setWithTransition(true);
+        });
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [withTransition]);
+
+  const slideCarousel = (dir: number): void => {
+    setWithTransition(true);
+    setCarouselIndex((prev) => prev + dir);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent): void => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent): void => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (featuredSlides && Math.abs(diff) > 40) {
+      slideCarousel(diff > 0 ? 1 : -1);
+    }
+    touchStartX.current = null;
+  };
+
+  const hasFilters = Boolean(search.trim() || category || city || newOnly);
+
+  // Auto slide periodically, pausing when user hovers over the carousel
+  useEffect(() => {
+    if (!featuredSlides || isCarouselHovered || hasFilters) return;
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      setWithTransition(true);
+      setCarouselIndex((prev) => prev + 1);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [featuredSlides, isCarouselHovered, hasFilters]);
+
   const visible = businesses.filter((b) => {
     const info = businessInfo(b);
     if (newOnly && !isNewListing(b)) return false;
@@ -367,8 +440,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     }
     return true;
   });
-
-  const hasFilters = Boolean(search.trim() || category || city || newOnly);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -412,11 +483,11 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     onNavigate('listing-detail', item);
   };
 
-  const renderBusinessCard = (b: Listing) => {
+  const renderBusinessCard = (b: Listing, isFeatured: boolean = false, keyPrefix: string = '') => {
     const info = businessInfo(b);
     const bUrl = getListingUrl(b);
     return (
-      <div key={b.id} className="listing-card business-dir-card">
+      <div key={keyPrefix ? `${keyPrefix}-${b.id}` : b.id} className={`listing-card business-dir-card ${isFeatured ? 'featured-card' : ''}`}>
         <a
           href={bUrl}
           className="card-stretched-link"
@@ -804,8 +875,49 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                 <p>Promoted businesses across all cities</p>
               </div>
             </div>
-            <div className="listings-grid">
-              {featuredBusinesses.map((b) => renderBusinessCard(b))}
+            <div
+              className="carousel-wrapper"
+              onMouseEnter={() => setIsCarouselHovered(true)}
+              onMouseLeave={() => setIsCarouselHovered(false)}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {featuredSlides && (
+                <button
+                  type="button"
+                  className="carousel-btn prev"
+                  onClick={() => slideCarousel(-1)}
+                  aria-label="Previous featured businesses"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+              )}
+
+              <div className="carousel-viewport">
+                <div
+                  className={`carousel-track ${featuredSlides ? '' : 'static'}`}
+                  id="featuredBusinessTrack"
+                  style={featuredSlides ? {
+                    transform: `translateX(calc(${-carouselIndex} * (100% + 20px) / var(--per-view)))`,
+                    transition: withTransition ? 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+                  } : undefined}
+                >
+                  {circularBusinesses.map((b, index) =>
+                    renderBusinessCard(b, true, `featured-${index}`)
+                  )}
+                </div>
+              </div>
+
+              {featuredSlides && (
+                <button
+                  type="button"
+                  className="carousel-btn next"
+                  onClick={() => slideCarousel(1)}
+                  aria-label="Next featured businesses"
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              )}
             </div>
           </div>
         </section>
