@@ -701,9 +701,8 @@ div.signup-video-box .signup-video-close { position: absolute; top: -44px; right
 .business-dir-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; background: #fff; padding: 14px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
 .business-dir-filters input, .business-dir-filters select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
 .business-dir-filters .btn-primary { white-space: nowrap; }
-.business-dir-card .card-img-wrap { height: 230px; }
-.business-dir-card.featured-card .card-img-wrap { height: 240px; }
-.business-dir-card .card-body { padding: 16px 16px 18px; }
+.business-dir-card .card-img-wrap { height: 200px; }
+.business-dir-card .card-body { padding: 14px 16px 18px; }
 .business-dir-card .card-location { margin-bottom: 8px; }
 .business-dir-title {
   display: -webkit-box;

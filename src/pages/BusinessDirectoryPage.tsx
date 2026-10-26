@@ -492,7 +492,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     const categoryLabel = info.categories[0] || 'Business';
 
     return (
-      <div key={keyPrefix ? `${keyPrefix}-${b.id}` : b.id} className={`listing-card business-dir-card ${isFeatured ? 'featured-card' : ''}`}>
+      <div key={keyPrefix ? `${keyPrefix}-${b.id}` : b.id} className={`listing-card ${isFeatured ? 'featured-card' : 'business-dir-card'}`}>
         <a
           href={bUrl}
           className="card-stretched-link"
@@ -549,7 +549,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
           <div className="card-price">
             {priceStr || categoryLabel}
           </div>
-          <h3 className="card-title business-dir-title" title={title}>
+          <h3 className="card-title" title={title}>
             {title}
           </h3>
           <div className="card-location">
