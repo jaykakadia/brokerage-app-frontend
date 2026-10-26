@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getBlogs, getImageUrl } from '../services/api';
 import { toMetaDescription } from '../utils/seo';
 import { DEFAULT_BLOG_ARTICLES } from '../data/defaultBlogs';
+import { BLOG_CATEGORIES } from '../data/blogCategories';
 import type { NavigateFunction } from '../types';
 
 export interface BlogPageProps {
@@ -56,7 +57,7 @@ export default function BlogPage({ onNavigate }: BlogPageProps) {
     void fetchBlogs();
   }, []);
 
-  const categories = ['All', 'Buy', 'Rent', 'Invest'];
+  const categories = ['All', ...BLOG_CATEGORIES];
 
   const filteredArticles = activeCategory === 'All'
     ? articles
@@ -77,31 +78,56 @@ export default function BlogPage({ onNavigate }: BlogPageProps) {
 
       <section style={{ padding: '50px 20px', background: '#f4f6f9' }}>
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1a1a2e' }}>
-              Latest Articles
-            </h2>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  style={{
-                    padding: '8px 18px',
-                    border: activeCategory === cat ? '1.5px solid #0c6253' : '1.5px solid #e5e7eb',
-                    background: activeCategory === cat ? '#0c6253' : '#fff',
-                    color: activeCategory === cat ? '#fff' : '#6b7280',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1a1a2e', margin: 0 }}>
+                {activeCategory === 'All' ? 'Latest Articles' : `${activeCategory} Articles`}
+              </h2>
+              <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>
+                Showing {filteredArticles.length} {filteredArticles.length === 1 ? 'article' : 'articles'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {categories.map(cat => {
+                const isActive = activeCategory.toLowerCase() === cat.toLowerCase();
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    style={{
+                      padding: '7px 16px',
+                      border: isActive ? '1.5px solid #0c6253' : '1px solid #e5e7eb',
+                      background: isActive ? '#0c6253' : '#fff',
+                      color: isActive ? '#fff' : '#4b5563',
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      fontWeight: isActive ? 700 : 500,
+                      cursor: 'pointer',
+                      boxShadow: isActive ? '0 2px 8px rgba(12, 98, 83, 0.25)' : 'none',
+                      transition: 'all 0.15s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.borderColor = '#0c6253';
+                        e.currentTarget.style.color = '#0c6253';
+                        e.currentTarget.style.background = '#f0fdf9';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.color = '#4b5563';
+                        e.currentTarget.style.background = '#fff';
+                      }
+                    }}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -26,6 +26,7 @@ import api, {
   getEnquiryCounts
 } from '../services/api';
 import type { SocialLinksSettings } from '../types/setting';
+import { BLOG_CATEGORIES } from '../data/blogCategories';
 import { useAuth } from '../context/AuthContext';
 import LocationMapPreview, { type MapPlace } from '../components/LocationMapPreview';
 import AdminLocationsByState from '../components/AdminLocationsByState';
@@ -422,7 +423,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [blogForm, setBlogForm] = useState<BlogFormState>({
     id: 0,
     title: '',
-    category: 'Buy',
+    category: 'Market Trends',
     content: '',
     permalink: '',
     tags: '',
@@ -1180,7 +1181,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       setBlogForm({
         id: blog.id,
         title: blog.title,
-        category: blog.category || 'Buy',
+        category: blog.category || 'Market Trends',
         content: blog.content,
         permalink: blog.slug || blog.permalink || '',
         tags: blog.tags || '',
@@ -1191,7 +1192,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       setBlogForm({
         id: 0,
         title: '',
-        category: 'Buy',
+        category: 'Market Trends',
         content: '',
         permalink: '',
         tags: '',
@@ -4009,10 +4010,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
                       required
                     >
-                      <option value="Buy">Buy</option>
-                      <option value="Rent">Rent</option>
-                      <option value="Invest">Invest</option>
-                      <option value="Real Estate">Real Estate</option>
+                      {BLOG_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      {!BLOG_CATEGORIES.includes(blogForm.category as any) && (
+                        <option value={blogForm.category}>{blogForm.category}</option>
+                      )}
                     </select>
                   </div>
                   <div>
