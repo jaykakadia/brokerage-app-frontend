@@ -1,25 +1,23 @@
 /**
  * RichTextEditor – Pixel-accurate Google Blogger WYSIWYG editor.
- * Replicates the official Google Blogger post editor interface:
- * - Top Google Blogger toolbar with exact icons & separators
- * - Compose / HTML view toggle (✎ ▾)
- * - Undo / Redo
- * - Font family dropdown (A ▾)
- * - Font size dropdown (T ▾)
- * - Format dropdown (Paragraph ▾: Major heading, Heading, Subheading, Minor heading, Paragraph, Normal)
- * - Bold, Italic, Underline, Strikethrough
- * - Text color & background highlighter pickers
- * - Link modal with "Open in new tab"
- * - Image dropdown (🖼 ▾): "Upload from computer" (local file), "By URL"
- * - Video dropdown (🎬 ▾): "Upload from computer" (local mp4/webm), "YouTube"
- * - Special characters & emoji picker (😊)
+ * Features:
+ * - Google Blogger toolbar with dropdown menus that NEVER get clipped
+ * - Accurate caret/cursor selection preservation (insert images/videos/emojis in the middle of content!)
+ * - Image Insertion:
+ *     1. Upload from computer (file picker)
+ *     2. By URL
+ *     3. Drag & drop image files onto editor
+ *     4. Copy & paste (Cmd+V / Ctrl+V) screenshots & images directly
+ * - Video Insertion:
+ *     1. Upload from computer (mp4/webm)
+ *     2. YouTube embed
+ * - Emoji picker (28 common emojis)
+ * - Heading/Paragraph format dropdown
+ * - Font family & size dropdowns
  * - Alignment dropdown (Left, Center, Right, Justify)
- * - Indent / Outdent
- * - Bulleted & Numbered lists
- * - Quote (❝) & Horizontal rule (—)
- * - Text direction (¶)
- * - Clear formatting (T⃠)
- * - Document paper canvas on Google #f8f9fa background
+ * - Text color & background highlighter pickers
+ * - Link modal with "Open in new window"
+ * - Compose / HTML view toggle
  */
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 
@@ -122,24 +120,49 @@ export default function RichTextEditor({
   const hiliteInputRef = useRef<HTMLInputElement>(null);
   const innerChange = useRef(false);
 
+  // Selection preservation ref so inserts happen at exact caret position
+  const savedSelectionRef = useRef<Range | null>(null);
+
   const [active, setActive] = useState<ActiveState>(() => getActiveState());
   const [heading, setHeading] = useState<string>('p');
   const [fontFamily, setFontFamily] = useState<string>('Roboto');
   const [fontSize, setFontSize] = useState<string>('3');
   const [mode, setMode] = useState<'compose' | 'html'>('compose');
 
-  // Dropdowns state
+  // Dropdown menus
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
-  // Link modal state
+  // Link modal
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkText, setLinkText] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkNewTab, setLinkNewTab] = useState(true);
 
-  // YouTube modal state
+  // YouTube modal
   const [ytModalOpen, setYtModalOpen] = useState(false);
   const [ytUrl, setYtUrl] = useState('');
+
+  // Save current caret position whenever cursor moves or selection changes
+  const saveSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current) {
+      const range = sel.getRangeAt(0);
+      if (editorRef.current.contains(range.commonAncestorContainer)) {
+        savedSelectionRef.current = range.cloneRange();
+      }
+    }
+  }, []);
+
+  // Restore caret position before inserting HTML
+  const restoreSelection = useCallback(() => {
+    if (savedSelectionRef.current && editorRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedSelectionRef.current);
+      }
+    }
+  }, []);
 
   // Sync external HTML value into editor
   useEffect(() => {
@@ -154,11 +177,12 @@ export default function RichTextEditor({
     }
   }, [value]);
 
-  // Sync active states on selection change
+  // Sync active states on selection change & save selection
   const syncState = useCallback(() => {
     setActive(getActiveState());
     setHeading(getCurrentHeading());
-  }, []);
+    saveSelection();
+  }, [saveSelection]);
 
   useEffect(() => {
     document.addEventListener('selectionchange', syncState);
@@ -167,14 +191,14 @@ export default function RichTextEditor({
 
   // Close dropdowns on outside click
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
+    const handleDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.blogger-dropdown-menu') && !target.closest('.blogger-dropdown-btn')) {
+      if (!target.closest('.blogger-dropdown-container')) {
         setOpenDropdown(null);
       }
     };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('click', handleDocClick);
+    return () => document.removeEventListener('click', handleDocClick);
   }, []);
 
   const emit = useCallback(() => {
@@ -188,7 +212,42 @@ export default function RichTextEditor({
   const fmt = (cmd: ExecCmd, val?: string) => {
     if (mode === 'html') return;
     editorRef.current?.focus();
+    restoreSelection();
     exec(cmd, val);
+    emit();
+  };
+
+  // Insert HTML node precisely at the current caret position
+  const insertHtmlAtCaret = (html: string) => {
+    editorRef.current?.focus();
+    restoreSelection();
+
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const frag = document.createDocumentFragment();
+      let node: Node | null;
+      let lastNode: Node | null = null;
+      while ((node = temp.firstChild)) {
+        lastNode = frag.appendChild(node);
+      }
+      range.insertNode(frag);
+
+      if (lastNode) {
+        const nextRange = document.createRange();
+        nextRange.setStartAfter(lastNode);
+        nextRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(nextRange);
+        savedSelectionRef.current = nextRange.cloneRange();
+      }
+    } else if (editorRef.current) {
+      editorRef.current.innerHTML += html;
+    }
     emit();
   };
 
@@ -198,9 +257,8 @@ export default function RichTextEditor({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      editorRef.current?.focus();
-      exec('insertHTML', `<img src="${reader.result}" alt="${file.name}" style="max-width:100%;height:auto;border-radius:4px;margin:16px 0;display:block;" /><p><br></p>`);
-      emit();
+      const imgHtml = `<p><img src="${reader.result}" alt="${file.name}" style="max-width:100%;height:auto;border-radius:4px;margin:16px 0;display:block;" /></p><p><br></p>`;
+      insertHtmlAtCaret(imgHtml);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -211,9 +269,8 @@ export default function RichTextEditor({
   const handleImageUrl = () => {
     const url = window.prompt('Paste image URL (e.g. https://images.unsplash.com/...):');
     if (url && url.trim()) {
-      editorRef.current?.focus();
-      exec('insertHTML', `<img src="${url.trim()}" alt="Blog Image" style="max-width:100%;height:auto;border-radius:4px;margin:16px 0;display:block;" /><p><br></p>`);
-      emit();
+      const imgHtml = `<p><img src="${url.trim()}" alt="Blog Image" style="max-width:100%;height:auto;border-radius:4px;margin:16px 0;display:block;" /></p><p><br></p>`;
+      insertHtmlAtCaret(imgHtml);
     }
     setOpenDropdown(null);
   };
@@ -224,9 +281,8 @@ export default function RichTextEditor({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      editorRef.current?.focus();
-      exec('insertHTML', `<video controls src="${reader.result}" style="max-width:100%;border-radius:6px;margin:16px 0;display:block;"></video><p><br></p>`);
-      emit();
+      const videoHtml = `<p><video controls src="${reader.result}" style="max-width:100%;border-radius:6px;margin:16px 0;display:block;"></video></p><p><br></p>`;
+      insertHtmlAtCaret(videoHtml);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -244,16 +300,15 @@ export default function RichTextEditor({
     } else {
       videoId = ytUrl.trim();
     }
-    editorRef.current?.focus();
     const embedHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:18px 0;border-radius:8px;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div><p><br></p>`;
-    exec('insertHTML', embedHtml);
-    emit();
+    insertHtmlAtCaret(embedHtml);
     setYtUrl('');
     setYtModalOpen(false);
   };
 
   // Link Insertion
   const handleOpenLinkModal = () => {
+    saveSelection();
     const sel = window.getSelection();
     setLinkText(sel ? sel.toString() : '');
     setLinkUrl('');
@@ -262,23 +317,57 @@ export default function RichTextEditor({
 
   const handleApplyLink = () => {
     if (!linkUrl.trim()) return;
-    editorRef.current?.focus();
     const target = linkNewTab ? ' target="_blank" rel="noopener noreferrer"' : '';
     const text = linkText.trim() || linkUrl.trim();
-    exec('insertHTML', `<a href="${linkUrl.trim()}"${target} style="color:#0c6253;text-decoration:underline;">${text}</a>`);
-    emit();
+    const linkHtml = `<a href="${linkUrl.trim()}"${target} style="color:#0c6253;text-decoration:underline;">${text}</a>`;
+    insertHtmlAtCaret(linkHtml);
     setLinkModalOpen(false);
   };
 
-  // Emoji insert
+  // Emoji insert at caret
   const handleInsertEmoji = (emoji: string) => {
-    editorRef.current?.focus();
-    exec('insertHTML', emoji);
-    emit();
+    insertHtmlAtCaret(` ${emoji} `);
     setOpenDropdown(null);
   };
 
+  // Drag and drop image file onto editor
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+      e.preventDefault();
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        const imgHtml = `<p><img src="${reader.result}" alt="${file.name}" style="max-width:100%;height:auto;border-radius:4px;margin:16px 0;display:block;" /></p><p><br></p>`;
+        insertHtmlAtCaret(imgHtml);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Paste image directly from clipboard (Cmd+V / Ctrl+V)
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const imgHtml = `<p><img src="${reader.result}" alt="${file.name}" style="max-width:100%;height:auto;border-radius:4px;margin:16px 0;display:block;" /></p><p><br></p>`;
+            insertHtmlAtCaret(imgHtml);
+          };
+          reader.readAsDataURL(file);
+        }
+        return;
+      }
+    }
+  };
+
   const toggleDropdown = (name: string) => {
+    saveSelection();
     setOpenDropdown(prev => prev === name ? null : name);
   };
 
@@ -291,31 +380,32 @@ export default function RichTextEditor({
       <input type="color" ref={colorInputRef} style={{ display: 'none' }} onChange={(e) => fmt('foreColor', e.target.value)} />
       <input type="color" ref={hiliteInputRef} defaultValue="#fff59d" style={{ display: 'none' }} onChange={(e) => fmt('hiliteColor', e.target.value)} />
 
-      {/* ── Google Blogger Toolbar ── */}
+      {/* ── Google Blogger Toolbar (overflow: visible so dropdowns NEVER get clipped!) ── */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          flexWrap: 'nowrap',
+          flexWrap: 'wrap',
           gap: '2px',
           padding: '4px 12px',
           background: '#ffffff',
           borderBottom: '1px solid #e0e0e0',
           position: 'relative',
-          zIndex: 20,
-          overflowX: 'auto',
+          zIndex: 100,
+          overflow: 'visible',
           flexShrink: 0,
           userSelect: 'none',
         }}
       >
 
         {/* 1. Mode Switcher (Compose / HTML view) */}
-        <div style={{ position: 'relative' }}>
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className="blogger-btn"
             title="Compose / HTML view"
-            onClick={() => toggleDropdown('mode')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('mode'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}
           >
             <i className={mode === 'compose' ? 'fas fa-pen' : 'fas fa-code'} style={{ fontSize: '13px' }} />
@@ -352,12 +442,13 @@ export default function RichTextEditor({
         <div className="blogger-sep" />
 
         {/* 3. Font Family Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className="blogger-btn"
             title="Font type"
-            onClick={() => toggleDropdown('fontFamily')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('fontFamily'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 6px' }}
           >
             <span style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'serif' }}>A</span>
@@ -385,12 +476,13 @@ export default function RichTextEditor({
         </div>
 
         {/* 4. Font Size Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className="blogger-btn"
             title="Font size"
-            onClick={() => toggleDropdown('fontSize')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('fontSize'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 6px' }}
           >
             <span style={{ fontSize: '14px', fontWeight: 700 }}>T</span>
@@ -423,12 +515,13 @@ export default function RichTextEditor({
         </div>
 
         {/* 5. Heading / Paragraph Format Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className="blogger-btn"
             title="Paragraph format"
-            onClick={() => toggleDropdown('heading')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('heading'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', padding: '4px 8px' }}
           >
             <span>
@@ -451,6 +544,7 @@ export default function RichTextEditor({
                   className={`blogger-menu-item ${heading === h.tag ? 'selected' : ''}`}
                   onClick={() => {
                     editorRef.current?.focus();
+                    restoreSelection();
                     exec('formatBlock', `<${h.tag}>`);
                     setHeading(h.tag);
                     emit();
@@ -506,6 +600,7 @@ export default function RichTextEditor({
           type="button"
           className="blogger-btn"
           title="Text color"
+          onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
           onClick={() => colorInputRef.current?.click()}
           style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
         >
@@ -518,6 +613,7 @@ export default function RichTextEditor({
           type="button"
           className="blogger-btn"
           title="Text background color"
+          onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
           onClick={() => hiliteInputRef.current?.click()}
           style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
         >
@@ -532,18 +628,20 @@ export default function RichTextEditor({
           type="button"
           className="blogger-btn"
           title="Insert or edit link (Ctrl+K)"
+          onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
           onClick={handleOpenLinkModal}
         >
           <i className="fas fa-link" />
         </button>
 
-        {/* 10. INSERT IMAGE DROPDOWN (Google Blogger Standard!) */}
-        <div style={{ position: 'relative' }}>
+        {/* 10. INSERT IMAGE DROPDOWN (Working click & select!) */}
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className={`blogger-btn ${openDropdown === 'image' ? 'active' : ''}`}
             title="Insert image"
-            onClick={() => toggleDropdown('image')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('image'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '3px' }}
           >
             <i className="far fa-image" />
@@ -553,14 +651,20 @@ export default function RichTextEditor({
             <div className="blogger-dropdown-menu" style={{ minWidth: '220px' }}>
               <div
                 className="blogger-menu-item"
-                onClick={() => { imageFileInputRef.current?.click(); }}
+                onClick={() => {
+                  saveSelection();
+                  imageFileInputRef.current?.click();
+                }}
               >
-                <i className="fas fa-cloud-upload-alt" style={{ width: '22px', color: '#5f6368' }} />
+                <i className="fas fa-cloud-upload-alt" style={{ width: '22px', color: '#e65100', fontSize: '15px' }} />
                 <span>Upload from computer</span>
               </div>
               <div
                 className="blogger-menu-item"
-                onClick={handleImageUrl}
+                onClick={() => {
+                  saveSelection();
+                  handleImageUrl();
+                }}
               >
                 <i className="fas fa-link" style={{ width: '22px', color: '#5f6368' }} />
                 <span>By URL</span>
@@ -569,13 +673,14 @@ export default function RichTextEditor({
           )}
         </div>
 
-        {/* 11. INSERT VIDEO DROPDOWN (Google Blogger Standard!) */}
-        <div style={{ position: 'relative' }}>
+        {/* 11. INSERT VIDEO DROPDOWN */}
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className={`blogger-btn ${openDropdown === 'video' ? 'active' : ''}`}
             title="Insert video"
-            onClick={() => toggleDropdown('video')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('video'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '3px' }}
           >
             <i className="fas fa-film" />
@@ -585,16 +690,23 @@ export default function RichTextEditor({
             <div className="blogger-dropdown-menu" style={{ minWidth: '220px' }}>
               <div
                 className="blogger-menu-item"
-                onClick={() => { videoFileInputRef.current?.click(); }}
+                onClick={() => {
+                  saveSelection();
+                  videoFileInputRef.current?.click();
+                }}
               >
-                <i className="fas fa-cloud-upload-alt" style={{ width: '22px', color: '#5f6368' }} />
+                <i className="fas fa-cloud-upload-alt" style={{ width: '22px', color: '#e65100', fontSize: '15px' }} />
                 <span>Upload from computer</span>
               </div>
               <div
                 className="blogger-menu-item"
-                onClick={() => { setYtModalOpen(true); setOpenDropdown(null); }}
+                onClick={() => {
+                  saveSelection();
+                  setYtModalOpen(true);
+                  setOpenDropdown(null);
+                }}
               >
-                <i className="fab fa-youtube" style={{ width: '22px', color: '#e53935' }} />
+                <i className="fab fa-youtube" style={{ width: '22px', color: '#e53935', fontSize: '15px' }} />
                 <span>YouTube</span>
               </div>
             </div>
@@ -602,17 +714,18 @@ export default function RichTextEditor({
         </div>
 
         {/* 12. Insert Special Characters / Emoji */}
-        <div style={{ position: 'relative' }}>
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
-            title="Insert special characters"
-            onClick={() => toggleDropdown('emoji')}
+            className={`blogger-btn ${openDropdown === 'emoji' ? 'active' : ''}`}
+            title="Insert special characters & emojis"
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('emoji'); }}
           >
             <i className="far fa-smile" />
           </button>
           {openDropdown === 'emoji' && (
-            <div className="blogger-dropdown-menu" style={{ minWidth: '240px', padding: '10px' }}>
+            <div className="blogger-dropdown-menu" style={{ minWidth: '260px', padding: '10px' }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#5f6368', marginBottom: '8px' }}>EMOJIS & ICONS</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
                 {COMMON_EMOJIS.map(em => (
@@ -635,12 +748,13 @@ export default function RichTextEditor({
         <div className="blogger-sep" />
 
         {/* 13. Alignment Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div className="blogger-dropdown-container" style={{ position: 'relative' }}>
           <button
             type="button"
-            className="blogger-dropdown-btn blogger-btn"
+            className={`blogger-btn ${openDropdown === 'align' ? 'active' : ''}`}
             title="Alignment"
-            onClick={() => toggleDropdown('align')}
+            onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+            onClick={(e) => { e.stopPropagation(); toggleDropdown('align'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '3px' }}
           >
             <i className="fas fa-align-left" />
@@ -786,6 +900,8 @@ export default function RichTextEditor({
               onBlur={emit}
               onKeyUp={syncState}
               onMouseUp={syncState}
+              onDrop={handleDrop}
+              onPaste={handlePaste}
               data-placeholder={placeholder}
               style={{
                 flex: 1,
@@ -955,9 +1071,12 @@ export default function RichTextEditor({
           background: #ffffff;
           border: 1px solid #dadce0;
           border-radius: 4px;
-          box-shadow: 0 4px 12px rgba(60,64,67,0.2);
-          z-index: 100;
+          box-shadow: 0 4px 16px rgba(60,64,67,0.25);
+          z-index: 1000;
           padding: 6px 0;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
         }
         .blogger-menu-item {
           padding: 8px 16px;
@@ -968,6 +1087,7 @@ export default function RichTextEditor({
           align-items: center;
           gap: 10px;
           transition: background 0.12s;
+          white-space: nowrap;
         }
         .blogger-menu-item:hover {
           background: #f1f3f4;
@@ -996,7 +1116,7 @@ export default function RichTextEditor({
           font-style: italic;
         }
         [contenteditable] a { color: #e65100; text-decoration: underline; }
-        [contenteditable] img { max-width: 100%; border-radius: 4px; }
+        [contenteditable] img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin: 16px 0; }
         [contenteditable] hr { border: none; border-top: 1px solid #dadce0; margin: 24px 0; }
         [contenteditable] ul, [contenteditable] ol { padding-left: 2em; margin: 0.6em 0; }
         [contenteditable] li { margin: 0.3em 0; }
