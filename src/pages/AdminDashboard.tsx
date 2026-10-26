@@ -427,7 +427,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     content: '',
     permalink: '',
     tags: '',
-    status: 'publish',
+    status: 'published',
     featured_image: null
   });
   const [blogSaving, setBlogSaving] = useState<boolean>(false);
@@ -1185,7 +1185,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         content: blog.content,
         permalink: blog.slug || blog.permalink || '',
         tags: blog.tags || '',
-        status: blog.status || 'publish',
+        status: (blog.status === 'publish' || blog.status === 'published') ? 'published' : 'draft',
         featured_image: null
       });
     } else {
@@ -1196,11 +1196,31 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         content: '',
         permalink: '',
         tags: '',
-        status: 'publish',
+        status: 'published',
         featured_image: null
       });
     }
     setBlogModalOpen(true);
+  };
+
+  const handleToggleBlogStatus = async (blog: Blog) => {
+    const isPub = blog.status === 'published' || blog.status === 'publish';
+    const newStatus = isPub ? 'draft' : 'published';
+    try {
+      await saveAdminBlog({
+        id: blog.id,
+        title: blog.title,
+        category: blog.category,
+        content: blog.content,
+        permalink: blog.slug || blog.permalink || undefined,
+        tags: blog.tags || undefined,
+        status: newStatus
+      });
+      showToast(`Blog marked as ${newStatus === 'published' ? 'Published' : 'Draft'}`);
+      fetchBlogs();
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err) || 'Failed to update status', 'error');
+    }
   };
 
   const handleSaveBlog = async (e: React.FormEvent) => {
@@ -2997,6 +3017,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         const dateStr = blog.created_at
                           ? new Date(blog.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                           : '-';
+                        const isPublished = blog.status === 'published' || blog.status === 'publish';
                         return (
                           <tr key={blog.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '12px 14px' }}>
@@ -3020,16 +3041,28 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </span>
                             </td>
                             <td style={{ padding: '12px 14px' }}>
-                              <span style={{
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                background: blog.status === 'publish' ? '#dcfce7' : '#fef3c7',
-                                color: blog.status === 'publish' ? '#15803d' : '#b45309'
-                              }}>
-                                {blog.status === 'publish' ? 'Published' : 'Draft'}
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleBlogStatus(blog)}
+                                title="Click to toggle status"
+                                style={{
+                                  border: 'none',
+                                  padding: '3px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: isPublished ? '#dcfce7' : '#fef3c7',
+                                  color: isPublished ? '#15803d' : '#b45309',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <i className={`fas ${isPublished ? 'fa-check-circle' : 'fa-clock'}`} style={{ fontSize: '10px' }}></i>
+                                {isPublished ? 'Published' : 'Draft'}
+                              </button>
                             </td>
                             <td style={{ padding: '12px 14px', textAlign: 'right' }}>
                               <button
@@ -4026,12 +4059,12 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       Status
                     </label>
                     <select
-                      value={blogForm.status}
+                      value={blogForm.status === 'publish' || blogForm.status === 'published' ? 'published' : 'draft'}
                       onChange={(e) => setBlogForm({ ...blogForm, status: e.target.value })}
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
                       required
                     >
-                      <option value="publish">Published</option>
+                      <option value="published">Published</option>
                       <option value="draft">Draft</option>
                     </select>
                   </div>
