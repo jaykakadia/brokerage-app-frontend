@@ -12,9 +12,10 @@ export interface PlansModalProps {
   listing?: Pick<Listing, 'id' | 'title'> | null;
   /** Opened because the user ran out of leads while unlocking a contact. */
   noLeads?: boolean;
+  initialPlanId?: number | null;
 }
 
-export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'leads', listing = null, noLeads = false }: PlansModalProps) {
+export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'leads', listing = null, noLeads = false, initialPlanId = null }: PlansModalProps) {
   const isFeatured = planType === 'featured';
   const { refreshUser } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -28,9 +29,12 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
     if (isOpen) {
       setErrorMsg(null);
       setSuccessMsg(null);
+      if (initialPlanId) {
+        setSelectedPlanId(initialPlanId);
+      }
       void loadPlans();
     }
-  }, [isOpen, planType]);
+  }, [isOpen, planType, initialPlanId]);
 
   const loadPlans = async (): Promise<void> => {
     setLoading(true);
@@ -38,7 +42,9 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
       const res = await getPlans(false, planType);
       const list = [...(res.data?.data || [])].sort((a, b) => Number(a.price) - Number(b.price));
       setPlans(list);
-      if (list.length > 0) {
+      if (initialPlanId && list.some((p) => p.id === initialPlanId)) {
+        setSelectedPlanId(initialPlanId);
+      } else if (list.length > 0) {
         setSelectedPlanId(list[0].id);
       }
     } catch (err: unknown) {

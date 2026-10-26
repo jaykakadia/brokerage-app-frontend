@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { Listing, NavigateFunction } from '../../types';
+import { useState, useEffect } from 'react';
+import type { Listing, NavigateFunction, Plan } from '../../types';
 import { isBusinessListing, publicListingTitle } from '../../utils/listingKind';
+import { getPlans } from '../../services/api';
 import PlansModal from '../../components/PlansModal';
 
 export interface PostListingSuccessPlansProps {
@@ -8,21 +9,56 @@ export interface PostListingSuccessPlansProps {
   onNavigate: NavigateFunction;
 }
 
-interface FeaturedTier {
-  id: 'priority' | 'premium';
-  name: string;
-  price: number;
-  durationDays: number;
-  badgeIcon: string;
-  isPopular?: boolean;
-  headerBg?: string;
-  accentColor?: string;
-  features: Array<{ text: string; subtext?: string }>;
-}
+const FALLBACK_FEATURED_PLANS: Plan[] = [
+  {
+    id: 6,
+    name: 'Featured 30',
+    plan_type: 'featured',
+    price: 599,
+    duration_days: 30,
+    listing_limit: 0,
+    leads_count: 0,
+    description: 'Listing on Top of Page for 30 Days.',
+    status: 'active',
+    sort_order: 0,
+    created_at: '2026-10-03T15:30:19.632402Z',
+    updated_at: '2026-10-10T00:47:21.335598Z'
+  },
+  {
+    id: 5,
+    name: 'Featured 50',
+    plan_type: 'featured',
+    price: 999,
+    duration_days: 50,
+    listing_limit: 0,
+    leads_count: 0,
+    description: 'Display Listing for 50 days on Top of Page.',
+    status: 'active',
+    sort_order: 1,
+    created_at: '2026-10-03T15:29:15.447824Z',
+    updated_at: '2026-10-21T04:41:02.881943Z'
+  },
+  {
+    id: 9,
+    name: 'Featured 365',
+    plan_type: 'featured',
+    price: 8999,
+    duration_days: 365,
+    listing_limit: 0,
+    leads_count: 0,
+    description: 'Full year featured placement on Top of Page.',
+    status: 'active',
+    sort_order: 2,
+    created_at: '2026-10-07T09:29:02.043979Z',
+    updated_at: '2026-10-07T09:30:41.494001Z'
+  }
+];
 
 export default function PostListingSuccessPlans({ listing, onNavigate }: PostListingSuccessPlansProps) {
   const isBusiness = isBusinessListing(listing);
-  const [selectedTier, setSelectedTier] = useState<FeaturedTier | null>(null);
+  const [plans, setPlans] = useState<Plan[]>(FALLBACK_FEATURED_PLANS);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [plansModalOpen, setPlansModalOpen] = useState(false);
 
@@ -30,50 +66,79 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
   const entityType = isBusiness ? 'business' : 'property';
   const entityTypeCap = isBusiness ? 'Business' : 'Property';
 
-  const priorityTier: FeaturedTier = {
-    id: 'priority',
-    name: 'Priority',
-    price: 2000,
-    durationDays: 90,
-    badgeIcon: 'fa-award',
-    headerBg: '#f8fafc',
-    accentColor: '#111827',
-    features: [
-      { text: 'Average Visibility' },
-      { text: `Displaying Priority ${entityTypeCap} Above Free Member's ${isBusiness ? 'Listing' : 'Property'}` },
-      { text: 'Unlimited Response view' },
-      { text: `View 2 ${isBusiness ? 'client' : "buyer's"} details (lead) that match your requirements` },
-      {
-        text: `Higher Position on ${entityTypeCap} Search for 10 Days`,
-        subtext: '(2 days boosting on every 20th day)'
-      }
-    ]
+  useEffect(() => {
+    let mounted = true;
+    void getPlans(false, 'featured')
+      .then((res) => {
+        if (!mounted) return;
+        const list = (res.data?.data || []) as Plan[];
+        if (list.length > 0) {
+          list.sort((a, b) => Number(a.price) - Number(b.price));
+          setPlans(list);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load featured plans for post-listing screen:', err);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const getPlanVisuals = (index: number, total: number) => {
+    // If 3 plans: 1st is Star, 2nd is Most Popular Award, 3rd is Crown Best Value
+    if (total >= 3 && index === total - 1) {
+      return {
+        badgeIcon: 'fa-crown',
+        headerBg: '#fef3c7',
+        accentColor: '#b45309',
+        iconColor: '#d97706',
+        borderColor: '#f59e0b',
+        tag: 'BEST VALUE',
+        buttonBg: '#1e88e5'
+      };
+    }
+    if ((total >= 2 && index === 1) || (total === 1 && index === 0)) {
+      return {
+        badgeIcon: 'fa-award',
+        headerBg: '#e1f0fa',
+        accentColor: '#1e88e5',
+        iconColor: '#0284c7',
+        borderColor: '#1e88e5',
+        tag: total >= 2 ? 'MOST POPULAR' : null,
+        buttonBg: '#1e88e5'
+      };
+    }
+    return {
+      badgeIcon: 'fa-star',
+      headerBg: '#f8fafc',
+      accentColor: '#0c6253',
+      iconColor: '#0c6253',
+      borderColor: '#e2e8f0',
+      tag: null,
+      buttonBg: '#1e88e5'
+    };
   };
 
-  const premiumTier: FeaturedTier = {
-    id: 'premium',
-    name: 'Premium',
-    price: 4000,
-    durationDays: 180,
-    badgeIcon: 'fa-crown',
-    headerBg: '#e1f0fa',
-    accentColor: '#1e88e5',
-    features: [
-      { text: 'Higher Visibility' },
-      { text: `Displaying Premium ${entityTypeCap} Above Priority Listing` },
-      { text: 'Unlimited Response view' },
-      { text: `View 4 ${isBusiness ? 'client' : "buyer's"} details (lead) that match your requirements` },
-      {
-        text: `Higher Position on ${entityTypeCap} Search for 40 Days`,
-        subtext: '(4 days boosting on every 20th day)'
-      }
-    ]
+  const getPlanFeatures = (plan: Plan) => {
+    const items: string[] = [
+      'Promoted on Homepage & Featured Section',
+      `Displaying ${plan.name} Above Free Listings`,
+      'Distinctive Featured Badge for high credibility',
+      `Priority Reach to Genuine ${isBusiness ? 'Clients' : 'Buyers & Tenants'}`,
+      `Active Featured Promotion for ${plan.duration_days} Days`
+    ];
+    if (plan.description && plan.description.trim()) {
+      items.push(plan.description.trim());
+    }
+    return items;
   };
 
-  const tiers = [priorityTier, premiumTier];
-
-  const handleBuyNow = (tier: FeaturedTier) => {
-    setSelectedTier(tier);
+  const handleBuyNow = (plan: Plan) => {
+    setSelectedPlan(plan);
     setCheckoutModalOpen(true);
   };
 
@@ -82,8 +147,8 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
   };
 
   const supportPhone = '9992292828';
-  const waMessage = selectedTier
-    ? `Hello TradeCall Support, I have posted my ${entityType} listing #${listing.id} "${titleText}". I want to activate the ${selectedTier.name} Plan (₹${selectedTier.price}/- for ${selectedTier.durationDays} Days). Please verify and boost my listing.`
+  const waMessage = selectedPlan
+    ? `Hello TradeCall Support, I have posted my ${entityType} listing #${listing.id} "${titleText}". I want to activate the ${selectedPlan.name} Plan (₹${Number(selectedPlan.price).toLocaleString('en-IN')}/- for ${selectedPlan.duration_days} Days). Please feature my listing.`
     : '';
 
   return (
@@ -103,8 +168,8 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
         style={{
           background: '#ffffff',
           borderRadius: '16px',
-          padding: '44px 32px 36px',
-          maxWidth: '840px',
+          padding: '44px 28px 36px',
+          maxWidth: '1040px',
           width: '100%',
           boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
           textAlign: 'center',
@@ -183,165 +248,194 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
           get Faster responses &amp; get {isBusiness ? 'Deals' : 'Sold'} earlier
         </div>
 
-        {/* Two Featured Plan Cards */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '24px',
-            justifyContent: 'center',
-            alignItems: 'stretch',
-            flexWrap: 'wrap',
-            margin: '0 auto 28px',
-            maxWidth: '760px'
-          }}
-        >
-          {tiers.map((tier) => (
-            <div
-              key={tier.id}
-              style={{
-                flex: '1 1 320px',
-                maxWidth: '360px',
-                minWidth: '290px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                background: '#ffffff',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: '0 3px 12px rgba(0,0,0,0.05)',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-              }}
-            >
-              <div>
-                {/* Card Top Header */}
-                <div
-                  style={{
-                    background: tier.headerBg || '#f8fafc',
-                    padding: '24px 16px 18px',
-                    textAlign: 'center',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '50%',
-                      border: `1.5px solid ${tier.id === 'premium' ? '#0284c7' : '#94a3b8'}`,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: tier.id === 'premium' ? '#0284c7' : '#64748b',
-                      fontSize: '20px',
-                      marginBottom: '8px',
-                      background: '#ffffff'
-                    }}
-                  >
-                    <i className={`fas ${tier.badgeIcon}`}></i>
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#475569', marginBottom: '2px' }}>
-                    Mark this {entityType} as
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '18px',
-                      fontWeight: 700,
-                      color: tier.accentColor || '#111827'
-                    }}
-                  >
-                    {tier.name}
-                  </div>
-                </div>
+        {/* Featured Listing Plan Cards */}
+        {loading && plans.length === 0 ? (
+          <div style={{ padding: '40px 0', color: '#6b7280' }}>
+            <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#1e88e5', marginBottom: '10px' }}></i>
+            <div>Loading featured plans...</div>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              gap: '20px',
+              justifyContent: 'center',
+              alignItems: 'stretch',
+              flexWrap: 'wrap',
+              margin: '0 auto 28px',
+              maxWidth: '1000px'
+            }}
+          >
+            {plans.map((plan, idx) => {
+              const visuals = getPlanVisuals(idx, plans.length);
+              const features = getPlanFeatures(plan);
+              const isHighlighted = !!visuals.tag;
 
-                {/* Price Bar */}
+              return (
                 <div
+                  key={plan.id}
                   style={{
-                    padding: '12px 16px',
+                    flex: '1 1 280px',
+                    maxWidth: '340px',
+                    minWidth: '260px',
+                    border: isHighlighted ? `2px solid ${visuals.borderColor}` : '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
                     background: '#ffffff',
-                    borderBottom: '1px solid #f1f5f9',
-                    textAlign: 'center'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    boxShadow: isHighlighted ? '0 8px 24px rgba(30, 136, 229, 0.12)' : '0 3px 12px rgba(0,0,0,0.05)',
+                    position: 'relative',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                   }}
                 >
-                  <span style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
-                    ₹ {tier.price}/-
-                  </span>{' '}
-                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
-                    Valid for {tier.durationDays} Days
-                  </span>
-                </div>
-
-                {/* Features List with Blue Checks */}
-                <ul
-                  style={{
-                    listStyle: 'none',
-                    margin: 0,
-                    padding: '18px 20px 14px',
-                    textAlign: 'left'
-                  }}
-                >
-                  {tier.features.map((feat, idx) => (
-                    <li
-                      key={idx}
+                  {/* Tag if popular or best value */}
+                  {visuals.tag && (
+                    <div
                       style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '10px',
-                        fontSize: '13px',
-                        color: '#334155',
-                        lineHeight: 1.45,
-                        marginBottom: idx === tier.features.length - 1 ? 0 : '12px'
+                        position: 'absolute',
+                        top: '10px',
+                        right: '12px',
+                        background: visuals.accentColor,
+                        color: '#ffffff',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        letterSpacing: '0.5px',
+                        padding: '3px 8px',
+                        borderRadius: '10px',
+                        textTransform: 'uppercase',
+                        zIndex: 2
                       }}
                     >
-                      <i
-                        className="fas fa-check"
-                        style={{
-                          color: '#1e88e5',
-                          fontSize: '13px',
-                          marginTop: '2px',
-                          flexShrink: 0
-                        }}
-                      ></i>
-                      <div>
-                        <div>{feat.text}</div>
-                        {feat.subtext && (
-                          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                            {feat.subtext}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                      {visuals.tag}
+                    </div>
+                  )}
 
-              {/* BUY NOW Button */}
-              <div style={{ padding: '12px 20px 22px', textAlign: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => handleBuyNow(tier)}
-                  style={{
-                    background: '#1e88e5',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '10px 36px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    letterSpacing: '0.6px',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(30, 136, 229, 0.3)',
-                    transition: 'background-color 0.15s ease'
-                  }}
-                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#1976d2')}
-                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#1e88e5')}
-                >
-                  BUY NOW
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                  <div>
+                    {/* Card Top Header */}
+                    <div
+                      style={{
+                        background: visuals.headerBg || '#f8fafc',
+                        padding: '24px 16px 18px',
+                        textAlign: 'center',
+                        borderBottom: '1px solid #e5e7eb'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '46px',
+                          height: '46px',
+                          borderRadius: '50%',
+                          border: `1.5px solid ${visuals.iconColor}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: visuals.iconColor,
+                          fontSize: '20px',
+                          marginBottom: '8px',
+                          background: '#ffffff'
+                        }}
+                      >
+                        <i className={`fas ${visuals.badgeIcon}`}></i>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#475569', marginBottom: '2px' }}>
+                        Mark this {entityType} as
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: 700,
+                          color: visuals.accentColor || '#111827'
+                        }}
+                      >
+                        {plan.name}
+                      </div>
+                    </div>
+
+                    {/* Price Bar */}
+                    <div
+                      style={{
+                        padding: '12px 16px',
+                        background: '#ffffff',
+                        borderBottom: '1px solid #f1f5f9',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <span style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+                        ₹ {Number(plan.price).toLocaleString('en-IN')}/-
+                      </span>{' '}
+                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                        Valid for {plan.duration_days} Days
+                      </span>
+                    </div>
+
+                    {/* Features List with Blue Checks */}
+                    <ul
+                      style={{
+                        listStyle: 'none',
+                        margin: 0,
+                        padding: '18px 20px 14px',
+                        textAlign: 'left'
+                      }}
+                    >
+                      {features.map((feat, fIdx) => (
+                        <li
+                          key={fIdx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                            fontSize: '13px',
+                            color: '#334155',
+                            lineHeight: 1.45,
+                            marginBottom: fIdx === features.length - 1 ? 0 : '12px'
+                          }}
+                        >
+                          <i
+                            className="fas fa-check"
+                            style={{
+                              color: '#1e88e5',
+                              fontSize: '13px',
+                              marginTop: '2px',
+                              flexShrink: 0
+                            }}
+                          ></i>
+                          <div>{feat}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* BUY NOW Button */}
+                  <div style={{ padding: '12px 20px 22px', textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleBuyNow(plan)}
+                      style={{
+                        background: visuals.buttonBg,
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '10px 36px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        letterSpacing: '0.6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(30, 136, 229, 0.3)',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#1565c0')}
+                      onMouseOut={(e) => (e.currentTarget.style.backgroundColor = visuals.buttonBg)}
+                    >
+                      BUY NOW
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Skip Button */}
         <div>
@@ -419,7 +513,7 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
       </div>
 
       {/* Upgrade / Checkout Modal */}
-      {checkoutModalOpen && selectedTier && (
+      {checkoutModalOpen && selectedPlan && (
         <div
           style={{
             position: 'fixed',
@@ -480,8 +574,8 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
                   width: '44px',
                   height: '44px',
                   borderRadius: '50%',
-                  background: selectedTier.id === 'premium' ? '#e0f2fe' : '#f1f5f9',
-                  color: selectedTier.id === 'premium' ? '#0284c7' : '#475569',
+                  background: '#e0f2fe',
+                  color: '#0284c7',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -489,10 +583,10 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
                   marginBottom: '10px'
                 }}
               >
-                <i className={`fas ${selectedTier.badgeIcon}`}></i>
+                <i className="fas fa-star"></i>
               </div>
               <h3 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#111827' }}>
-                Activate {selectedTier.name} Advertisement
+                Activate {selectedPlan.name} Advertisement
               </h3>
               <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>
                 Listing: <strong>{titleText}</strong>
@@ -511,14 +605,14 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>
-                  {selectedTier.name} Plan ({selectedTier.durationDays} Days)
+                  {selectedPlan.name} Plan ({selectedPlan.duration_days} Days)
                 </span>
                 <span style={{ fontSize: '18px', fontWeight: 800, color: '#0c6253' }}>
-                  ₹{selectedTier.price.toLocaleString('en-IN')}
+                  ₹{Number(selectedPlan.price).toLocaleString('en-IN')}
                 </span>
               </div>
               <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.5 }}>
-                ✓ Includes search boost &amp; verified promotion badge once approved by TradeCall.
+                ✓ Includes top placement on Homepage &amp; Search results, plus verified featured badge once approved by TradeCall.
               </div>
             </div>
 
@@ -627,6 +721,7 @@ export default function PostListingSuccessPlans({ listing, onNavigate }: PostLis
         isOpen={plansModalOpen}
         planType="featured"
         listing={listing}
+        initialPlanId={selectedPlan?.id ?? null}
         onClose={() => setPlansModalOpen(false)}
         onSuccess={() => {
           setPlansModalOpen(false);
