@@ -1680,8 +1680,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               className={`carousel-track ${featuredSlides ? '' : 'static'}`}
               id="carouselTrack"
               style={featuredSlides ? {
-                // One step = one card plus the gap; the track's 4px side padding is taken off its width
-                transform: `translateX(calc(${-carouselIndex} * (100% + 12px) / var(--per-view)))`,
+                transform: `translateX(calc(${-carouselIndex} * (100% + 20px) / var(--per-view)))`,
                 transition: withTransition ? 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
               } : undefined}
             >
