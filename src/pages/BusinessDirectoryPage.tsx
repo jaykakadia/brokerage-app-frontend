@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
-import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing } from '../utils/listingKind';
+import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
+import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { getListingUrl } from '../utils/url';
@@ -486,18 +486,23 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const renderBusinessCard = (b: Listing, isFeatured: boolean = false, keyPrefix: string = '') => {
     const info = businessInfo(b);
     const bUrl = getListingUrl(b);
+    const imgSrc = getFirstImageUrl(b);
+    const title = publicListingTitle(b) || b.title;
+    const priceStr = b.price && Number(b.price) > 0 ? formatListingPrice(b.price) : '';
+    const categoryLabel = info.categories[0] || 'Business';
+
     return (
       <div key={keyPrefix ? `${keyPrefix}-${b.id}` : b.id} className={`listing-card business-dir-card ${isFeatured ? 'featured-card' : ''}`}>
         <a
           href={bUrl}
           className="card-stretched-link"
-          aria-label={b.title}
+          aria-label={title}
           onClick={(e) => handleLinkClick(e, b)}
         />
-        <div className="card-img-wrap" style={cardImageBackdrop(getFirstImageUrl(b))}>
+        <div className="card-img-wrap" style={cardImageBackdrop(imgSrc)}>
           <img
-            src={getFirstImageUrl(b)}
-            alt={b.title}
+            src={imgSrc}
+            alt={title}
             className="card-img"
             loading="lazy"
             onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
@@ -507,8 +512,8 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               className="badge-verified"
               style={{
                 position: 'absolute',
-                top: '10px',
-                right: '10px',
+                top: '12px',
+                right: '12px',
                 zIndex: 2,
                 padding: '4px 8px',
                 borderRadius: '4px',
@@ -522,13 +527,37 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               <i className="fas fa-check-circle"></i> Verified
             </span>
           )}
+          <span
+            className="badge-featured"
+            style={{
+              position: 'absolute',
+              top: '12px',
+              left: '12px',
+              background: 'rgba(0,0,0,0.65)',
+              color: '#fff',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              textTransform: 'capitalize',
+              zIndex: 2
+            }}
+          >
+            {categoryLabel}
+          </span>
         </div>
         <div className="card-body">
-          <h3 className="card-title business-dir-title">
-            {b.title}
-            {info.categories[0] && <> <span className="title-category">-&nbsp;{info.categories[0]}</span></>}
+          <div className="card-price">
+            {priceStr || categoryLabel}
+          </div>
+          <h3 className="card-title business-dir-title" title={title}>
+            {title}
           </h3>
-          <div className="card-location"><i className="fas fa-map-marker-alt"></i> <span>{b.location}</span></div>
+          <div className="card-location">
+            <i className="fas fa-map-marker-alt"></i> <span>{b.location}</span>
+          </div>
+          <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
+            Owner: <strong>{b.owner_name || 'Business Owner'}</strong>{b.owner_role ? ` (${b.owner_role})` : ''}
+          </div>
           <div className="card-footer card-footer-actions">
             <a
               href={bUrl}
