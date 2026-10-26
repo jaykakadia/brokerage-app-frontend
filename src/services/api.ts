@@ -237,11 +237,19 @@ export const getAdminBlog = (id: number | string): Promise<AxiosResponse<ApiResp
   api.get(`/api/v1/blogs/admin/${id}`);
 
 export const saveAdminBlog = (
-  payload: Pick<Blog, 'title' | 'category' | 'content'> & Partial<Pick<Blog, 'permalink' | 'tags' | 'status' | 'author' | 'image_url'>> & { id?: number }
+  payload: Pick<Blog, 'title' | 'category' | 'content'> & Partial<Pick<Blog, 'permalink' | 'tags' | 'status' | 'author' | 'image_url' | 'meta_description'>> & { id?: number }
 ): Promise<AxiosResponse<ApiResponse<Blog>>> =>
   api.post('/api/v1/blogs/admin', payload, {
     params: payload.id ? { blog_id: payload.id } : undefined
   });
+
+export const uploadBlogImage = (file: File): Promise<AxiosResponse<ApiResponse<{ url: string; key: string }>>> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/api/v1/blogs/admin/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
 
 export const deleteAdminBlog = (id: number | string): Promise<AxiosResponse<MessageResponse>> =>
   api.delete(`/api/v1/blogs/admin/${id}`);

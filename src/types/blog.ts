@@ -9,6 +9,7 @@ export interface Blog {
   status: 'published' | 'draft' | 'publish' | string;
   author: string;
   image_url?: string | null;
+  meta_description?: string | null;
   views?: number;
   created_at: string;
   updated_at: string;
@@ -24,6 +25,7 @@ export interface BlogCreate {
   status?: string;
   author?: string;
   image_url?: string;
+  meta_description?: string;
 }
 
 export interface BlogUpdate {
@@ -36,4 +38,5 @@ export interface BlogUpdate {
   status?: string;
   author?: string;
   image_url?: string;
+  meta_description?: string;
 }

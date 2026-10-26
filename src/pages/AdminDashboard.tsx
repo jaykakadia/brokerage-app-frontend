@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api, {
   getPlans,
   createPlan,
@@ -14,6 +14,7 @@ import api, {
   deleteEmployee,
   getAdminBlogs,
   saveAdminBlog,
+  uploadBlogImage,
   deleteAdminBlog,
   getMailSettings,
   saveMailSettings,
@@ -151,6 +152,8 @@ interface BlogFormState {
   tags: string;
   status: string;
   featured_image: File | null;
+  image_url?: string;
+  meta_description?: string;
 }
 
 interface SmtpSettingsState {
@@ -449,9 +452,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     permalink: '',
     tags: '',
     status: 'published',
-    featured_image: null
+    featured_image: null,
+    image_url: '',
+    meta_description: ''
   });
   const [blogSaving, setBlogSaving] = useState<boolean>(false);
+  const [blogImageUploading, setBlogImageUploading] = useState<boolean>(false);
+  const blogFileInputRef = useRef<HTMLInputElement>(null);
+  const [keywordInput, setKeywordInput] = useState<string>('');
 
   // === SETTINGS (SMTP & CREDENTIALS) STATE ===
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettingsState>({
@@ -1231,7 +1239,48 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBlogImageUploading(true);
+    try {
+      const res = await uploadBlogImage(file);
+      const uploadedUrl = res.data?.data?.url;
+      if (res.data?.status === 'success' && uploadedUrl) {
+        setBlogForm(prev => ({
+          ...prev,
+          image_url: uploadedUrl,
+          featured_image: file
+        }));
+        showToast('Thumbnail image uploaded successfully!');
+      }
+    } catch (err) {
+      showToast(getApiErrorMessage(err) || 'Failed to upload image', 'error');
+    } finally {
+      setBlogImageUploading(false);
+      if (blogFileInputRef.current) blogFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddKeyword = () => {
+    const trimmed = keywordInput.trim();
+    if (!trimmed) return;
+    const currentTags = blogForm.tags ? blogForm.tags.split(',').map(s => s.trim()).filter(Boolean) : [];
+    if (!currentTags.includes(trimmed)) {
+      currentTags.push(trimmed);
+      setBlogForm(prev => ({ ...prev, tags: currentTags.join(', ') }));
+    }
+    setKeywordInput('');
+  };
+
+  const handleRemoveKeyword = (tagToRemove: string) => {
+    const currentTags = blogForm.tags ? blogForm.tags.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const nextTags = currentTags.filter(t => t !== tagToRemove);
+    setBlogForm(prev => ({ ...prev, tags: nextTags.join(', ') }));
+  };
+
   const handleOpenBlogModal = (blog: Blog | null = null) => {
+    setKeywordInput('');
     if (blog) {
       setBlogForm({
         id: blog.id,
@@ -1241,7 +1290,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         permalink: blog.slug || blog.permalink || '',
         tags: blog.tags || '',
         status: (blog.status === 'publish' || blog.status === 'published') ? 'published' : 'draft',
-        featured_image: null
+        featured_image: null,
+        image_url: blog.image_url || '',
+        meta_description: blog.meta_description || ''
       });
     } else {
       setBlogForm({
@@ -1252,7 +1303,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         permalink: '',
         tags: '',
         status: 'published',
-        featured_image: null
+        featured_image: null,
+        image_url: '',
+        meta_description: ''
       });
     }
     setBlogStep(blog ? 2 : 1);
@@ -1271,7 +1324,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         content: blog.content,
         permalink: blog.slug || blog.permalink || undefined,
         tags: blog.tags || undefined,
-        status: newStatus
+        status: newStatus,
+        image_url: blog.image_url || undefined,
+        meta_description: blog.meta_description || undefined
       });
       showToast(`Blog marked as ${newStatus === 'published' ? 'Published' : 'Draft'}`);
       fetchBlogs();
@@ -1291,7 +1346,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         content: blogForm.content,
         permalink: blogForm.permalink || undefined,
         tags: blogForm.tags || undefined,
-        status: blogForm.status
+        status: blogForm.status,
+        image_url: blogForm.image_url || undefined,
+        meta_description: blogForm.meta_description || undefined
       });
       showToast(blogForm.id ? 'Blog updated successfully!' : 'Blog created successfully!');
       setBlogModalOpen(false);
@@ -4665,7 +4722,7 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
 
             {/* ── STEP 1: Post Details card ── */}
             {blogStep === 1 && (
-              <div style={{ background: '#fff', borderRadius: '16px', width: '520px', maxWidth: '95vw', maxHeight: '92vh', overflowY: 'auto', padding: '32px 36px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+              <div style={{ background: '#fff', borderRadius: '16px', width: '560px', maxWidth: '95vw', maxHeight: '92vh', overflowY: 'auto', padding: '32px 36px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                   <h3 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#111827' }}>
                     {blogForm.id ? 'Edit Post Details' : 'New Post Details'}
@@ -4694,11 +4751,12 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Category</label>
                     <select value={blogForm.category} onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', background: '#fff' }}>
+                      <option value="Market Trends">Market Trends</option>
                       <option value="Buy">Buy</option>
                       <option value="Rent">Rent</option>
                       <option value="Invest">Invest</option>
                       {BLOG_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                      {!['Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES].includes(blogForm.category as any) && <option value={blogForm.category}>{blogForm.category}</option>}
+                      {!['Market Trends', 'Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES].includes(blogForm.category as any) && <option value={blogForm.category}>{blogForm.category}</option>}
                     </select>
                   </div>
                   <div>
@@ -4715,14 +4773,210 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                   <input type="text" placeholder="e.g. my-first-blog" value={blogForm.permalink} onChange={(e) => setBlogForm({ ...blogForm, permalink: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
 
+                {/* 1. Description (Meta Description) */}
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Tags / Labels</label>
-                  <input type="text" placeholder="e.g. real estate, palwal, investment" value={blogForm.tags} onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', boxSizing: 'border-box' }} />
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                    Description (Meta Description)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Write a brief description for SEO..."
+                    value={blogForm.meta_description || ''}
+                    onChange={(e) => setBlogForm({ ...blogForm, meta_description: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '8px',
+                      fontSize: '13.5px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      color: '#0f172a'
+                    }}
+                  />
+                  <div style={{
+                    fontSize: '12px',
+                    color: (blogForm.meta_description?.length || 0) > 160 ? '#d97706' : '#64748b',
+                    marginTop: '4px'
+                  }}>
+                    {(blogForm.meta_description || '').length}/160 characters (recommended for SEO)
+                  </div>
                 </div>
 
-                <div style={{ marginBottom: '28px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Featured Image</label>
-                  <input type="file" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) setBlogForm({ ...blogForm, featured_image: e.target.files[0] }); }} style={{ width: '100%', fontSize: '13px', padding: '8px 0' }} />
+                {/* 2. Thumbnail Image URL */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                    Thumbnail Image URL
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="https://example.com/i..."
+                      value={blogForm.image_url || ''}
+                      onChange={(e) => setBlogForm({ ...blogForm, image_url: e.target.value })}
+                      style={{
+                        flex: 1,
+                        padding: '9px 12px',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        color: '#0f172a'
+                      }}
+                    />
+                    <input
+                      type="file"
+                      ref={blogFileInputRef}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleThumbnailUpload}
+                    />
+                    <button
+                      type="button"
+                      disabled={blogImageUploading}
+                      onClick={() => blogFileInputRef.current?.click()}
+                      style={{
+                        padding: '9px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#e0f2fe',
+                        color: '#0369a1',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        cursor: blogImageUploading ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      {blogImageUploading ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin"></i> Uploading...
+                        </>
+                      ) : (
+                        'Add Image'
+                      )}
+                    </button>
+                  </div>
+                  {blogForm.image_url && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '6px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <img
+                        src={blogForm.image_url}
+                        alt="Thumbnail preview"
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }}
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                      <span style={{ fontSize: '11.5px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {blogForm.image_url}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBlogForm({ ...blogForm, image_url: '', featured_image: null })}
+                        style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px' }}
+                        title="Remove image"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Keywords */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                    Keywords
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="Add a keyword..."
+                      value={keywordInput}
+                      onChange={(e) => setKeywordInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddKeyword();
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '9px 12px',
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        color: '#0f172a'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddKeyword}
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#64748b',
+                        fontSize: '20px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        lineHeight: 1
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                  {blogForm.tags ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                      {blogForm.tags.split(',').map(s => s.trim()).filter(Boolean).map((kw, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            background: '#f1f5f9',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            color: '#334155',
+                            fontWeight: 600
+                          }}
+                        >
+                          {kw}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveKeyword(kw)}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              color: '#94a3b8',
+                              cursor: 'pointer',
+                              padding: 0,
+                              marginLeft: '2px',
+                              fontSize: '14px',
+                              lineHeight: 1,
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
