@@ -4010,10 +4010,13 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
                       required
                     >
+                      <option value="Buy">Buy</option>
+                      <option value="Rent">Rent</option>
+                      <option value="Invest">Invest</option>
                       {BLOG_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
-                      {!BLOG_CATEGORIES.includes(blogForm.category as any) && (
+                      {!['Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES].includes(blogForm.category as any) && (
                         <option value={blogForm.category}>{blogForm.category}</option>
                       )}
                     </select>

@@ -57,7 +57,7 @@ export default function BlogPage({ onNavigate }: BlogPageProps) {
     void fetchBlogs();
   }, []);
 
-  const categories = ['All', ...BLOG_CATEGORIES];
+  const categories = ['All', 'Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES];
 
   const filteredArticles = activeCategory === 'All'
     ? articles
