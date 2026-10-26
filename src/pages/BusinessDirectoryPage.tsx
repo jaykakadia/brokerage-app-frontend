@@ -866,7 +866,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
       {!hasFilters && featuredBusinesses.length > 0 && (
         <section className="featured-section" id="featured-businesses" style={{ padding: '28px 0 32px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
           <div className="container">
-            <div className="section-header" style={{ marginBottom: '18px' }}>
+            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px' }}>
               <div>
                 <h2>
                   <i className="fas fa-star" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
@@ -874,6 +874,28 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                 </h2>
                 <p>Promoted businesses across all cities</p>
               </div>
+              {featuredSlides && (
+                <div className="carousel-nav-header">
+                  <button
+                    type="button"
+                    className="carousel-nav-btn prev"
+                    onClick={() => slideCarousel(-1)}
+                    aria-label="Previous featured businesses"
+                    title="Previous"
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="carousel-nav-btn next"
+                    onClick={() => slideCarousel(1)}
+                    aria-label="Next featured businesses"
+                    title="Next"
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
             </div>
             <div
               className="carousel-wrapper"

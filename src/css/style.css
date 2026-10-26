@@ -838,13 +838,12 @@ ul { list-style: none; }
 /* ===================== CAROUSEL ===================== */
 .carousel-wrapper {
   position: relative;
-  padding: 0 48px;
 }
 /* Allow card hover drop-shadows to show cleanly without clipping */
 .carousel-viewport {
   overflow: hidden;
-  padding: 12px 0 20px;
-  margin: -12px 0 -20px;
+  padding: 14px 8px 24px 8px;
+  margin: -14px -8px -24px -8px;
 }
 .carousel-track {
   --per-view: 4; /* keep in step with FEATURED_PER_VIEW */
@@ -858,65 +857,78 @@ ul { list-style: none; }
 @media (max-width: 991px) { .carousel-track { --per-view: 2; } }
 @media (max-width: 479px) { .carousel-track { --per-view: 1; } }
 
-.carousel-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  width: 42px;
-  height: 42px;
+/* Header Navigation Controls (clean, industry standard) */
+.carousel-nav-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.carousel-nav-btn {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+.carousel-nav-btn:hover {
+  background: #0c6253;
+  color: #ffffff;
+  border-color: #0c6253;
+  box-shadow: 0 4px 12px rgba(12, 98, 83, 0.25);
+  transform: translateY(-1px);
+}
+.carousel-nav-btn:active {
+  transform: scale(0.95);
+}
+
+/* Side Floating Buttons - hanging outside the cards, vertically centered on the image area */
+.carousel-btn {
+  position: absolute;
+  top: 110px;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(6px);
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.06);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #1e293b;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .carousel-btn:hover {
   background: #0c6253;
   color: #ffffff;
   border-color: #0c6253;
-  box-shadow: 0 6px 20px rgba(12, 98, 83, 0.28);
+  box-shadow: 0 6px 18px rgba(12, 98, 83, 0.3);
   transform: translateY(-50%) scale(1.08);
 }
 .carousel-btn:active {
   transform: translateY(-50%) scale(0.96);
 }
 .carousel-btn.prev {
-  left: 0;
+  left: -20px;
 }
 .carousel-btn.next {
-  right: 0;
+  right: -20px;
 }
 @media (max-width: 768px) {
-  .carousel-wrapper {
-    padding: 0 36px;
-  }
   .carousel-btn {
-    width: 34px;
-    height: 34px;
-    font-size: 12px;
-  }
-  .carousel-btn.prev {
-    left: -4px;
-  }
-  .carousel-btn.next {
-    right: -4px;
-  }
-}
-@media (max-width: 480px) {
-  .carousel-wrapper {
-    padding: 0 28px;
-  }
-  .carousel-btn {
-    width: 30px;
-    height: 30px;
-    font-size: 11px;
+    display: none;
   }
 }
 
@@ -939,14 +951,14 @@ ul { list-style: none; }
 /* ===================== LISTING CARDS ===================== */
 .listing-card {
   position: relative;
-  background: #fff;
+  background: #ffffff;
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 14px -2px rgba(15, 23, 42, 0.06);
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s cubic-bezier(0.2, 0, 0, 1), border-color 0.25s ease;
   flex-shrink: 0;
   width: 300px;
-  border: 1.5px solid #f0f4f8;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   cursor: pointer;
@@ -974,8 +986,8 @@ ul { list-style: none; }
 .listing-card[role="link"] { cursor: pointer; }
 .listing-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  border-color: #c6f2e2;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+  border-color: #a7f3d0;
 }
 .featured-card { width: auto; flex: 0 0 calc((100% - (var(--per-view) - 1) * 20px) / var(--per-view)); min-width: 0; }
 .featured-card .card-img-wrap { height: 185px; }

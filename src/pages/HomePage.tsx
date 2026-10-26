@@ -1637,7 +1637,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       {!hasActiveFilters && (
       <section className="featured-section" id="featured">
         <div className="container">
-          <div className="section-header">
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px' }}>
             <div>
               <h2>
                 <i className="fas fa-star" style={{ color: '#f59e0b', marginRight: '8px' }}></i>
@@ -1645,6 +1645,28 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               </h2>
               <p>Promoted properties across all cities</p>
             </div>
+            {featuredSlides && (
+              <div className="carousel-nav-header">
+                <button
+                  type="button"
+                  className="carousel-nav-btn prev"
+                  onClick={() => slideCarousel(-1)}
+                  aria-label="Previous featured listings"
+                  title="Previous"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                <button
+                  type="button"
+                  className="carousel-nav-btn next"
+                  onClick={() => slideCarousel(1)}
+                  aria-label="Next featured listings"
+                  title="Next"
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            )}
           </div>
 
           <div
