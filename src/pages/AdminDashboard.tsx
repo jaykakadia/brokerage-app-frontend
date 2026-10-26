@@ -3234,16 +3234,16 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
-                    <table className="admin-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <table className="admin-table" style={{ width: '100%', minWidth: '920px', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
                       <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', color: '#475569' }}>
-                          <th style={{ padding: '14px 16px' }}>Reference Code</th>
-                          <th style={{ padding: '14px 16px' }}>Associate Name</th>
-                          <th style={{ padding: '14px 16px' }}>Listings Created</th>
-                          <th style={{ padding: '14px 16px' }}>Commission Rate</th>
-                          <th style={{ padding: '14px 16px' }}>Calculated Payout</th>
-                          <th style={{ padding: '14px 16px' }}>Status</th>
-                          <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
+                          <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Reference Code</th>
+                          <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Associate Name</th>
+                          <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Listings Created</th>
+                          <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Commission Rate</th>
+                          <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Calculated Payout</th>
+                          <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Status</th>
+                          <th style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', width: '260px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3253,7 +3253,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           return (
                             <tr key={emp.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.12s' }}>
                               {/* Reference Code */}
-                              <td style={{ padding: '14px 16px' }}>
+                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                                 <span style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -3272,7 +3272,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </td>
 
                               {/* Associate Name */}
-                              <td style={{ padding: '14px 16px' }}>
+                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                   <div style={{
                                     width: '32px',
@@ -3296,7 +3296,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </td>
 
                               {/* Listings Count */}
-                              <td style={{ padding: '14px 16px' }}>
+                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                                 <span style={{ fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>
                                   {empListings}
                                 </span>
@@ -3304,13 +3304,13 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </td>
 
                               {/* Rate */}
-                              <td style={{ padding: '14px 16px', color: '#475569' }}>
+                              <td style={{ padding: '14px 16px', color: '#475569', whiteSpace: 'nowrap' }}>
                                 <span style={{ fontWeight: 600 }}>₹{payoutRate}</span>
                                 <span style={{ fontSize: '11px', color: '#94a3b8' }}> / ea</span>
                               </td>
 
                               {/* Calculated Payout (Bold highlight) */}
-                              <td style={{ padding: '14px 16px' }}>
+                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
                                   <span style={{ fontSize: '15px', fontWeight: 900, color: '#065f46' }}>
                                     ₹{empPayout.toLocaleString('en-IN')}
@@ -3319,7 +3319,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               </td>
 
                               {/* Status */}
-                              <td style={{ padding: '14px 16px' }}>
+                              <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                                 <span style={{
                                   padding: '3px 10px',
                                   borderRadius: '20px',
@@ -3332,47 +3332,79 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                                 </span>
                               </td>
 
-                              {/* Actions */}
-                              <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenPayoutSlip(emp)}
-                                  title="Calculate Payout & Generate Slip"
-                                  style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    border: '1px solid #a7f3d0',
-                                    background: '#f0fdf4',
-                                    color: '#065f46',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    marginRight: '6px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '5px'
-                                  }}
-                                >
-                                  <i className="fas fa-file-invoice-dollar"></i> Payout Slip
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-outline"
-                                  style={{ padding: '5px 8px', fontSize: '12px', marginRight: '6px' }}
-                                  onClick={() => handleOpenEmployeeModal(emp)}
-                                  title="Edit Associate"
-                                >
-                                  <i className="fas fa-edit"></i>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-outline"
-                                  style={{ padding: '5px 8px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
-                                  onClick={() => handleDeleteEmployee(emp.id)}
-                                  title="Delete Associate"
-                                >
-                                  <i className="fas fa-trash"></i>
-                                </button>
+                              {/* Actions - clean horizontal button row */}
+                              <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'nowrap' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPayoutSlip(emp)}
+                                    title="Calculate Payout & Generate Slip"
+                                    style={{
+                                      padding: '6px 12px',
+                                      borderRadius: '8px',
+                                      border: '1.5px solid #a7f3d0',
+                                      background: '#ecfdf5',
+                                      color: '#065f46',
+                                      fontSize: '12px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      whiteSpace: 'nowrap',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <i className="fas fa-file-invoice-dollar" style={{ color: '#059669' }}></i>
+                                    Payout Slip
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEmployeeModal(emp)}
+                                    title="Edit Associate"
+                                    style={{
+                                      padding: '6px 10px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #cbd5e1',
+                                      background: '#ffffff',
+                                      color: '#334155',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      whiteSpace: 'nowrap',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <i className="fas fa-edit" style={{ color: '#64748b' }}></i>
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteEmployee(emp.id)}
+                                    title="Delete Associate"
+                                    style={{
+                                      padding: '6px 10px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #fecaca',
+                                      background: '#fef2f2',
+                                      color: '#dc2626',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      whiteSpace: 'nowrap',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <i className="fas fa-trash-alt"></i>
+                                    Delete
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
