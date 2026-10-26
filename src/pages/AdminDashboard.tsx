@@ -4114,49 +4114,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </div>
                   </div>
 
-                  {/* Right: Help, Apps, Avatar, Preview, Publish */}
+                  {/* Right: Preview, Publish, Close */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {/* Help icon */}
-                    <button
-                      type="button"
-                      title="Help"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368', fontSize: '16px', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <i className="far fa-question-circle"></i>
-                    </button>
-
-                    {/* Google Apps grid */}
-                    <button
-                      type="button"
-                      title="Google apps"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368', fontSize: '16px', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <i className="fas fa-th"></i>
-                    </button>
-
-                    {/* User profile avatar */}
-                    <div
-                      title="Account"
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        background: '#673ab7',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: '14px',
-                        marginRight: '6px',
-                      }}
-                    >
-                      J
-                    </div>
 
                     {/* Preview button with dropdown arrow */}
                     <button
