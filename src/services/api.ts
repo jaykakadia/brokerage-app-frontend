@@ -205,8 +205,11 @@ export const saveRoleLimits = (limits: RoleLimitsMap | { limits: RoleLimitsMap }
 };
 
 // Business Associates / Employees
-export const getEmployees = (): Promise<AxiosResponse<ApiResponse<Employee[]>>> =>
-  api.get('/api/v1/employees');
+export const getEmployees = (params?: { start_date?: string; end_date?: string }): Promise<AxiosResponse<ApiResponse<Employee[]>>> =>
+  api.get('/api/v1/employees', { params });
+
+export const getPayoutSummary = (): Promise<AxiosResponse<ApiResponse<{ monthly_breakdown: Array<{ reference_code: string; year: number; month: number; month_label: string; count: number }> }>>> =>
+  api.get('/api/v1/employees/payout-summary');
 
 export const getEmployee = (id: number | string): Promise<AxiosResponse<ApiResponse<Employee>>> =>
   api.get(`/api/v1/employees/${id}`);

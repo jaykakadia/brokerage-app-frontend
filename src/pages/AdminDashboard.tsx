@@ -417,6 +417,23 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   });
   const [employeeSaving, setEmployeeSaving] = useState<boolean>(false);
 
+  // === BUSINESS ASSOCIATE PAYOUT CALCULATOR STATE ===
+  const [payoutRate, setPayoutRate] = useState<number>(100);
+  const [payoutPeriod, setPayoutPeriod] = useState<'all' | 'monthly' | 'yearly' | 'custom'>('all');
+  const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
+  const [selectedYear, setSelectedYear] = useState<string>('2026');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [payoutSearch, setPayoutSearch] = useState<string>('');
+  const [payoutSlipEmp, setPayoutSlipEmp] = useState<Employee | null>(null);
+
+  // Custom Simulator state inside modal
+  const [slipRate, setSlipRate] = useState<number>(100);
+  const [slipListings, setSlipListings] = useState<number>(0);
+  const [slipBonus, setSlipBonus] = useState<number>(0);
+  const [slipDeduction, setSlipDeduction] = useState<number>(0);
+  const [slipTdsRate, setSlipTdsRate] = useState<number>(0); // 0% or 5%
+
   // === BLOGS MODULE STATE ===
   const [adminBlogs, setAdminBlogs] = useState<Blog[]>([]);
   const [blogsLoading, setBlogsLoading] = useState<boolean>(false);
@@ -1094,10 +1111,35 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   };
 
   // --- BUSINESS ASSOCIATES (TRACKER) HANDLERS ---
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (
+    period: 'all' | 'monthly' | 'yearly' | 'custom' = payoutPeriod,
+    month = selectedMonth,
+    year = selectedYear,
+    start = customStartDate,
+    end = customEndDate
+  ) => {
     setEmployeesLoading(true);
     try {
-      const res = await getEmployees();
+      let params: { start_date?: string; end_date?: string } | undefined;
+      if (period === 'monthly' && month) {
+        const [y, m] = month.split('-');
+        const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+        params = {
+          start_date: `${y}-${m}-01T00:00:00`,
+          end_date: `${y}-${m}-${String(lastDay).padStart(2, '0')}T23:59:59`
+        };
+      } else if (period === 'yearly' && year) {
+        params = {
+          start_date: `${year}-01-01T00:00:00`,
+          end_date: `${year}-12-31T23:59:59`
+        };
+      } else if (period === 'custom' && start && end) {
+        params = {
+          start_date: `${start}T00:00:00`,
+          end_date: `${end}T23:59:59`
+        };
+      }
+      const res = await getEmployees(params);
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setEmployees(res.data.data);
       }
@@ -1106,6 +1148,15 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     } finally {
       setEmployeesLoading(false);
     }
+  };
+
+  const handleOpenPayoutSlip = (emp: Employee) => {
+    setPayoutSlipEmp(emp);
+    setSlipRate(payoutRate);
+    setSlipListings(emp.listings_created || 0);
+    setSlipBonus(0);
+    setSlipDeduction(0);
+    setSlipTdsRate(0);
   };
 
   const generateRefCode = () => {
@@ -2842,133 +2893,498 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         )}
 
         {/* ======================================================== */}
-        {/* MODULE 7: BUSINESS ASSOCIATES (TRACKER) */}
+        {/* MODULE 7: BUSINESS ASSOCIATES (TRACKER & PAYOUT CALCULATOR) */}
         {/* ======================================================== */}
-        {activeModule === 'tracker' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#111827', margin: 0 }}>
-                  Business Associates
-                </h1>
-                <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0 0' }}>
-                  Track field agent performance and listings attributed to unique reference codes.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ padding: '10px 20px' }}
-                onClick={() => handleOpenEmployeeModal()}
-              >
-                <i className="fas fa-plus"></i> Add Business Associate
-              </button>
-            </div>
+        {activeModule === 'tracker' && (() => {
+          const filteredEmployees = employees.filter(emp => {
+            if (!payoutSearch.trim()) return true;
+            const q = payoutSearch.toLowerCase();
+            return emp.name.toLowerCase().includes(q) || emp.reference_code.toLowerCase().includes(q);
+          });
+          const totalListings = filteredEmployees.reduce((acc, emp) => acc + (emp.listings_created || 0), 0);
+          const totalPayout = totalListings * payoutRate;
+          const activeCount = filteredEmployees.filter(emp => emp.status === 'active').length;
+          const avgPayout = activeCount > 0 ? Math.round(totalPayout / activeCount) : 0;
+          const annualizedPayout = payoutPeriod === 'monthly' ? totalPayout * 12 : totalPayout;
 
-            {/* KPI Summary Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-              <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontSize: '36px', fontWeight: 800, color: '#0c6253' }}>
-                  {employees.reduce((acc, emp) => acc + (emp.listings_created || 0), 0)}
+          const periodLabel = payoutPeriod === 'all'
+            ? 'All-Time Total'
+            : payoutPeriod === 'monthly'
+            ? `${selectedMonth} (Monthly)`
+            : payoutPeriod === 'yearly'
+            ? `${selectedYear} (Annual)`
+            : 'Custom Range';
+
+          return (
+            <div>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <i className="fas fa-hand-holding-usd" style={{ color: '#0c6253' }}></i>
+                    Business Associates & Payouts
+                  </h1>
+                  <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0 0' }}>
+                    Track field agent performance and calculate real-time monthly, yearly, and custom commission payouts.
+                  </p>
                 </div>
-                <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginTop: '6px' }}>
-                  Total Listings Tracked
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => {
+                      if (employees.length > 0) handleOpenPayoutSlip(employees[0]);
+                    }}
+                    style={{ padding: '9px 16px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-calculator" style={{ color: '#0c6253' }}></i> Custom Simulator
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    onClick={() => handleOpenEmployeeModal()}
+                  >
+                    <i className="fas fa-plus"></i> Add Business Associate
+                  </button>
                 </div>
               </div>
 
-              <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontSize: '36px', fontWeight: 800, color: '#1d4ed8' }}>
-                  {employees.filter(emp => emp.status === 'active').length}
-                </div>
-                <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginTop: '6px' }}>
-                  Active Reference Codes
-                </div>
-              </div>
-            </div>
+              {/* ── 1. Commission Rate & Calculation Controls Card ── */}
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '22px 26px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
 
-            {/* Associates Table Card */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#111827', marginBottom: '16px' }}>
-                Listing Count by Reference Code
-              </div>
+                  {/* Rate Input Box */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                        Payout Rate Per Listing
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', background: '#f0fdf4', border: '2px solid #0c6253', borderRadius: '12px', padding: '6px 14px', width: '210px', boxShadow: '0 2px 8px rgba(12,98,83,0.1)' }}>
+                        <span style={{ fontSize: '20px', fontWeight: 800, color: '#0c6253', marginRight: '4px' }}>₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="10"
+                          value={payoutRate}
+                          onChange={(e) => setPayoutRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                          style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '20px', fontWeight: 800, color: '#0c6253', outline: 'none' }}
+                          title="Enter custom rate per listing"
+                        />
+                        <span style={{ fontSize: '12px', color: '#047857', fontWeight: 700, whiteSpace: 'nowrap' }}>/ listing</span>
+                      </div>
+                    </div>
 
-              {employeesLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
-                  <div>Loading business associates...</div>
-                </div>
-              ) : employees.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                  No business associates found. Click &quot;Add Business Associate&quot; to create one.
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="admin-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                        <th style={{ padding: '12px 14px' }}>Reference Code</th>
-                        <th style={{ padding: '12px 14px' }}>Associate Name</th>
-                        <th style={{ padding: '12px 14px' }}>Listings Created</th>
-                        <th style={{ padding: '12px 14px' }}>Status</th>
-                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {employees.map(emp => (
-                        <tr key={emp.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '12px 14px' }}>
-                            <strong style={{ letterSpacing: '1px', color: '#111827' }}>
-                              <i className="fas fa-id-badge" style={{ color: '#9ca3af', marginRight: '6px' }}></i>
-                              {emp.reference_code}
-                            </strong>
-                          </td>
-                          <td style={{ padding: '12px 14px', fontWeight: 600, color: '#374151' }}>
-                            {emp.name}
-                          </td>
-                          <td style={{ padding: '12px 14px' }}>
-                            <strong style={{ color: '#0c6253', fontSize: '16px' }}>
-                              {emp.listings_created || 0}
-                            </strong>
-                          </td>
-                          <td style={{ padding: '12px 14px' }}>
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
+                    {/* Quick Preset Rate Pills */}
+                    <div>
+                      <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
+                        Quick Presets
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {[50, 100, 150, 200, 250, 500].map(r => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setPayoutRate(r)}
+                            style={{
+                              padding: '7px 12px',
+                              borderRadius: '20px',
+                              border: payoutRate === r ? '1.5px solid #0c6253' : '1px solid #e2e8f0',
+                              background: payoutRate === r ? '#0c6253' : '#f8fafc',
+                              color: payoutRate === r ? '#ffffff' : '#475569',
+                              fontSize: '12px',
                               fontWeight: 700,
-                              background: emp.status === 'active' ? '#dcfce7' : '#fee2e2',
-                              color: emp.status === 'active' ? '#15803d' : '#b91c1c'
-                            }}>
-                              {emp.status === 'active' ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                            <button
-                              type="button"
-                              className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '12px', marginRight: '8px' }}
-                              onClick={() => handleOpenEmployeeModal(emp)}
-                            >
-                              <i className="fas fa-edit"></i> Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-outline"
-                              style={{ padding: '4px 8px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
-                              onClick={() => handleDeleteEmployee(emp.id)}
-                            >
-                              <i className="fas fa-trash"></i> Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              boxShadow: payoutRate === r ? '0 2px 6px rgba(12,98,83,0.25)' : 'none'
+                            }}
+                          >
+                            ₹{r}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Timeframe Calculation Mode: All Time | Monthly | Yearly | Custom */}
+                  <div>
+                    <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                      Calculation Period
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
+                        {[
+                          { key: 'all', label: 'All-Time' },
+                          { key: 'monthly', label: 'Monthly' },
+                          { key: 'yearly', label: 'Yearly' },
+                          { key: 'custom', label: 'Custom Range' },
+                        ].map(t => (
+                          <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => {
+                              setPayoutPeriod(t.key as any);
+                              fetchEmployees(t.key as any);
+                            }}
+                            style={{
+                              padding: '7px 14px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: payoutPeriod === t.key ? '#ffffff' : 'transparent',
+                              color: payoutPeriod === t.key ? '#0c6253' : '#64748b',
+                              fontWeight: payoutPeriod === t.key ? 700 : 500,
+                              fontSize: '12.5px',
+                              cursor: 'pointer',
+                              boxShadow: payoutPeriod === t.key ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Monthly Selector */}
+                      {payoutPeriod === 'monthly' && (
+                        <select
+                          value={selectedMonth}
+                          onChange={(e) => {
+                            setSelectedMonth(e.target.value);
+                            fetchEmployees('monthly', e.target.value);
+                          }}
+                          style={{ padding: '8px 12px', border: '1.5px solid #0c6253', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0c6253', background: '#fff', outline: 'none' }}
+                        >
+                          <option value="2026-10">October 2026</option>
+                          <option value="2026-09">September 2026</option>
+                          <option value="2026-08">August 2026</option>
+                          <option value="2026-07">July 2026</option>
+                          <option value="2026-06">June 2026</option>
+                          <option value="2026-05">May 2026</option>
+                        </select>
+                      )}
+
+                      {/* Yearly Selector */}
+                      {payoutPeriod === 'yearly' && (
+                        <select
+                          value={selectedYear}
+                          onChange={(e) => {
+                            setSelectedYear(e.target.value);
+                            fetchEmployees('yearly', selectedMonth, e.target.value);
+                          }}
+                          style={{ padding: '8px 12px', border: '1.5px solid #0c6253', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0c6253', background: '#fff', outline: 'none' }}
+                        >
+                          <option value="2026">Year 2026</option>
+                          <option value="2025">Year 2025</option>
+                          <option value="2024">Year 2024</option>
+                        </select>
+                      )}
+
+                      {/* Custom Date Range Picker */}
+                      {payoutPeriod === 'custom' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <input
+                            type="date"
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            style={{ padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '12px' }}
+                          />
+                          <span style={{ color: '#94a3b8', fontSize: '12px' }}>to</span>
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            style={{ padding: '7px 10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '12px' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fetchEmployees('custom', selectedMonth, selectedYear, customStartDate, customEndDate)}
+                            style={{ padding: '7px 14px', background: '#0c6253', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Calculate
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-              )}
+              </div>
+
+              {/* ── 2. Executive KPI Financial Summary Cards ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+
+                {/* Card 1: Total Listings */}
+                <div style={{ background: '#fff', borderRadius: '16px', padding: '22px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Listings in Period
+                      </div>
+                      <div style={{ fontSize: '34px', fontWeight: 800, color: '#1e293b', marginTop: '6px', lineHeight: 1 }}>
+                        {totalListings}
+                      </div>
+                    </div>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="fas fa-layer-group" style={{ color: '#475569', fontSize: '18px' }}></i>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
+                    Period: <strong style={{ color: '#0c6253' }}>{periodLabel}</strong>
+                  </div>
+                </div>
+
+                {/* Card 2: Total Commission Payout (Hero Highlight) */}
+                <div style={{ background: 'linear-gradient(135deg, #0c6253 0%, #115e59 100%)', borderRadius: '16px', padding: '22px 24px', boxShadow: '0 8px 24px rgba(12,98,83,0.22)', color: '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Total Payout Due
+                      </div>
+                      <div style={{ fontSize: '34px', fontWeight: 900, color: '#ffffff', marginTop: '6px', lineHeight: 1 }}>
+                        ₹{totalPayout.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="fas fa-wallet" style={{ color: '#ffffff', fontSize: '18px' }}></i>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#d1fae5', marginTop: '12px' }}>
+                    Based on <strong>₹{payoutRate}</strong> per listing
+                  </div>
+                </div>
+
+                {/* Card 3: Active Business Associates */}
+                <div style={{ background: '#fff', borderRadius: '16px', padding: '22px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Active Associates
+                      </div>
+                      <div style={{ fontSize: '34px', fontWeight: 800, color: '#1d4ed8', marginTop: '6px', lineHeight: 1 }}>
+                        {activeCount}
+                      </div>
+                    </div>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="fas fa-user-check" style={{ color: '#2563eb', fontSize: '18px' }}></i>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
+                    Avg Payout: <strong style={{ color: '#1d4ed8' }}>₹{avgPayout.toLocaleString('en-IN')}</strong> / agent
+                  </div>
+                </div>
+
+                {/* Card 4: Run-Rate Projection */}
+                <div style={{ background: '#fff', borderRadius: '16px', padding: '22px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {payoutPeriod === 'monthly' ? 'Annualized Run-Rate' : 'Estimated Annual Payout'}
+                      </div>
+                      <div style={{ fontSize: '34px', fontWeight: 800, color: '#d97706', marginTop: '6px', lineHeight: 1 }}>
+                        ₹{annualizedPayout.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="fas fa-chart-line" style={{ color: '#d97706', fontSize: '18px' }}></i>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
+                    {payoutPeriod === 'monthly' ? 'Projected 12 Months' : 'Based on current listing pace'}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ── 3. Associate Performance & Payout Breakdown Table ── */}
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                {/* Table Header with Search */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '17px', fontWeight: 800, color: '#111827' }}>
+                      Associate Payout & Performance Breakdown
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                      Showing calculations for {periodLabel} at ₹{payoutRate}/listing.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Search box */}
+                    <div style={{ position: 'relative' }}>
+                      <i className="fas fa-search" style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8', fontSize: '12px' }}></i>
+                      <input
+                        type="text"
+                        placeholder="Search associate or code..."
+                        value={payoutSearch}
+                        onChange={(e) => setPayoutSearch(e.target.value)}
+                        style={{ padding: '7px 12px 7px 30px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '12.5px', outline: 'none', width: '220px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {employeesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280' }}>
+                    <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '12px' }}></i>
+                    <div>Calculating associate payouts...</div>
+                  </div>
+                ) : filteredEmployees.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '48px', color: '#6b7280' }}>
+                    No business associates found matching your criteria.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', color: '#475569' }}>
+                          <th style={{ padding: '14px 16px' }}>Reference Code</th>
+                          <th style={{ padding: '14px 16px' }}>Associate Name</th>
+                          <th style={{ padding: '14px 16px' }}>Listings Created</th>
+                          <th style={{ padding: '14px 16px' }}>Commission Rate</th>
+                          <th style={{ padding: '14px 16px' }}>Calculated Payout</th>
+                          <th style={{ padding: '14px 16px' }}>Status</th>
+                          <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredEmployees.map(emp => {
+                          const empListings = emp.listings_created || 0;
+                          const empPayout = empListings * payoutRate;
+                          return (
+                            <tr key={emp.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.12s' }}>
+                              {/* Reference Code */}
+                              <td style={{ padding: '14px 16px' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 10px',
+                                  background: '#f1f5f9',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '6px',
+                                  fontWeight: 800,
+                                  color: '#0f172a',
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  <i className="fas fa-id-badge" style={{ color: '#0c6253' }}></i>
+                                  {emp.reference_code}
+                                </span>
+                              </td>
+
+                              {/* Associate Name */}
+                              <td style={{ padding: '14px 16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    background: '#e6f7f2',
+                                    color: '#0c6253',
+                                    fontWeight: 800,
+                                    fontSize: '13px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}>
+                                    {emp.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: 700, color: '#1e293b' }}>{emp.name}</div>
+                                    {emp.phone && <div style={{ fontSize: '11px', color: '#64748b' }}>{emp.phone}</div>}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Listings Count */}
+                              <td style={{ padding: '14px 16px' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>
+                                  {empListings}
+                                </span>
+                                <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '4px' }}>listings</span>
+                              </td>
+
+                              {/* Rate */}
+                              <td style={{ padding: '14px 16px', color: '#475569' }}>
+                                <span style={{ fontWeight: 600 }}>₹{payoutRate}</span>
+                                <span style={{ fontSize: '11px', color: '#94a3b8' }}> / ea</span>
+                              </td>
+
+                              {/* Calculated Payout (Bold highlight) */}
+                              <td style={{ padding: '14px 16px' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                                  <span style={{ fontSize: '15px', fontWeight: 900, color: '#065f46' }}>
+                                    ₹{empPayout.toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Status */}
+                              <td style={{ padding: '14px 16px' }}>
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: '20px',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  background: emp.status === 'active' ? '#dcfce7' : '#fee2e2',
+                                  color: emp.status === 'active' ? '#15803d' : '#b91c1c'
+                                }}>
+                                  ● {emp.status === 'active' ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+
+                              {/* Actions */}
+                              <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPayoutSlip(emp)}
+                                  title="Calculate Payout & Generate Slip"
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #a7f3d0',
+                                    background: '#f0fdf4',
+                                    color: '#065f46',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    marginRight: '6px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}
+                                >
+                                  <i className="fas fa-file-invoice-dollar"></i> Payout Slip
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '5px 8px', fontSize: '12px', marginRight: '6px' }}
+                                  onClick={() => handleOpenEmployeeModal(emp)}
+                                  title="Edit Associate"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '5px 8px', fontSize: '12px', color: '#dc2626', borderColor: '#fca5a5' }}
+                                  onClick={() => handleDeleteEmployee(emp.id)}
+                                  title="Delete Associate"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ======================================================== */}
         {/* MODULE 8: BLOG MANAGEMENT */}
@@ -3997,6 +4413,219 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </div>
           </div>
         )}
+
+        {/* ── Modal: Associate Payout Slip & Custom Calculator ── */}
+        {payoutSlipEmp && (() => {
+          const grossBase = slipListings * slipRate;
+          const subtotal = grossBase + slipBonus - slipDeduction;
+          const tdsAmount = Math.round(subtotal * (slipTdsRate / 100));
+          const netPayable = Math.max(0, subtotal - tdsAmount);
+
+          const copySummaryText = () => {
+            const txt = `*TradeCall Business Associate Payout Statement*
+Associate: ${payoutSlipEmp.name} (Code: ${payoutSlipEmp.reference_code})
+Calculation Period: ${payoutPeriod === 'all' ? 'All-Time' : payoutPeriod === 'monthly' ? selectedMonth : payoutPeriod === 'yearly' ? selectedYear : 'Custom'}
+Listings Created: ${slipListings}
+Rate per Listing: ₹${slipRate}
+Base Earnings: ₹${grossBase.toLocaleString('en-IN')}
+Bonus: +₹${slipBonus.toLocaleString('en-IN')}
+Deductions: -₹${slipDeduction.toLocaleString('en-IN')}
+TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
+*Net Payable Payout: ₹${netPayable.toLocaleString('en-IN')}*`;
+            navigator.clipboard.writeText(txt);
+            showToast('Payout summary copied to clipboard!');
+          };
+
+          return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 10005, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+              <div style={{ background: '#fff', borderRadius: '18px', maxWidth: '620px', width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: '32px 36px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', boxSizing: 'border-box' }}>
+
+                {/* Modal Top Bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1.5px solid #f1f5f9', paddingBottom: '18px', marginBottom: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#e6f7f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="fas fa-file-invoice-dollar" style={{ color: '#0c6253', fontSize: '20px' }}></i>
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                        Associate Payout Calculator & Slip
+                      </h3>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                        Associate: <strong>{payoutSlipEmp.name}</strong> &bull; Code: <strong>{payoutSlipEmp.reference_code}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPayoutSlipEmp(null)}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+
+                {/* Live Net Payable Box */}
+                <div style={{ background: 'linear-gradient(135deg, #0c6253 0%, #115e59 100%)', borderRadius: '14px', padding: '22px 24px', color: '#fff', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '12px', color: '#a7f3d0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Net Payable Commission
+                    </span>
+                    <div style={{ fontSize: '36px', fontWeight: 900, color: '#ffffff', marginTop: '4px', lineHeight: 1 }}>
+                      ₹{netPayable.toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#d1fae5', marginTop: '6px' }}>
+                      {slipListings} listings &times; ₹{slipRate} / listing
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.2)', borderRadius: '20px', fontSize: '11px', fontWeight: 700 }}>
+                      {payoutPeriod === 'all' ? 'All-Time' : payoutPeriod === 'monthly' ? selectedMonth : payoutPeriod === 'yearly' ? selectedYear : 'Custom'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Calculator Inputs Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                      Rate per Listing (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={slipRate}
+                      onChange={(e) => setSlipRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                      style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '15px', fontWeight: 700, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                      Listings Attributed
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={slipListings}
+                      onChange={(e) => setSlipListings(Math.max(0, parseInt(e.target.value) || 0))}
+                      style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #cbd5e1', borderRadius: '8px', fontSize: '15px', fontWeight: 700, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                      Performance Bonus (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={slipBonus}
+                      onChange={(e) => setSlipBonus(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                      Deductions / Advance (₹)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={slipDeduction}
+                      onChange={(e) => setSlipDeduction(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="0"
+                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* TDS / Withholding selection */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                    TDS Tax Withholding
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[
+                      { label: 'No TDS (0%)', val: 0 },
+                      { label: '5% Section 194H', val: 5 },
+                      { label: '10% TDS', val: 10 },
+                    ].map(t => (
+                      <button
+                        key={t.val}
+                        type="button"
+                        onClick={() => setSlipTdsRate(t.val)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          border: slipTdsRate === t.val ? '1.5px solid #0c6253' : '1px solid #cbd5e1',
+                          background: slipTdsRate === t.val ? '#e6f7f2' : '#fff',
+                          color: slipTdsRate === t.val ? '#0c6253' : '#475569',
+                          fontWeight: 700,
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Itemized Calculation Summary */}
+                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px 18px', marginBottom: '24px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#475569' }}>
+                    <span>Base Commission ({slipListings} &times; ₹{slipRate}):</span>
+                    <strong>₹{grossBase.toLocaleString('en-IN')}</strong>
+                  </div>
+                  {slipBonus > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#059669' }}>
+                      <span>+ Performance Bonus:</span>
+                      <strong>+₹{slipBonus.toLocaleString('en-IN')}</strong>
+                    </div>
+                  )}
+                  {slipDeduction > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#dc2626' }}>
+                      <span>- Deductions / Advance:</span>
+                      <strong>-₹{slipDeduction.toLocaleString('en-IN')}</strong>
+                    </div>
+                  )}
+                  {tdsAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#d97706' }}>
+                      <span>- TDS Withholding ({slipTdsRate}%):</span>
+                      <strong>-₹{tdsAmount.toLocaleString('en-IN')}</strong>
+                    </div>
+                  )}
+                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '15px', color: '#0f172a' }}>
+                    <strong>Total Net Payable:</strong>
+                    <strong style={{ color: '#0c6253', fontSize: '18px' }}>₹{netPayable.toLocaleString('en-IN')}</strong>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={copySummaryText}
+                    style={{ flex: 1, padding: '12px', border: '1px solid #cbd5e1', borderRadius: '10px', background: '#fff', color: '#334155', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <i className="far fa-copy"></i> Copy Summary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#0c6253', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-print"></i> Print Slip
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Blog Modal: 2-step Google Blogger-style ── */}
         {blogModalOpen && (
