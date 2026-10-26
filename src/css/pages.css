@@ -395,8 +395,38 @@
     overflow-x: auto;
   }
 }
+.blog-article-content pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 16px 20px;
+  border-radius: 10px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 14px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  line-height: 1.6;
+}
+.blog-article-content code {
+  background: #f3f4f6;
+  color: #0c6253;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 0.9em;
+}
+.blog-article-content pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+.blog-article-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
 
-/* ===================== CONTACT PAGE ===================== */
+
 .contact-section { padding: 60px 0; background: #f4f6f9; }
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
 .contact-info h2 { font-size: 28px; font-weight: 800; color: #1a1a2e; margin-bottom: 14px; }

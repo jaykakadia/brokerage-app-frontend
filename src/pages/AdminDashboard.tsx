@@ -33,6 +33,7 @@ import AdminLocationsByState from '../components/AdminLocationsByState';
 import { getListingCity, isBusinessListing, publicListingTitle } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
+import RichTextEditor from '../components/RichTextEditor';
 import AdminMetadataManager from '../components/AdminMetadataManager';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
@@ -420,6 +421,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [adminBlogs, setAdminBlogs] = useState<Blog[]>([]);
   const [blogsLoading, setBlogsLoading] = useState<boolean>(false);
   const [blogModalOpen, setBlogModalOpen] = useState<boolean>(false);
+  const [blogStep, setBlogStep] = useState<1 | 2>(1);
+  const [showBlogSidebar, setShowBlogSidebar] = useState<boolean>(true);
+  const [blogPreviewOpen, setBlogPreviewOpen] = useState<boolean>(false);
   const [blogForm, setBlogForm] = useState<BlogFormState>({
     id: 0,
     title: '',
@@ -1200,6 +1204,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         featured_image: null
       });
     }
+    setBlogStep(blog ? 2 : 1);
+    setShowBlogSidebar(true);
     setBlogModalOpen(true);
   };
 
@@ -3992,160 +3998,564 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </div>
         )}
 
-        {/* Modal: Write / Edit Blog */}
+        {/* ── Blog Modal: 2-step Google Blogger-style ── */}
         {blogModalOpen && (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)', zIndex: 10000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
-          }}>
-            <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  {blogForm.id ? 'Edit Blog' : 'Write New Blog'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setBlogModalOpen(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: blogStep === 2 ? '#f1f3f4' : 'rgba(0,0,0,0.55)', display: 'flex', alignItems: blogStep === 1 ? 'center' : 'stretch', justifyContent: 'center' }}>
 
-              <form onSubmit={handleSaveBlog}>
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    Blog Title
-                  </label>
+            {/* ── STEP 1: Post Details card ── */}
+            {blogStep === 1 && (
+              <div style={{ background: '#fff', borderRadius: '16px', width: '520px', maxWidth: '95vw', maxHeight: '92vh', overflowY: 'auto', padding: '32px 36px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                    {blogForm.id ? 'Edit Post Details' : 'New Post Details'}
+                  </h3>
+                  <button type="button" onClick={() => setBlogModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Blog Title *</label>
                   <input
-                    type="text"
-                    placeholder="Enter blog title"
+                    type="text" placeholder="Enter your blog title..."
                     value={blogForm.title}
                     onChange={(e) => {
                       const title = e.target.value;
                       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
                       setBlogForm({ ...blogForm, title, permalink: blogForm.permalink || slug });
                     }}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
-                    required
+                    style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+                    autoFocus
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      Category
-                    </label>
-                    <select
-                      value={blogForm.category}
-                      onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                      required
-                    >
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Category</label>
+                    <select value={blogForm.category} onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', background: '#fff' }}>
                       <option value="Buy">Buy</option>
                       <option value="Rent">Rent</option>
                       <option value="Invest">Invest</option>
-                      {BLOG_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                      {!['Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES].includes(blogForm.category as any) && (
-                        <option value={blogForm.category}>{blogForm.category}</option>
-                      )}
+                      {BLOG_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                      {!['Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES].includes(blogForm.category as any) && <option value={blogForm.category}>{blogForm.category}</option>}
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      Status
-                    </label>
-                    <select
-                      value={blogForm.status === 'publish' || blogForm.status === 'published' ? 'published' : 'draft'}
-                      onChange={(e) => setBlogForm({ ...blogForm, status: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                      required
-                    >
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Status</label>
+                    <select value={blogForm.status === 'publish' || blogForm.status === 'published' ? 'published' : 'draft'} onChange={(e) => setBlogForm({ ...blogForm, status: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', background: '#fff' }}>
                       <option value="published">Published</option>
                       <option value="draft">Draft</option>
                     </select>
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    Permalink (Slug)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. my-first-blog"
-                    value={blogForm.permalink}
-                    onChange={(e) => setBlogForm({ ...blogForm, permalink: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                  />
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Permalink (Slug)</label>
+                  <input type="text" placeholder="e.g. my-first-blog" value={blogForm.permalink} onChange={(e) => setBlogForm({ ...blogForm, permalink: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
 
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    Tags / Labels (comma separated)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. real estate, palwal, investment"
-                    value={blogForm.tags}
-                    onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                  />
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Tags / Labels</label>
+                  <input type="text" placeholder="e.g. real estate, palwal, investment" value={blogForm.tags} onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>
 
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    Featured Image
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setBlogForm({ ...blogForm, featured_image: e.target.files[0] });
-                      }
-                    }}
-                    style={{ width: '100%', padding: '8px 0', fontSize: '13px' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    Blog Content
-                  </label>
-                  <textarea
-                    rows={8}
-                    placeholder="Write your article content here..."
-                    value={blogForm.content}
-                    onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
-                    required
-                  ></textarea>
+                <div style={{ marginBottom: '28px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Featured Image</label>
+                  <input type="file" accept="image/*" onChange={(e) => { if (e.target.files?.[0]) setBlogForm({ ...blogForm, featured_image: e.target.files[0] }); }} style={{ width: '100%', fontSize: '13px', padding: '8px 0' }} />
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="button" onClick={() => setBlogModalOpen(false)} style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', background: '#fff', cursor: 'pointer', fontSize: '14px', color: '#374151', fontWeight: 600 }}>Cancel</button>
                   <button
                     type="button"
-                    className="btn-outline"
-                    style={{ flex: 1, padding: '12px' }}
-                    onClick={() => setBlogModalOpen(false)}
+                    disabled={!blogForm.title.trim()}
+                    onClick={() => setBlogStep(2)}
+                    style={{ flex: 2, padding: '12px', border: 'none', borderRadius: '10px', background: blogForm.title.trim() ? '#0c6253' : '#d1d5db', color: '#fff', cursor: blogForm.title.trim() ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    style={{ flex: 1, padding: '12px' }}
-                    disabled={blogSaving}
-                  >
-                    {blogSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : (blogForm.id ? 'Update Blog' : 'Publish Blog')}
+                    Continue to Editor <i className="fas fa-arrow-right"></i>
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            )}
+
+            {/* ── STEP 2: Full-screen Google Blogger-style editor ── */}
+            {blogStep === 2 && (
+              <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100vh', background: '#f8f9fa' }}>
+
+                {/* 1. Google Blogger Top Navigation Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '52px', background: '#ffffff', borderBottom: '1px solid #e0e0e0', flexShrink: 0, zIndex: 30 }}>
+                  {/* Left: Back button + Orange Blogger Logo */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setBlogStep(1)}
+                      title="Back to details"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368', fontSize: '18px', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className="fas fa-arrow-left"></i>
+                    </button>
+
+                    {/* TradeCall Official Brand Symbol */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} title="TradeCall Blog">
+                      <div className="logo-icon" style={{ width: '32px', height: '32px', position: 'relative' }}>
+                        <div className="logo-bars" style={{ height: '24px', display: 'flex', alignItems: 'flex-end', gap: '3px' }}>
+                          <span className="logo-bar" style={{ width: '5px', height: '12px', background: 'linear-gradient(to top, #0c6253, #14a37a)', borderRadius: '2px 2px 0 0' }}></span>
+                          <span className="logo-bar" style={{ width: '5px', height: '18px', background: 'linear-gradient(to top, #0c6253, #14a37a)', borderRadius: '2px 2px 0 0' }}></span>
+                          <span className="logo-bar" style={{ width: '5px', height: '24px', background: 'linear-gradient(to top, #0c6253, #14a37a)', borderRadius: '2px 2px 0 0' }}></span>
+                        </div>
+                        <div className="logo-arrow" style={{ position: 'absolute', top: '-1px', right: '-1px', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '7px solid #f97316' }}></div>
+                      </div>
+                      <span className="logo-text" style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.3px', lineHeight: 1 }}>
+                        <span className="logo-tradecall" style={{ color: '#0c6253' }}>TradeCall</span>{' '}
+                        <span className="logo-india" style={{ color: '#f97316' }}>Blog</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right: Help, Apps, Avatar, Preview, Publish */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Help icon */}
+                    <button
+                      type="button"
+                      title="Help"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368', fontSize: '16px', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className="far fa-question-circle"></i>
+                    </button>
+
+                    {/* Google Apps grid */}
+                    <button
+                      type="button"
+                      title="Google apps"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5f6368', fontSize: '16px', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className="fas fa-th"></i>
+                    </button>
+
+                    {/* User profile avatar */}
+                    <div
+                      title="Account"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: '#673ab7',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        marginRight: '6px',
+                      }}
+                    >
+                      J
+                    </div>
+
+                    {/* Preview button with dropdown arrow */}
+                    <button
+                      type="button"
+                      onClick={() => setBlogPreviewOpen(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 14px',
+                        background: '#ffffff',
+                        border: '1px solid #dadce0',
+                        borderRadius: '4px',
+                        color: '#3c4043',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f8f9fa')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+                    >
+                      <i className="far fa-eye" style={{ fontSize: '13px' }}></i>
+                      <span>Preview</span>
+                      <i className="fas fa-caret-down" style={{ fontSize: '10px', color: '#5f6368', marginLeft: '2px' }}></i>
+                    </button>
+
+                    {/* Orange Blogger Publish button */}
+                    <button
+                      type="button"
+                      disabled={blogSaving || !blogForm.title.trim()}
+                      onClick={handleSaveBlog as any}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '7px 20px',
+                        background: (blogSaving || !blogForm.title.trim()) ? '#dadce0' : '#e65100',
+                        border: 'none',
+                        borderRadius: '4px',
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: (blogSaving || !blogForm.title.trim()) ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      {blogSaving ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin"></i> Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-paper-plane" style={{ fontSize: '11px' }}></i>
+                          <span>{blogForm.id ? 'Update' : 'Publish'}</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Close button */}
+                    <button
+                      type="button"
+                      onClick={() => setBlogModalOpen(false)}
+                      title="Close editor"
+                      style={{
+                        padding: '6px 12px',
+                        background: 'none',
+                        border: '1px solid #dadce0',
+                        borderRadius: '4px',
+                        color: '#5f6368',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Title Line with Orange Underline (Identical to Google Blogger screenshot!) */}
+                <div
+                  style={{
+                    background: '#ffffff',
+                    borderBottom: '2px solid #e65100',
+                    padding: '8px 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Title"
+                    value={blogForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                      setBlogForm((prev) => ({
+                        ...prev,
+                        title,
+                        permalink: (!prev.permalink || prev.permalink === prev.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')) ? slug : prev.permalink,
+                      }));
+                    }}
+                    style={{
+                      width: '100%',
+                      border: 'none',
+                      outline: 'none',
+                      fontSize: '18px',
+                      fontWeight: 400,
+                      color: '#202124',
+                      fontFamily: "'Roboto', -apple-system, sans-serif",
+                      background: 'transparent',
+                    }}
+                  />
+                </div>
+
+                {/* 3. Editor + Post Settings Sidebar */}
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+                  {/* Editor Column (Google Blogger Toolbar + Paper Sheet) */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                    <RichTextEditor
+                      value={blogForm.content}
+                      onChange={(html) => setBlogForm((prev) => ({ ...prev, content: html }))}
+                      placeholder="Start writing your article..."
+                      minHeight={800}
+                    />
+                  </div>
+
+                  {/* 4. Google Blogger "Post settings" Right Sidebar */}
+                  {showBlogSidebar && (
+                    <div
+                      style={{
+                        width: '290px',
+                        flexShrink: 0,
+                        background: '#ffffff',
+                        borderLeft: '1px solid #e0e0e0',
+                        overflowY: 'auto',
+                        padding: '16px 20px',
+                        fontFamily: "'Roboto', -apple-system, sans-serif",
+                      }}
+                    >
+                      {/* Post settings Title */}
+                      <div style={{ fontSize: '14px', fontWeight: 500, color: '#5f6368', paddingBottom: '12px', borderBottom: '1px solid #e0e0e0', marginBottom: '8px' }}>
+                        Post settings
+                      </div>
+
+                      {/* Accordion: Labels */}
+                      <details open style={{ borderBottom: '1px solid #f1f3f4', padding: '12px 0' }}>
+                        <summary style={{ fontSize: '13px', fontWeight: 500, color: '#202124', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Labels</span>
+                          <i className="fas fa-chevron-up" style={{ fontSize: '10px', color: '#5f6368' }}></i>
+                        </summary>
+                        <div style={{ marginTop: '10px' }}>
+                          <input
+                            type="text"
+                            placeholder="Separate labels with commas"
+                            value={blogForm.tags}
+                            onChange={(e) => setBlogForm({ ...blogForm, tags: e.target.value })}
+                            style={{
+                              width: '100%',
+                              padding: '8px 10px',
+                              border: '1px solid #dadce0',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              outline: 'none',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                          <p style={{ fontSize: '11px', color: '#9aa0a6', margin: '8px 0 0 0' }}>
+                            {blogForm.tags ? (
+                              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                                {blogForm.tags.split(',').filter(Boolean).map((t, idx) => (
+                                  <span key={idx} style={{ background: '#f1f3f4', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', color: '#3c4043' }}>
+                                    {t.trim()}
+                                  </span>
+                                ))}
+                              </span>
+                            ) : (
+                              'No matching suggestions'
+                            )}
+                          </p>
+                        </div>
+                      </details>
+
+                      {/* Accordion: Published on */}
+                      <details style={{ borderBottom: '1px solid #f1f3f4', padding: '12px 0' }}>
+                        <summary style={{ fontSize: '13px', fontWeight: 500, color: '#202124', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Published on</span>
+                          <i className="fas fa-chevron-down" style={{ fontSize: '10px', color: '#5f6368' }}></i>
+                        </summary>
+                        <div style={{ marginTop: '10px', fontSize: '12px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="pub_mode"
+                              checked={blogForm.status === 'published'}
+                              onChange={() => setBlogForm({ ...blogForm, status: 'published' })}
+                            />
+                            Automatic (Published now)
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="pub_mode"
+                              checked={blogForm.status === 'draft'}
+                              onChange={() => setBlogForm({ ...blogForm, status: 'draft' })}
+                            />
+                            Draft
+                          </label>
+                        </div>
+                      </details>
+
+                      {/* Accordion: Permalink */}
+                      <details style={{ borderBottom: '1px solid #f1f3f4', padding: '12px 0' }}>
+                        <summary style={{ fontSize: '13px', fontWeight: 500, color: '#202124', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Permalink</span>
+                          <i className="fas fa-chevron-down" style={{ fontSize: '10px', color: '#5f6368' }}></i>
+                        </summary>
+                        <div style={{ marginTop: '10px' }}>
+                          <input
+                            type="text"
+                            placeholder="my-post-slug"
+                            value={blogForm.permalink}
+                            onChange={(e) => setBlogForm({ ...blogForm, permalink: e.target.value })}
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #dadce0', borderRadius: '4px', fontSize: '12px', boxSizing: 'border-box' }}
+                          />
+                          <p style={{ fontSize: '11px', color: '#5f6368', marginTop: '6px' }}>
+                            URL: /blogs/{blogForm.permalink || 'slug'}
+                          </p>
+                        </div>
+                      </details>
+
+                      {/* Accordion: Location / Category */}
+                      <details style={{ borderBottom: '1px solid #f1f3f4', padding: '12px 0' }}>
+                        <summary style={{ fontSize: '13px', fontWeight: 500, color: '#202124', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Location & Category</span>
+                          <i className="fas fa-chevron-down" style={{ fontSize: '10px', color: '#5f6368' }}></i>
+                        </summary>
+                        <div style={{ marginTop: '10px' }}>
+                          <select
+                            value={blogForm.category}
+                            onChange={(e) => setBlogForm({ ...blogForm, category: e.target.value })}
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #dadce0', borderRadius: '4px', fontSize: '12px', background: '#fff' }}
+                          >
+                            <option value="Buy">Buy</option>
+                            <option value="Rent">Rent</option>
+                            <option value="Invest">Invest</option>
+                            {BLOG_CATEGORIES.map((cat) => (
+                              <option key={cat} value={cat}>
+                                {cat}
+                              </option>
+                            ))}
+                            {!['Buy', 'Rent', 'Invest', ...BLOG_CATEGORIES].includes(blogForm.category as any) && (
+                              <option value={blogForm.category}>{blogForm.category}</option>
+                            )}
+                          </select>
+                        </div>
+                      </details>
+
+                      {/* Accordion: Featured Image (WITH UPLOAD FROM COMPUTER!) */}
+                      <details open style={{ borderBottom: '1px solid #f1f3f4', padding: '12px 0' }}>
+                        <summary style={{ fontSize: '13px', fontWeight: 500, color: '#202124', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Featured Image</span>
+                          <i className="fas fa-chevron-up" style={{ fontSize: '10px', color: '#5f6368' }}></i>
+                        </summary>
+                        <div style={{ marginTop: '10px' }}>
+                          {blogForm.featured_image ? (
+                            <div style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e0e0e0', marginBottom: '8px' }}>
+                              <img
+                                src={URL.createObjectURL(blogForm.featured_image)}
+                                alt="Featured"
+                                style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setBlogForm({ ...blogForm, featured_image: null })}
+                                style={{
+                                  position: 'absolute',
+                                  top: '6px',
+                                  right: '6px',
+                                  background: 'rgba(0,0,0,0.6)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  width: '24px',
+                                  height: '24px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+                          ) : null}
+
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              padding: '10px 14px',
+                              border: '1.5px dashed #f57c00',
+                              borderRadius: '6px',
+                              background: '#fff8e1',
+                              color: '#e65100',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              textAlign: 'center',
+                              transition: 'background 0.15s',
+                            }}
+                          >
+                            <i className="fas fa-cloud-upload-alt" style={{ fontSize: '15px' }}></i>
+                            <span>Upload from computer</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) {
+                                  setBlogForm({ ...blogForm, featured_image: e.target.files[0] });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </details>
+
+                      {/* Accordion: Options */}
+                      <details style={{ padding: '12px 0' }}>
+                        <summary style={{ fontSize: '13px', fontWeight: 500, color: '#202124', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Options</span>
+                          <i className="fas fa-chevron-down" style={{ fontSize: '10px', color: '#5f6368' }}></i>
+                        </summary>
+                        <div style={{ marginTop: '10px', fontSize: '12px', color: '#3c4043' }}>
+                          <p style={{ fontWeight: 600, margin: '0 0 6px 0', fontSize: '11px', color: '#5f6368' }}>Reader comments</p>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', cursor: 'pointer' }}>
+                            <input type="radio" name="opt_comments" defaultChecked /> Allow
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input type="radio" name="opt_comments" /> Do not allow
+                          </label>
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Live Post Preview Modal (When clicking 👁 Preview) */}
+                {blogPreviewOpen && (
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#ffffff', width: '900px', maxWidth: '95vw', maxHeight: '92vh', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '12px', background: '#e0f2fe', color: '#0369a1', fontWeight: 600 }}>Preview Mode</span>
+                          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#111827' }}>
+                            {blogForm.title || 'Untitled Post'}
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setBlogPreviewOpen(false)}
+                          style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div style={{ flex: 1, overflowY: 'auto', padding: '36px 48px' }}>
+                        <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#e65100', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {blogForm.category}
+                          </span>
+                          <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#111827', margin: '12px 0 20px 0', lineHeight: 1.3 }}>
+                            {blogForm.title || 'Untitled Post'}
+                          </h1>
+                          {blogForm.featured_image && (
+                            <img
+                              src={URL.createObjectURL(blogForm.featured_image)}
+                              alt="Featured"
+                              style={{ width: '100%', maxHeight: '380px', objectFit: 'cover', borderRadius: '10px', marginBottom: '24px' }}
+                            />
+                          )}
+                          <div
+                            style={{ fontSize: '16px', lineHeight: '1.8', color: '#374151' }}
+                            dangerouslySetInnerHTML={{ __html: blogForm.content || '<p style="color:#9ca3af;font-style:italic;">No content written yet.</p>' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
           </div>
