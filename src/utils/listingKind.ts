@@ -2,11 +2,13 @@ import type { Listing } from '../types';
 import { EMPTY_PROPERTY_FORM, listingTitle, type PropertyFormState } from '../pages/post-listing/propertyForm';
 
 /** Business listings (posted via the Business Owner form) belong only in the Business Directory. */
-export const isBusinessListing = (listing: Pick<Listing, 'form_data'>): boolean =>
-  listing.form_data?.kind === 'business';
+export const isBusinessListing = (listing: Pick<Listing, 'form_data'> & { kind?: string | null }): boolean =>
+  listing.kind === 'business' || listing.form_data?.kind === 'business';
 
 /** Categories a business picked, in the order chosen (older listings saved them as one comma list). */
-export const getBusinessCategories = (listing: Pick<Listing, 'form_data'>): string[] => {
+export const getBusinessCategories = (listing: Pick<Listing, 'form_data'> & { categories?: string[]; category_name?: string | null }): string[] => {
+  if (Array.isArray(listing.categories) && listing.categories.length) return listing.categories;
+  if (listing.category_name) return [listing.category_name];
   const data = listing.form_data || {};
   const selected = Array.isArray(data.selectedCategories) ? data.selectedCategories as Array<{ name?: string }> : [];
   const categories = selected.map((c) => c.name || '').filter(Boolean);
@@ -31,7 +33,8 @@ export const getListingDescription = (listing: Pick<Listing, 'form_data' | 'desc
  * City of a listing: the wizard's city field, else the city part of a "Locality, City, State" location.
  * Keeps "Palwal", "Palwal, Haryana" and "Omaxe City, Palwal, Haryana" counted as one city.
  */
-export const getListingCity = (listing: Pick<Listing, 'form_data' | 'location'>): string => {
+export const getListingCity = (listing: Pick<Listing, 'form_data' | 'location'> & { city?: string }): string => {
+  if (listing.city) return String(listing.city).trim();
   const fromForm = listing.form_data?.city ? String(listing.form_data.city).trim() : '';
   if (fromForm) return fromForm;
   const parts = (listing.location || '').split(',').map((p) => p.trim()).filter(Boolean);
@@ -70,7 +73,13 @@ export type ListingDeal = 'sale' | 'rent' | 'buy';
  * A buyer looking to rent is rent, same as an owner listing a rental.
  * Wizard listings store `kind` + `forWhat`; older ones used `listingType`/`purpose` or a description tag.
  */
-export const getListingDeal = (listing: Pick<Listing, 'form_data' | 'description'>): ListingDeal => {
+export const getListingDeal = (listing: Pick<Listing, 'form_data' | 'description'> & { deal?: string | null }): ListingDeal => {
+  if (listing.deal) {
+    const d = listing.deal.toLowerCase();
+    if (d.includes('rent') || d.includes('lease')) return 'rent';
+    if (d.includes('buy')) return 'buy';
+    return 'sale';
+  }
   const fd = listing.form_data || {};
   const legacy = String(fd.forWhat || fd.listingType || fd.purpose || '').toLowerCase();
   const wantsRent = legacy.includes('rent') || legacy.includes('lease');

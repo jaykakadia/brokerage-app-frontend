@@ -21,6 +21,12 @@ export const formatListingPrice = (raw: number | string | null | undefined): str
 };
 
 export const getFirstImageUrl = (listing?: Partial<Listing> | null): string => {
+  if (listing?.first_image_url) {
+    return getImageUrl(listing.first_image_url);
+  }
+  if (listing?.image_url) {
+    return getImageUrl(listing.image_url);
+  }
   if (listing?.images && listing.images.length > 0 && listing.images[0].file_path) {
     return getImageUrl(listing.images[0].file_path);
   }

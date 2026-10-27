@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { cityNameVariants, getBusinessCategories, getListingCity, getListingDeal, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { getBusinessCategories, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
@@ -128,7 +128,7 @@ export const DEFAULT_FEATURED_LISTINGS: Listing[] = [
   }
 ];
 
-const LISTINGS_PER_PAGE = 8;
+const LISTINGS_PER_PAGE = 12;
 // Featured cards visible at once on desktop (matches the Recent Listings row)
 const FEATURED_PER_VIEW = 4;
 
@@ -175,7 +175,10 @@ const HOMEPAGE_FAQS = [
 export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
-  const [businesses, setBusinesses] = useState<Listing[]>([]);
+  const [totalListings, setTotalListings] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
+  const [featuredBusinesses, setFeaturedBusinesses] = useState<Listing[]>([]);
   const [stats, setStats] = useState<ListingStatsResponse | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
@@ -572,21 +575,61 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     setAnyBudgetPicked(false);
   };
 
-  // Fetch approved listings from backend
-  const fetchListings = async (): Promise<void> => {
+  // Fetch approved listings from backend with server-side pagination & filters
+  const fetchListings = useCallback(async (targetPage = currentPage): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
-        params: { status: 'approved' }
+      const params: Record<string, any> = {
+        status: 'approved',
+        page: targetPage,
+        limit: LISTINGS_PER_PAGE,
+        kind: 'property'
+      };
+
+      if (heroCity) {
+        params.city = heroCity;
+      } else if (selectedCities.length > 0) {
+        params.city = selectedCities.join(',');
+      }
+
+      if (heroKeyword.trim()) {
+        params.search = heroKeyword.trim();
+      }
+
+      if (heroType) {
+        params.prop_type = heroType;
+      }
+
+      if (activeCategoryTab === 'verified') {
+        params.verified_only = true;
+      } else if (activeCategoryTab !== 'all') {
+        params.deal = activeCategoryTab;
+      }
+
+      if (budgetMin) {
+        params.min_price = Number(budgetMin);
+      }
+      if (budgetMax) {
+        params.max_price = Number(budgetMax);
+      }
+
+      if (newOnly) {
+        params.new_only = true;
+      }
+
+      const res = await api.get<{ status: string; data: Listing[]; total?: number; total_pages?: number }>('/api/v1/listings', {
+        params
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
-        const all = res.data.data;
-        setListings(all.filter((l) => !isBusinessListing(l)));
-        setBusinesses(all.filter(isBusinessListing));
+        setListings(res.data.data);
+        const total = res.data.total ?? res.data.data.length;
+        setTotalListings(total);
+        setTotalPages(res.data.total_pages ?? Math.max(1, Math.ceil(total / LISTINGS_PER_PAGE)));
       } else {
         setListings([]);
-        setBusinesses([]);
+        setTotalListings(0);
+        setTotalPages(1);
       }
     } catch (err: unknown) {
       console.error('Error fetching listings:', err);
@@ -594,10 +637,28 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, heroCity, selectedCities, heroKeyword, heroType, activeCategoryTab, budgetMin, budgetMax, newOnly]);
 
   useEffect(() => {
-    void fetchListings();
+    // 1. Featured properties for carousel (cached, fast)
+    api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
+      params: { status: 'approved', is_featured: true, limit: 12, kind: 'property' }
+    }).then((res) => {
+      if (res.data?.status === 'success' && Array.isArray(res.data.data)) {
+        setFeaturedListings(res.data.data);
+      }
+    }).catch(() => {});
+
+    // 2. Featured businesses for TC Favourite section (cached, fast)
+    api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
+      params: { status: 'approved', is_featured: true, limit: 6, kind: 'business' }
+    }).then((res) => {
+      if (res.data?.status === 'success' && Array.isArray(res.data.data)) {
+        setFeaturedBusinesses(res.data.data);
+      }
+    }).catch(() => {});
+
+    // 3. Overall site stats & city counts
     getListingStats()
       .then((res) => {
         if (res.data) setStats(res.data);
@@ -607,13 +668,15 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       });
   }, []);
 
-  // Only listings featured by the server (paid featured plan or admin) — never a fallback to the latest ones
-  const featuredListings = useMemo(() => listings.filter((l) => l.is_featured), [listings]);
-  // Featured businesses promoted on TradeCall
-  const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
+  useEffect(() => {
+    void fetchListings(currentPage);
+  }, [fetchListings, currentPage]);
 
-  // Cities with listing counts, from the same listings shown below so the numbers match what a click shows
+  // Cities with listing counts: from stats (accurate across whole DB) with fallback to current listings
   const cityCounts = useMemo(() => {
+    if (stats?.city_counts && stats.city_counts.length > 0) {
+      return stats.city_counts;
+    }
     const byKey = new Map<string, { name: string; count: number }>();
     listings.forEach((item) => {
       const name = getListingCity(item);
@@ -624,7 +687,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       else byKey.set(key, { name, count: 1 });
     });
     return Array.from(byKey.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  }, [listings]);
+  }, [stats?.city_counts, listings]);
 
   // Popular cities: list ONLY cities with at least 1 listing, sorted by listing count descending
   const sortedBrowseCities = useMemo(() => {
@@ -855,12 +918,14 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
 
   const showAllListings = (): void => {
     handleClearFilters();
+    setCurrentPage(1);
     scrollToSection('listings');
   };
 
   const showNewListings = (): void => {
     handleClearFilters();
     setNewOnly(true);
+    setCurrentPage(1);
     scrollToSection('listings');
   };
 
@@ -868,120 +933,14 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     handleClearFilters();
     handleSelectCity(city);
     setShowCitiesPanel(false);
+    setCurrentPage(1);
     scrollToSection('listings');
   };
 
-  // Filter listings
-  const filteredListings = listings.filter((item) => {
-    const loc = (item.location || '').toLowerCase();
-    const title = publicListingTitle(item).toLowerCase();
-    const desc = (item.description || '').toLowerCase();
-    const price = Number(item.price) || 0;
-
-    if (newOnly && !isNewListing(item)) return false;
-
-    // City filter: either from selected checkboxes or heroCity
-    const city = getListingCity(item).toLowerCase().trim();
-    const matchesCity = (c: string): boolean => {
-      const cLower = c.toLowerCase().trim();
-      const variants = [
-        cLower,
-        ...(cLower === 'vrindavan' ? ['mathura-vrindavan', 'vrindaban', 'mathura'] : []),
-        ...(cLower === 'mathura' ? ['mathura-vrindavan', 'vrindavan'] : []),
-        ...(cLower === 'mathura-vrindavan' ? ['mathura', 'vrindavan'] : []),
-        ...(cLower === 'delhi' ? ['delhi-ncr', 'ncr', 'new delhi'] : []),
-        ...(cLower === 'delhi ncr' ? ['delhi', 'ncr', 'new delhi'] : []),
-        ...(cLower === 'bangalore' ? ['bengaluru'] : []),
-        ...(cLower === 'gurugram' ? ['gurgaon'] : []),
-        ...(cLower === 'nuh' || cLower === 'mewat' || cLower === 'nuh mewat' ? ['nuh', 'mewat', 'nuh mewat'] : []),
-        ...(cLower === 'ballabgarh' ? ['ballabhgarh'] : []),
-        ...cityNameVariants(c).map((n) => n.toLowerCase()),
-      ];
-      if (city) {
-        return variants.some((needle) => city === needle || city.includes(needle) || needle.includes(city));
-      }
-      const locParts = loc.split(',').map((p) => p.trim());
-      const locCity = locParts.length >= 3 ? locParts[locParts.length - 2] : locParts[0] || '';
-      return variants.some((needle) => locCity === needle || locCity.includes(needle) || needle.includes(locCity));
-    };
-    if (selectedCities.length > 0) {
-      if (!selectedCities.some(matchesCity)) return false;
-    } else if (heroCity) {
-      if (!matchesCity(heroCity)) return false;
-    }
-
-    // Keyword
-    if (heroKeyword.trim()) {
-      const kw = heroKeyword.toLowerCase().trim();
-      if (!title.includes(kw) && !desc.includes(kw) && !loc.includes(kw)) {
-        return false;
-      }
-    }
-
-    // Property Type / Category
-    if (heroType) {
-      const formType = (item.form_data?.propType || '').toLowerCase().trim();
-      const target = heroType.toLowerCase().trim();
-
-      let matches = false;
-      if (formType) {
-        if (formType === target) {
-          matches = true;
-        } else if (target === 'flat' && (formType === 'apartment' || formType === 'builder_floor')) {
-          matches = true;
-        } else if (target === 'house' && (formType === 'villa' || formType === 'kothi')) {
-          matches = true;
-        } else if (target === 'plot' && formType === 'plots') {
-          matches = true;
-        } else if (target === 'agriculture' && (formType === 'agricultural' || formType === 'farm_land')) {
-          matches = true;
-        } else if (target === 'industrial_land' && formType === 'industrial') {
-          matches = true;
-        } else if (target === 'r_zone_land' && (formType === 'r_zone' || formType === 'r-zone')) {
-          matches = true;
-        } else if (target === 'commercial' && ['shop', 'office', 'showroom', 'warehouse'].includes(formType)) {
-          matches = true;
-        } else if (target === 'pg' && formType === 'guest_house') {
-          matches = true;
-        }
-      } else {
-        // Fallback for legacy listings without form_data.propType using strict word boundaries on title
-        if (target === 'flat') {
-          matches = /\b(flat|apartment|builder\s+floor)\b/i.test(title);
-        } else if (target === 'house') {
-          matches = /\b(house|villa|villas|kothi|bungalow|duplex)\b/i.test(title);
-        } else if (target === 'plot') {
-          matches = /\b(plot|plots)\b/i.test(title);
-        } else if (target === 'agriculture') {
-          matches = /\b(agriculture|agricultural|khet|farm\s+land)\b/i.test(title);
-        } else if (target === 'industrial_land') {
-          matches = /\b(industrial)\b/i.test(title);
-        } else if (target === 'r_zone_land') {
-          matches = /\b(r[\s_-]?zone)\b/i.test(title);
-        } else if (target === 'commercial') {
-          matches = /\b(commercial|shop|showroom|warehouse|office)\b/i.test(title);
-        } else if (target === 'pg') {
-          matches = /\b(pg|guest\s+house)\b/i.test(title);
-        }
-      }
-
-      if (!matches) return false;
-    }
-
-    // Category Tabs: all, sale, rent, buy, verified
-    if (activeCategoryTab === 'verified') {
-      if (Number(item.verified) !== 1) return false;
-    } else if (activeCategoryTab !== 'all') {
-      if (getListingDeal(item) !== activeCategoryTab) return false;
-    }
-
-    // Budget
-    const min = parseFloat(budgetMin) || 0;
-    const max = parseFloat(budgetMax) || Infinity;
-    if (price < min || price > max) return false;
-
-    return true;
-  });
+  // Listings returned from server are already filtered and paginated for currentPage
+  const filteredListings = listings;
+  const pagedListings = listings;
+  const page = Math.min(currentPage, totalPages);
 
   // Back to the first page whenever the filters change (skip initial mount to honor URL ?page=)
   useEffect(() => {
@@ -991,10 +950,6 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
     }
     setCurrentPage(1);
   }, [newOnly, selectedCities, heroCity, heroKeyword, heroType, activeCategoryTab, budgetMin, budgetMax]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredListings.length / LISTINGS_PER_PAGE));
-  const page = Math.min(currentPage, totalPages);
-  const pagedListings = filteredListings.slice((page - 1) * LISTINGS_PER_PAGE, page * LISTINGS_PER_PAGE);
 
   const getPageUrl = (targetPage: number): string => {
     const params = new URLSearchParams(window.location.search);
@@ -1030,7 +985,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const renderListingCard = (listing: Listing, asList = false) => {
     const imgSrc = getFirstImageUrl(listing);
     const priceStr = formatListingPrice(listing.price);
-    const pType = propTypeLabel(listing.form_data?.propType || '') || 'Property';
+    const pType = propTypeLabel(listing.prop_type || listing.form_data?.propType || '') || 'Property';
     const title = publicListingTitle(listing);
 
     const listingUrl = getListingUrl(listing);
@@ -1055,6 +1010,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             src={imgSrc}
             alt={title}
             className="card-img"
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               const target = e.currentTarget;
               target.onerror = null;
@@ -1166,6 +1123,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
             src={imgSrc}
             alt={business.title}
             className="card-img"
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               const target = e.currentTarget;
               target.onerror = null;
@@ -1709,7 +1668,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
               {circularListings.map((listing, index) => {
                 const imgSrc = getFirstImageUrl(listing);
                 const priceStr = formatListingPrice(listing.price);
-                const pType = propTypeLabel(listing.form_data?.propType || '') || 'Plot';
+                const pType = propTypeLabel(listing.prop_type || listing.form_data?.propType || '') || 'Plot';
                 const title = publicListingTitle(listing);
                 const isSaved = wishlistIds.has(listing.id);
 
@@ -1731,6 +1690,8 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                           src={imgSrc}
                           alt={title}
                           className="card-img"
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             const target = e.currentTarget;
                             target.onerror = null;
@@ -1851,7 +1812,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                 </h2>
                 {!loading && (
                   <span className="listings-count-badge">
-                    {filteredListings.length} {filteredListings.length === 1 ? 'property' : 'properties'}
+                    {totalListings} {totalListings === 1 ? 'property' : 'properties'}
                   </span>
                 )}
               </div>

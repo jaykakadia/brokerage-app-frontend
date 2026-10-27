@@ -67,6 +67,14 @@ export interface Listing {
   created_at: string;
   seo_title?: string | null;
   images: ListingImage[];
+  city?: string;
+  first_image_url?: string | null;
+  image_url?: string | null;
+  prop_type?: string | null;
+  kind?: string | null;
+  deal?: string | null;
+  category_name?: string | null;
+  categories?: string[];
 }
 
 export interface ListingCounts {
@@ -90,6 +98,7 @@ export interface ListingStatsResponse {
   cities_covered: number;
   registered_users: number;
   new_today?: number;
+  city_counts?: Array<{ name: string; count: number }>;
 }
 
 export interface ListingRefSummaryItem {
@@ -100,6 +109,10 @@ export interface ListingRefSummaryItem {
 export interface ListingsApiResponse {
   status: string;
   data: Listing[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  total_pages?: number;
   ref_summary?: ListingRefSummaryItem[];
 }
 

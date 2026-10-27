@@ -49,7 +49,7 @@ export const API_BASE_URL: string = import.meta.env.PROD
 // (VITE_UPLOADS_URL) so photos uploaded on the live site show up in the dev server too.
 const UPLOADS_BASE_URL: string = import.meta.env.PROD
   ? ''
-  : (import.meta.env.VITE_UPLOADS_URL || API_BASE_URL).replace(/\/+$/, '');
+  : (import.meta.env.VITE_UPLOADS_URL || 'https://tradecall.in').replace(/\/+$/, '');
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -96,11 +96,8 @@ export const getImageUrl = (path?: string | null): string => {
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:') || path.startsWith('data:')) {
     return path;
   }
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  if (cleanPath.startsWith('/uploads')) {
-    return `${UPLOADS_BASE_URL}${cleanPath}`;
-  }
-  return cleanPath;
+  const cleanKey = path.replace(/^\/?(uploads\/)?/, '');
+  return `${UPLOADS_BASE_URL}/uploads/${cleanKey}`;
 };
 
 /** Standard message for failures where the server sent nothing readable (host error pages, timeouts). */
