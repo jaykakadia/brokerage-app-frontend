@@ -32,6 +32,15 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
       if (initialPlanId) {
         setSelectedPlanId(initialPlanId);
       }
+      // Prefetch Cashfree SDK on modal open
+      if (typeof window !== 'undefined' && typeof window.Cashfree !== 'function') {
+        if (!document.querySelector('script[src*="cashfree.js"]')) {
+          const s = document.createElement('script');
+          s.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+          s.async = true;
+          document.head.appendChild(s);
+        }
+      }
       void loadPlans();
     }
   }, [isOpen, planType, initialPlanId]);

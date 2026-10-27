@@ -1,21 +1,48 @@
 <!DOCTYPE html>
 <html lang="en-IN">
 <head>
-  <!-- Google Tag Manager -->
-  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','GTM-PM42MSMS');</script>
-  <!-- End Google Tag Manager -->
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-6PWDF42MYB"></script>
+  <!-- Google Tag Manager / Analytics (Buffered immediately, scripts loaded post-paint) -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'G-6PWDF42MYB');
+
+    (function(){
+      var gtmInjected = false;
+      function injectAnalytics() {
+        if (gtmInjected) return;
+        gtmInjected = true;
+
+        // GTM Container
+        var f = document.getElementsByTagName('script')[0];
+        var j = document.createElement('script');
+        j.async = true;
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-PM42MSMS';
+        f.parentNode.insertBefore(j, f);
+
+        // Google tag (gtag.js)
+        var g = document.createElement('script');
+        g.async = true;
+        g.src = 'https://www.googletagmanager.com/gtag/js?id=G-6PWDF42MYB';
+        f.parentNode.insertBefore(g, f);
+
+        ['scroll', 'touchstart', 'mousemove', 'keydown'].forEach(function(evt){
+          window.removeEventListener(evt, injectAnalytics, { passive: true });
+        });
+      }
+
+      if (document.readyState === 'complete') {
+        setTimeout(injectAnalytics, 1500);
+      } else {
+        window.addEventListener('load', function() {
+          setTimeout(injectAnalytics, 1500);
+        });
+        ['scroll', 'touchstart', 'mousemove', 'keydown'].forEach(function(evt){
+          window.addEventListener(evt, injectAnalytics, { passive: true, once: true });
+        });
+      }
+    })();
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -107,7 +134,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
   <script type="module" src="/src/main.tsx"></script>
   <!-- Google Tag Manager (noscript) -->
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PM42MSMS" height="0" width="0" style="display:none;visibility:hidden" title="gtm"></iframe></noscript>

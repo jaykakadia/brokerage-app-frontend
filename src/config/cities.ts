@@ -5,8 +5,6 @@ export interface CityInfo {
   isTop?: boolean;
 }
 
-import ALL_CITIES_DATA from './allCities.json';
-
 export const TOP_CITIES: CityInfo[] = [
   { name: 'Mumbai', slug: 'mumbai', state: 'Maharashtra', isTop: true },
   { name: 'Bangalore', slug: 'bangalore', state: 'Karnataka', isTop: true },
@@ -211,12 +209,6 @@ ACTIVE_CITIES.forEach((c) => {
     CITY_MAP.set(c.slug, c);
   }
 });
-(ALL_CITIES_DATA as string[]).forEach((name) => {
-  const slug = getCitySlug(name);
-  if (slug && !CITY_MAP.has(slug)) {
-    CITY_MAP.set(slug, { name, slug, state: '' });
-  }
-});
 
 export const FOOTER_TOP_CITIES: Array<{ name: string; slug: string }> = [
   { name: 'Palwal', slug: 'palwal' },
@@ -257,6 +249,11 @@ export function getCityFromSlug(slug: string): string | null {
   const found = CITY_MAP.get(resolvedSlug);
   if (found) return found.name;
 
-  return null;
+  // Title-case fallback for arbitrary city slugs
+  const title = resolvedSlug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+  return title || null;
 }
 

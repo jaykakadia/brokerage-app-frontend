@@ -4,8 +4,28 @@ import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { getBusinessCategories, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
-import ALL_CITIES_DATA from '../config/allCities.json';
 import { setSeo } from '../utils/seo';
+
+// In-memory module cache for lazy-loaded cities
+let cachedAllCities: string[] | null = null;
+let allCitiesPromise: Promise<string[]> | null = null;
+
+const loadAllCitiesData = async (): Promise<string[]> => {
+  if (cachedAllCities) return cachedAllCities;
+  if (allCitiesPromise) return allCitiesPromise;
+  allCitiesPromise = (async () => {
+    try {
+      const mod = await import('../config/allCities.json');
+      cachedAllCities = (mod.default || mod) as string[];
+      return cachedAllCities;
+    } catch {
+      return [];
+    } finally {
+      allCitiesPromise = null;
+    }
+  })();
+  return allCitiesPromise;
+};
 import { propTypeLabel } from './post-listing/propertyForm';
 import { getListingUrl } from '../utils/url';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
@@ -424,15 +444,35 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Lazy-loaded cities state
+  const [allCitiesList, setAllCitiesList] = useState<string[]>(() => cachedAllCities || []);
+  const [citiesLoading, setCitiesLoading] = useState<boolean>(false);
+
+  const ensureCitiesLoaded = useCallback(() => {
+    if (cachedAllCities) {
+      if (allCitiesList.length === 0) setAllCitiesList(cachedAllCities);
+      return;
+    }
+    setCitiesLoading(true);
+    loadAllCitiesData()
+      .then((data) => {
+        setAllCitiesList(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        setCitiesLoading(false);
+      });
+  }, [allCitiesList.length]);
+
   // Filter city suggestions based on user input - searches all 5,000+ Indian cities
   const citySuggestions = useMemo(() => {
     const q = cityInput.trim().toLowerCase();
-    const all = ALL_CITIES_DATA as string[];
+    const sourceList = allCitiesList.length > 0 ? allCitiesList : POPULAR_BROWSE_CITIES.map((c) => c.name);
     if (!q) {
-      return all.slice(0, 100);
+      return sourceList.slice(0, 100);
     }
-    return all.filter((name) => name.toLowerCase().includes(q)).slice(0, 100);
-  }, [cityInput]);
+    return sourceList.filter((name) => name.toLowerCase().includes(q)).slice(0, 100);
+  }, [cityInput, allCitiesList]);
 
   const handleSelectCity = (city: string): void => {
     setAllCitiesPicked(city === 'All Cities');
@@ -452,6 +492,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
   };
 
   const handleCityInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    ensureCitiesLoaded();
     const val = allCitiesPicked ? e.target.value.replace(/^All Cities/, '') : e.target.value;
     setAllCitiesPicked(false);
     setCityInput(val);
@@ -1263,7 +1304,13 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                     placeholder="Select City / Locality"
                     value={cityInput || (allCitiesPicked ? 'All Cities' : '')}
                     onChange={handleCityInputChange}
-                    onFocus={(e) => { if (allCitiesPicked) e.target.select(); setShowCitySuggestions(true); }}
+                    onFocus={(e) => {
+                      ensureCitiesLoaded();
+                      if (allCitiesPicked) e.target.select();
+                      setShowCitySuggestions(true);
+                    }}
+                    onPointerDown={() => ensureCitiesLoaded()}
+                    onTouchStart={() => ensureCitiesLoaded()}
                     onKeyDown={handleCityKeyDown}
                     autoComplete="off"
                   />
@@ -1283,6 +1330,12 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
                 {showCitySuggestions && (
                   <ul className="city-autocomplete-dropdown">
+                    {citiesLoading && allCitiesList.length === 0 && (
+                      <li className="city-autocomplete-item" style={{ color: '#94a3b8', fontStyle: 'italic', pointerEvents: 'none' }}>
+                        <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }}></i>
+                        <span>Loading cities...</span>
+                      </li>
+                    )}
                     {!cityInput.trim() && (
                       <li
                         className={`city-autocomplete-item ${!heroCity ? 'active' : ''}`}
