@@ -372,6 +372,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
   const [categoryPage, setCategoryPage] = useState<number>(1);
+  const [categorySearch, setCategorySearch] = useState<string>('');
   const [newCatName, setNewCatName] = useState<string>('');
   const [newCatDesc, setNewCatDesc] = useState<string>('');
   const [catSaving, setCatSaving] = useState<boolean>(false);
@@ -2163,130 +2164,224 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {/* ======================================================== */}
         {/* MODULE 3: CATEGORY MANAGEMENT */}
         {/* ======================================================== */}
-        {activeModule === 'categories' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '18px' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                Category Management
-              </h2>
-              <button
-                type="button"
-                onClick={() => openCategoryModal()}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: '#16a34a',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '10px 16px',
-                  fontWeight: 700,
-                  fontSize: '14px',
-                  cursor: 'pointer'
-                }}
-              >
-                <i className="fas fa-plus"></i> Add New Category
-              </button>
-            </div>
+        {activeModule === 'categories' && (() => {
+          const q = categorySearch.trim().toLowerCase();
+          const filteredCategories = q
+            ? categories.filter((cat) => {
+                const idStr = String(cat.id);
+                const catCode = `#cat-${idStr.padStart(2, '0')}`;
+                const name = (cat.name || '').toLowerCase();
+                const desc = (cat.description || '').toLowerCase();
+                return name.includes(q) || desc.includes(q) || idStr.includes(q) || catCode.includes(q);
+              })
+            : categories;
+          const totalCategoryPages = Math.max(1, Math.ceil(filteredCategories.length / ADMIN_ITEMS_PER_PAGE));
+          const safeCategoryPage = Math.min(categoryPage, totalCategoryPages);
+          const pagedCategories = filteredCategories.slice(
+            (safeCategoryPage - 1) * ADMIN_ITEMS_PER_PAGE,
+            safeCategoryPage * ADMIN_ITEMS_PER_PAGE
+          );
 
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '8px 8px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left', color: '#6b7280', letterSpacing: '0.04em' }}>
-                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>CATEGORY ID</th>
-                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>CATEGORY NAME</th>
-                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>DESCRIPTION</th>
-                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700, textAlign: 'center' }}>TOTAL LISTINGS</th>
-                    <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categoriesLoading ? (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>
-                        <i className="fas fa-spinner fa-spin"></i> Loading categories...
-                      </td>
+          return (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '18px', flexWrap: 'wrap' }}>
+                <div>
+                  <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                    Category Management
+                  </h2>
+                  <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#6b7280' }}>
+                    {categories.length} {categories.length === 1 ? 'category' : 'categories'} configured
+                    {q && ` · ${filteredCategories.length} matching search`}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  {/* Category Search Filter */}
+                  <div style={{ position: 'relative' }}>
+                    <i
+                      className="fas fa-search"
+                      style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '13px' }}
+                    ></i>
+                    <input
+                      type="text"
+                      placeholder="Search category name, ID, desc..."
+                      value={categorySearch}
+                      onChange={(e) => {
+                        setCategorySearch(e.target.value);
+                        setCategoryPage(1);
+                      }}
+                      style={{
+                        padding: '8px 30px 8px 32px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        outline: 'none',
+                        width: '260px'
+                      }}
+                    />
+                    {categorySearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategorySearch('');
+                          setCategoryPage(1);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          padding: '2px 4px'
+                        }}
+                        title="Clear search"
+                        aria-label="Clear search"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openCategoryModal()}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: '#16a34a',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '9px 16px',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <i className="fas fa-plus"></i> Add New Category
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '8px 8px 16px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left', color: '#6b7280', letterSpacing: '0.04em' }}>
+                      <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>CATEGORY ID</th>
+                      <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>CATEGORY NAME</th>
+                      <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>DESCRIPTION</th>
+                      <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700, textAlign: 'center' }}>TOTAL LISTINGS</th>
+                      <th style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 700 }}>ACTIONS</th>
                     </tr>
-                  ) : categories.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>
-                        No categories found. Add your first category.
-                      </td>
-                    </tr>
-                  ) : (
-                    categories
-                      .slice(
-                        (Math.min(categoryPage, Math.max(1, Math.ceil(categories.length / ADMIN_ITEMS_PER_PAGE))) - 1) * ADMIN_ITEMS_PER_PAGE,
-                        Math.min(categoryPage, Math.max(1, Math.ceil(categories.length / ADMIN_ITEMS_PER_PAGE))) * ADMIN_ITEMS_PER_PAGE
-                      )
-                      .map((cat) => (
-                      <tr key={cat.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '16px', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                          #CAT-{String(cat.id).padStart(2, '0')}
-                        </td>
-                        <td style={{ padding: '16px', fontWeight: 700, color: '#0c6253', maxWidth: '220px' }}>{cat.name}</td>
-                        <td style={{ padding: '16px', color: '#4b5563', maxWidth: '360px' }}>{cat.description || '-'}</td>
-                        <td style={{ padding: '16px', textAlign: 'center', color: '#111827' }}>{cat.total_listings ?? 0}</td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
-                            <button
-                              type="button"
-                              onClick={() => openCategoryModal(cat)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                border: '1px solid #e5e7eb',
-                                background: '#fff',
-                                color: '#374151',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <i className="fas fa-pen"></i> Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCategory(cat.id)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                border: '1px solid #fecaca',
-                                background: '#fef2f2',
-                                color: '#dc2626',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <i className="fas fa-trash"></i> Delete
-                            </button>
-                          </div>
+                  </thead>
+                  <tbody>
+                    {categoriesLoading ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>
+                          <i className="fas fa-spinner fa-spin"></i> Loading categories...
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              <div style={{ padding: '0 12px 6px' }}>
-                <AdminPagination
-                  currentPage={Math.min(categoryPage, Math.max(1, Math.ceil(categories.length / ADMIN_ITEMS_PER_PAGE)))}
-                  totalItems={categories.length}
-                  itemsPerPage={ADMIN_ITEMS_PER_PAGE}
-                  onPageChange={setCategoryPage}
-                  itemName="categories"
-                />
+                    ) : categories.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#6b7280' }}>
+                          No categories found. Add your first category.
+                        </td>
+                      </tr>
+                    ) : filteredCategories.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', color: '#6b7280' }}>
+                          <div style={{ marginBottom: '8px', fontSize: '15px', fontWeight: 600, color: '#374151' }}>
+                            No categories found matching "{categorySearch}"
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '14px' }}>
+                            Try a different search term or clear the filter.
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            onClick={() => {
+                              setCategorySearch('');
+                              setCategoryPage(1);
+                            }}
+                            style={{ padding: '6px 14px', fontSize: '12.5px', cursor: 'pointer' }}
+                          >
+                            <i className="fas fa-times" style={{ marginRight: '6px' }}></i> Clear Search Filter
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedCategories.map((cat) => (
+                        <tr key={cat.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '16px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                            #CAT-{String(cat.id).padStart(2, '0')}
+                          </td>
+                          <td style={{ padding: '16px', fontWeight: 700, color: '#0c6253', maxWidth: '220px' }}>{cat.name}</td>
+                          <td style={{ padding: '16px', color: '#4b5563', maxWidth: '360px' }}>{cat.description || '-'}</td>
+                          <td style={{ padding: '16px', textAlign: 'center', color: '#111827' }}>{cat.total_listings ?? 0}</td>
+                          <td style={{ padding: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                              <button
+                                type="button"
+                                onClick={() => openCategoryModal(cat)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e5e7eb',
+                                  background: '#fff',
+                                  color: '#374151',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <i className="fas fa-pen"></i> Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #fecaca',
+                                  background: '#fef2f2',
+                                  color: '#dc2626',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <i className="fas fa-trash"></i> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                <div style={{ padding: '0 12px 6px' }}>
+                  <AdminPagination
+                    currentPage={safeCategoryPage}
+                    totalItems={filteredCategories.length}
+                    itemsPerPage={ADMIN_ITEMS_PER_PAGE}
+                    onPageChange={setCategoryPage}
+                    itemName="categories"
+                  />
+                </div>
               </div>
-            </div>
 
-            {categoryModalOpen && (
+              {categoryModalOpen && (
               <div
                 style={{
                   position: 'fixed',
@@ -2369,7 +2464,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </div>
             )}
           </div>
-        )}
+        );
+      })()}
 
         {/* ======================================================== */}
         {/* MODULE 4: USER MANAGEMENT */}
