@@ -22,6 +22,8 @@ export interface AuthModalOptions {
 
 export interface HomePageProps {
   activeCity?: string;
+  activeLocality?: string;
+  activeLocalitySearch?: string;
   onCitySelect?: (city: string) => void;
   onNavigate: NavigateFunction;
   onOpenAuth?: (options?: AuthModalOptions) => void;
@@ -172,7 +174,7 @@ const HOMEPAGE_FAQS = [
   }
 ];
 
-export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
+export default function HomePage({ activeCity, activeLocality, activeLocalitySearch, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [totalListings, setTotalListings] = useState<number>(0);
@@ -287,7 +289,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
   const [showBudgetDropdown, setShowBudgetDropdown] = useState(false);
   const budgetWrapperRef = useRef<HTMLDivElement>(null);
 
-  const [heroKeyword, setHeroKeyword] = useState(initialKeyword);
+  const [heroKeyword, setHeroKeyword] = useState(() => initialKeyword || activeLocalitySearch || activeLocality || '');
   const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'buy' | 'verified'>(initialTab);
   const [budgetMin, setBudgetMin] = useState(initialMinPrice);
   const [budgetMax, setBudgetMax] = useState(initialMaxPrice);
@@ -390,6 +392,16 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       setSelectedCities([]);
     }
   }, [activeCity]);
+
+  // Sync heroKeyword when activeLocality changes
+  useEffect(() => {
+    if (activeLocalitySearch || activeLocality) {
+      setHeroKeyword(activeLocalitySearch || activeLocality || '');
+      setCurrentPage(1);
+    } else if (activeCity && !initialKeyword) {
+      setHeroKeyword('');
+    }
+  }, [activeLocality, activeLocalitySearch, activeCity]);
 
   // Click outside listener for suggestions dropdowns
   useEffect(() => {
@@ -1237,7 +1249,7 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
       <section className="hero">
         <div className="hero-overlay"></div>
         <div className="container hero-content">
-          <h1>{activeCity ? `Properties in ${activeCity}` : 'Buy, Rent & Sell Property'}</h1>
+          <h1>{activeCity ? (activeLocality ? `Properties in ${activeLocality}, ${activeCity}` : `Properties in ${activeCity}`) : 'Buy, Rent & Sell Property'}</h1>
 
           <div className="search-box">
             <div className="search-form">
@@ -1816,7 +1828,9 @@ export default function HomePage({ activeCity, onCitySelect, onNavigate, onOpenA
                   </span>
                 )}
               </div>
-              <p className="listings-header-sub">Latest verified properties posted on TradeCall</p>
+              <p className="listings-header-sub">
+                {activeLocality ? `Verified properties in ${activeLocality}, ${activeCity}` : 'Latest verified properties posted on TradeCall'}
+              </p>
             </div>
 
             <div className="listings-header-actions">

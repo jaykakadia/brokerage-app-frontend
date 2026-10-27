@@ -37,7 +37,7 @@ const PageLoader = () => (
 );
 import { parseAppRoute, getListingUrl } from './utils/url';
 import { PAGE_SEO, setSeo } from './utils/seo';
-import { getCityFromSlug, getCitySlug } from './config/cities';
+import { getCityFromSlug, getCitySlug, LOCALITY_SLUG_MAP } from './config/cities';
 import { getPageMetadataList } from './services/api';
 import type { NavigateFunction, PageMetadata } from './types';
 
@@ -52,7 +52,30 @@ export default function App() {
   });
   const [activeCity, setActiveCity] = useState<string>(() => {
     if (initialRoute.page === 'properties-city' && initialRoute.param) {
-      return getCityFromSlug(String(initialRoute.param)) || '';
+      const citySlug = String(initialRoute.param).split('/')[0];
+      return getCityFromSlug(citySlug) || '';
+    }
+    return '';
+  });
+  const [activeLocality, setActiveLocality] = useState<string>(() => {
+    if (initialRoute.page === 'properties-city' && initialRoute.param) {
+      const parts = String(initialRoute.param).split('/');
+      if (parts.length > 1) {
+        const locSlug = parts[1];
+        const known = LOCALITY_SLUG_MAP[locSlug];
+        return known ? known.name : locSlug.replace(/-/g, ' ');
+      }
+    }
+    return '';
+  });
+  const [activeLocalitySearch, setActiveLocalitySearch] = useState<string>(() => {
+    if (initialRoute.page === 'properties-city' && initialRoute.param) {
+      const parts = String(initialRoute.param).split('/');
+      if (parts.length > 1) {
+        const locSlug = parts[1];
+        const known = LOCALITY_SLUG_MAP[locSlug];
+        return known ? known.search : locSlug.replace(/-/g, ' ');
+      }
     }
     return '';
   });
@@ -136,10 +159,22 @@ export default function App() {
       } else if (parsed.page === 'login') {
         setLoginTab(parsed.param === 'register' ? 'register' : 'signin');
       } else if (parsed.page === 'properties-city' && parsed.param) {
-        const city = getCityFromSlug(String(parsed.param));
+        const parts = String(parsed.param).split('/');
+        const city = getCityFromSlug(parts[0]);
         setActiveCity(city || '');
+        if (parts.length > 1) {
+          const locSlug = parts[1];
+          const known = LOCALITY_SLUG_MAP[locSlug];
+          setActiveLocality(known ? known.name : locSlug.replace(/-/g, ' '));
+          setActiveLocalitySearch(known ? known.search : locSlug.replace(/-/g, ' '));
+        } else {
+          setActiveLocality('');
+          setActiveLocalitySearch('');
+        }
       } else if (parsed.page === 'home') {
         setActiveCity('');
+        setActiveLocality('');
+        setActiveLocalitySearch('');
       }
     };
 
@@ -172,6 +207,15 @@ export default function App() {
       const slug = getCitySlug(activeCity);
       const serverRobots = document.querySelector('meta[name="robots"]')?.getAttribute('content');
       const isServerNoIndex = serverRobots?.includes('noindex') ?? false;
+      if (activeLocality) {
+        setSeo({
+          title: `Properties in ${activeLocality}, ${activeCity} | Buy & Rent | TradeCall India`,
+          description: `Verified properties for sale and rent in ${activeLocality}, ${activeCity}. Contact owners directly with zero brokerage on TradeCall India.`,
+          path: window.location.pathname,
+          noindex: isServerNoIndex,
+        });
+        return;
+      }
       setSeo({
         title: `Properties in ${activeCity} | Buy, Rent & Commercial`,
         description: `Find the best residential and commercial properties in ${activeCity} on Tradecall...`,
@@ -197,13 +241,15 @@ export default function App() {
       return;
     }
     setSeo(PAGE_SEO[activePage] ?? {});
-  }, [activePage, loginTab, activeCity, metaMap]);
+  }, [activePage, loginTab, activeCity, activeLocality, metaMap]);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;
     if (page === 'home') {
       path = '/';
       setActiveCity('');
+      setActiveLocality('');
+      setActiveLocalitySearch('');
       setActivePage('home');
     } else if (page === 'login' || page === 'register' || page === 'signin') {
       const tab = page === 'register' || param === 'register' ? 'register' : 'signin';
@@ -227,15 +273,27 @@ export default function App() {
       path = slug ? `/blog/${slug}` : '/blog';
       setActivePage('blog-detail');
     } else if (page === 'properties-city' && param) {
-      const slug = typeof param === 'string' ? param : getCitySlug(String(param));
-      const city = getCityFromSlug(slug);
+      const paramStr = String(param);
+      const parts = paramStr.split('/');
+      const citySlug = parts[0];
+      const localitySlug = parts[1] || '';
+      const city = getCityFromSlug(citySlug);
       if (!city) {
         setActivePage('not-found');
-        path = `/properties/${slug}`;
+        path = `/properties/${citySlug}`;
       } else {
         setActiveCity(city);
+        if (localitySlug) {
+          const known = LOCALITY_SLUG_MAP[localitySlug];
+          setActiveLocality(known ? known.name : localitySlug.replace(/-/g, ' '));
+          setActiveLocalitySearch(known ? known.search : localitySlug.replace(/-/g, ' '));
+          path = `/${citySlug}/${localitySlug}`;
+        } else {
+          setActiveLocality('');
+          setActiveLocalitySearch('');
+          path = `/properties/${citySlug}`;
+        }
         setActivePage('properties-city');
-        path = `/properties/${slug}`;
       }
     } else if (page === 'cities') {
       setActivePage('cities');
@@ -266,8 +324,12 @@ export default function App() {
   const handleCitySelect = (city: string) => {
     if (!city || city === 'All Cities') {
       setActiveCity('');
+      setActiveLocality('');
+      setActiveLocalitySearch('');
       navigateTo('home');
     } else {
+      setActiveLocality('');
+      setActiveLocalitySearch('');
       navigateTo('properties-city', getCitySlug(city));
     }
   };
@@ -316,6 +378,8 @@ export default function App() {
           {(activePage === 'home' || activePage === 'properties-city') && (
             <HomePage
               activeCity={activeCity}
+              activeLocality={activeLocality}
+              activeLocalitySearch={activeLocalitySearch}
               onCitySelect={handleCitySelect}
               onNavigate={navigateTo}
               onOpenAuth={openAuthModal}
