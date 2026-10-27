@@ -16,6 +16,7 @@ import api, {
   saveAdminBlog,
   uploadBlogImage,
   deleteAdminBlog,
+  getImageUrl,
   getMailSettings,
   saveMailSettings,
   sendTestMail,
@@ -5534,37 +5535,45 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                           <i className="fas fa-chevron-up" style={{ fontSize: '10px', color: '#5f6368' }}></i>
                         </summary>
                         <div style={{ marginTop: '10px' }}>
-                          {blogForm.featured_image ? (
-                            <div style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e0e0e0', marginBottom: '8px' }}>
-                              <img
-                                src={URL.createObjectURL(blogForm.featured_image)}
-                                alt="Featured"
-                                style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setBlogForm({ ...blogForm, featured_image: null })}
-                                style={{
-                                  position: 'absolute',
-                                  top: '6px',
-                                  right: '6px',
-                                  background: 'rgba(0,0,0,0.6)',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '50%',
-                                  width: '24px',
-                                  height: '24px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </div>
-                          ) : null}
+                          {(() => {
+                            const previewSrc = blogForm.featured_image
+                              ? URL.createObjectURL(blogForm.featured_image)
+                              : (blogForm.image_url ? getImageUrl(blogForm.image_url) : null);
+                            if (!previewSrc) return null;
+                            return (
+                              <div style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e0e0e0', marginBottom: '10px' }}>
+                                <img
+                                  src={previewSrc}
+                                  alt="Featured"
+                                  style={{ width: '100%', height: '130px', objectFit: 'cover', display: 'block' }}
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setBlogForm(prev => ({ ...prev, featured_image: null, image_url: '' }))}
+                                  title="Remove image"
+                                  style={{
+                                    position: 'absolute',
+                                    top: '6px',
+                                    right: '6px',
+                                    background: 'rgba(0,0,0,0.65)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: '24px',
+                                    height: '24px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <i className="fas fa-times"></i>
+                                </button>
+                              </div>
+                            );
+                          })()}
 
                           <label
                             style={{
@@ -5575,26 +5584,32 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                               padding: '10px 14px',
                               border: '1.5px dashed #f57c00',
                               borderRadius: '6px',
-                              background: '#fff8e1',
+                              background: blogImageUploading ? '#fef3c7' : '#fff8e1',
                               color: '#e65100',
-                              cursor: 'pointer',
+                              cursor: blogImageUploading ? 'not-allowed' : 'pointer',
                               fontSize: '12px',
                               fontWeight: 600,
                               textAlign: 'center',
                               transition: 'background 0.15s',
                             }}
                           >
-                            <i className="fas fa-cloud-upload-alt" style={{ fontSize: '15px' }}></i>
-                            <span>Upload from computer</span>
+                            {blogImageUploading ? (
+                              <>
+                                <i className="fas fa-spinner fa-spin" style={{ fontSize: '15px' }}></i>
+                                <span>Uploading image...</span>
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-cloud-upload-alt" style={{ fontSize: '15px' }}></i>
+                                <span>{blogForm.image_url || blogForm.featured_image ? 'Change image' : 'Upload from computer'}</span>
+                              </>
+                            )}
                             <input
                               type="file"
                               accept="image/*"
+                              disabled={blogImageUploading}
                               style={{ display: 'none' }}
-                              onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                  setBlogForm({ ...blogForm, featured_image: e.target.files[0] });
-                                }
-                              }}
+                              onChange={handleThumbnailUpload}
                             />
                           </label>
                         </div>
