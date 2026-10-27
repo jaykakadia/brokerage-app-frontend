@@ -67,6 +67,22 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
       // In mock mode (local dev / tests) the backend treats the order as paid, so skip checkout.
       if (environment !== 'mock') {
         if (typeof window.Cashfree !== 'function') {
+          await new Promise<void>((resolve, reject) => {
+            const existing = document.querySelector('script[src*="cashfree.js"]');
+            if (existing) {
+              if (typeof window.Cashfree === 'function') return resolve();
+              existing.addEventListener('load', () => resolve());
+              existing.addEventListener('error', () => reject(new Error('Payment gateway failed to load.')));
+            } else {
+              const s = document.createElement('script');
+              s.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+              s.onload = () => resolve();
+              s.onerror = () => reject(new Error('Payment gateway failed to load.'));
+              document.head.appendChild(s);
+            }
+          });
+        }
+        if (typeof window.Cashfree !== 'function') {
           throw new Error('Payment gateway failed to load. Please refresh the page and try again.');
         }
         const cashfree = window.Cashfree({ mode: environment });

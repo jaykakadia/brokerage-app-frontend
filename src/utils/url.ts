@@ -155,7 +155,8 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
   // Sub-locality Hub: /:city/:locality (e.g. /palwal/omaxe-city-phase-ii)
   if (parts.length === 2 && getCityFromSlug(parts[0].toLowerCase())) {
     const citySlug = parts[0].toLowerCase();
-    return { page: 'properties-city', param: citySlug };
+    const localitySlug = parts[1].toLowerCase();
+    return { page: 'properties-city', param: `${citySlug}/${localitySlug}` };
   }
 
   // Blog detail: /blog/:slug

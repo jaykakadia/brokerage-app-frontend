@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FOOTER_TOP_CITIES } from '../config/cities';
+import { FOOTER_TOP_CITIES, POPULAR_LOCALITIES } from '../config/cities';
 import type { NavigateFunction } from '../types';
 import { getSocialLinks } from '../services/api';
 import type { SocialLinksSettings } from '../types/setting';
@@ -113,6 +113,25 @@ export default function Footer({ onNavigate }: FooterProps) {
             </li>
             <li style={{ marginTop: '6px' }}><a href="/hi/properties/palwal">पलवल में प्रॉपर्टी (हिंदी)</a></li>
             <li><a href="/hi/properties/faridabad">फरीदाबाद में प्रॉपर्टी (हिंदी)</a></li>
+          </ul>
+        </div>
+
+        <div className="footer-col">
+          <h4>Popular Localities</h4>
+          <ul>
+            {POPULAR_LOCALITIES.map((loc) => (
+              <li key={loc.slug}>
+                <a
+                  href={`/${loc.citySlug}/${loc.slug}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('properties-city', `${loc.citySlug}/${loc.slug}`);
+                  }}
+                >
+                  {loc.name}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
 

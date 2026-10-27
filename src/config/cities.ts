@@ -227,6 +227,27 @@ export const FOOTER_TOP_CITIES: Array<{ name: string; slug: string }> = [
   { name: 'Ballabgarh', slug: 'ballabgarh' },
 ];
 
+export interface LocalityInfo {
+  name: string;
+  slug: string;
+  citySlug: string;
+  cityName: string;
+  search: string;
+}
+
+export const POPULAR_LOCALITIES: LocalityInfo[] = [
+  { name: 'Omaxe City Phase-II', slug: 'omaxe-city-phase-ii', citySlug: 'palwal', cityName: 'Palwal', search: 'Omaxe City' },
+  { name: 'Village Mandkola', slug: 'village-mandkola', citySlug: 'palwal', cityName: 'Palwal', search: 'Mandkola' },
+  { name: 'Kailash Nagar Palwal', slug: 'kailash-nagar', citySlug: 'palwal', cityName: 'Palwal', search: 'Kailash Nagar' },
+  { name: 'Panchwati Colony', slug: 'panchwati-colony', citySlug: 'palwal', cityName: 'Palwal', search: 'Panchwati' },
+  { name: 'Sector 85 Faridabad', slug: 'sector-85', citySlug: 'faridabad', cityName: 'Faridabad', search: 'Sector 85' },
+  { name: 'NIT-5 Faridabad', slug: 'nit-5', citySlug: 'faridabad', cityName: 'Faridabad', search: 'NIT' },
+];
+
+export const LOCALITY_SLUG_MAP: Record<string, LocalityInfo> = Object.fromEntries(
+  POPULAR_LOCALITIES.map((loc) => [loc.slug, loc])
+);
+
 /** Resolve slug to proper Display City Name, or null if unknown */
 export function getCityFromSlug(slug: string): string | null {
   if (!slug) return null;
