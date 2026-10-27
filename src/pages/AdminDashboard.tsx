@@ -445,6 +445,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [blogStep, setBlogStep] = useState<1 | 2>(1);
   const [showBlogSidebar, setShowBlogSidebar] = useState<boolean>(true);
   const [blogPreviewOpen, setBlogPreviewOpen] = useState<boolean>(false);
+  const [blogFilterStatus, setBlogFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [blogForm, setBlogForm] = useState<BlogFormState>({
     id: 0,
     title: '',
@@ -1243,6 +1244,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const inputElement = e.target;
     setBlogImageUploading(true);
     try {
       const res = await uploadBlogImage(file);
@@ -1254,11 +1256,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           featured_image: file
         }));
         showToast('Thumbnail image uploaded successfully!');
+      } else {
+        showToast('Could not upload image', 'error');
       }
     } catch (err) {
       showToast(getApiErrorMessage(err) || 'Failed to upload image', 'error');
     } finally {
       setBlogImageUploading(false);
+      if (inputElement) inputElement.value = '';
       if (blogFileInputRef.current) blogFileInputRef.current.value = '';
     }
   };
@@ -1336,10 +1341,25 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     }
   };
 
-  const handleSaveBlog = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveBlog = async (e?: React.FormEvent, targetStatus?: 'published' | 'draft') => {
+    if (e && e.preventDefault) e.preventDefault();
     setBlogSaving(true);
     try {
+      let finalImageUrl = blogForm.image_url;
+      // If a file was picked and not yet uploaded to server
+      if (blogForm.featured_image instanceof File) {
+        try {
+          const uploadRes = await uploadBlogImage(blogForm.featured_image);
+          if (uploadRes.data?.status === 'success' && uploadRes.data?.data?.url) {
+            finalImageUrl = uploadRes.data.data.url;
+          }
+        } catch (uploadErr) {
+          console.error('Error uploading image before save:', uploadErr);
+        }
+      }
+
+      const finalStatus = targetStatus || blogForm.status || 'published';
+
       await saveAdminBlog({
         id: blogForm.id || undefined,
         title: blogForm.title,
@@ -1347,11 +1367,16 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         content: blogForm.content,
         permalink: blogForm.permalink || undefined,
         tags: blogForm.tags || undefined,
-        status: blogForm.status,
-        image_url: blogForm.image_url || undefined,
+        status: finalStatus,
+        image_url: finalImageUrl || undefined,
         meta_description: blogForm.meta_description || undefined
       });
-      showToast(blogForm.id ? 'Blog updated successfully!' : 'Blog created successfully!');
+      setBlogForm(prev => ({ ...prev, status: finalStatus, image_url: finalImageUrl }));
+      showToast(
+        finalStatus === 'draft'
+          ? (blogForm.id ? 'Draft updated successfully!' : 'Blog saved as Draft!')
+          : (blogForm.id ? 'Blog updated successfully!' : 'Blog published successfully!')
+      );
       setBlogModalOpen(false);
       fetchBlogs();
     } catch (err: unknown) {
@@ -3596,6 +3621,58 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </div>
 
             <div style={{ background: '#fff', borderRadius: '16px', padding: '24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setBlogFilterStatus('all')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: blogFilterStatus === 'all' ? '#0c6253' : '#f1f5f9',
+                    color: blogFilterStatus === 'all' ? '#fff' : '#64748b'
+                  }}
+                >
+                  All ({adminBlogs.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlogFilterStatus('published')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: blogFilterStatus === 'published' ? '#15803d' : '#f1f5f9',
+                    color: blogFilterStatus === 'published' ? '#fff' : '#64748b'
+                  }}
+                >
+                  Published ({adminBlogs.filter(b => b.status === 'published' || b.status === 'publish').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlogFilterStatus('draft')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: blogFilterStatus === 'draft' ? '#b45309' : '#f1f5f9',
+                    color: blogFilterStatus === 'draft' ? '#fff' : '#64748b'
+                  }}
+                >
+                  Drafts ({adminBlogs.filter(b => b.status !== 'published' && b.status !== 'publish').length})
+                </button>
+              </div>
+
               {blogsLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
                   <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '10px' }}></i>
@@ -3620,7 +3697,13 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {adminBlogs.map(blog => {
+                      {adminBlogs
+                        .filter(b => {
+                          if (blogFilterStatus === 'published') return b.status === 'published' || b.status === 'publish';
+                          if (blogFilterStatus === 'draft') return b.status !== 'published' && b.status !== 'publish';
+                          return true;
+                        })
+                        .map(blog => {
                         const dateStr = blog.created_at
                           ? new Date(blog.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                           : '-';
@@ -5075,13 +5158,21 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                   ) : null}
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button type="button" onClick={() => setBlogModalOpen(false)} style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', background: '#fff', cursor: 'pointer', fontSize: '14px', color: '#374151', fontWeight: 600 }}>Cancel</button>
+                  <button
+                    type="button"
+                    disabled={blogSaving || !blogForm.title.trim()}
+                    onClick={() => handleSaveBlog(undefined, 'draft')}
+                    style={{ flex: 1, padding: '12px', border: '1.5px solid #cbd5e1', borderRadius: '10px', background: '#f8fafc', color: (blogSaving || !blogForm.title.trim()) ? '#9ca3af' : '#475569', cursor: (blogSaving || !blogForm.title.trim()) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <i className="far fa-save"></i> Save as Draft
+                  </button>
                   <button
                     type="button"
                     disabled={!blogForm.title.trim()}
                     onClick={() => setBlogStep(2)}
-                    style={{ flex: 2, padding: '12px', border: 'none', borderRadius: '10px', background: blogForm.title.trim() ? '#0c6253' : '#d1d5db', color: '#fff', cursor: blogForm.title.trim() ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    style={{ flex: 1.5, padding: '12px', border: 'none', borderRadius: '10px', background: blogForm.title.trim() ? '#0c6253' : '#d1d5db', color: '#fff', cursor: blogForm.title.trim() ? 'pointer' : 'not-allowed', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     Continue to Editor <i className="fas fa-arrow-right"></i>
                   </button>
@@ -5154,11 +5245,59 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                       <i className="fas fa-caret-down" style={{ fontSize: '10px', color: '#5f6368', marginLeft: '2px' }}></i>
                     </button>
 
+                    {/* Status badge */}
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        background: (blogForm.status === 'publish' || blogForm.status === 'published') ? '#dcfce7' : '#fef3c7',
+                        color: (blogForm.status === 'publish' || blogForm.status === 'published') ? '#15803d' : '#b45309',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <i className={`fas ${(blogForm.status === 'publish' || blogForm.status === 'published') ? 'fa-check-circle' : 'fa-clock'}`} style={{ fontSize: '10px' }}></i>
+                      <span>{(blogForm.status === 'publish' || blogForm.status === 'published') ? 'Published' : 'Draft'}</span>
+                    </span>
+
+                    {/* Save as Draft button */}
+                    <button
+                      type="button"
+                      disabled={blogSaving || !blogForm.title.trim()}
+                      onClick={() => handleSaveBlog(undefined, 'draft')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 14px',
+                        background: '#ffffff',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px',
+                        color: (blogSaving || !blogForm.title.trim()) ? '#9ca3af' : '#374151',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: (blogSaving || !blogForm.title.trim()) ? 'not-allowed' : 'pointer',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!blogSaving && blogForm.title.trim()) e.currentTarget.style.background = '#f3f4f6';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#ffffff';
+                      }}
+                    >
+                      <i className="far fa-save" style={{ fontSize: '13px', color: '#6b7280' }}></i>
+                      <span>Save Draft</span>
+                    </button>
+
                     {/* Orange Blogger Publish button */}
                     <button
                       type="button"
                       disabled={blogSaving || !blogForm.title.trim()}
-                      onClick={handleSaveBlog as any}
+                      onClick={() => handleSaveBlog(undefined, 'published')}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -5177,12 +5316,12 @@ TDS (${slipTdsRate}%): -₹${tdsAmount.toLocaleString('en-IN')}
                     >
                       {blogSaving ? (
                         <>
-                          <i className="fas fa-spinner fa-spin"></i> Publishing...
+                          <i className="fas fa-spinner fa-spin"></i> Saving...
                         </>
                       ) : (
                         <>
                           <i className="fas fa-paper-plane" style={{ fontSize: '11px' }}></i>
-                          <span>{blogForm.id ? 'Update' : 'Publish'}</span>
+                          <span>{blogForm.id && (blogForm.status === 'published' || blogForm.status === 'publish') ? 'Update' : 'Publish'}</span>
                         </>
                       )}
                     </button>

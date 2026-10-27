@@ -40,7 +40,6 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [contactLoading, setContactLoading] = useState(false);
-  const [similarListings, setSimilarListings] = useState<Listing[]>([]);
 
   // Old links ended in the associate code, which every listing from that associate
   // shares, so pick the listing whose title matches the slug in the URL.
@@ -151,16 +150,6 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
       image: listing.images?.[0] ? getImageUrl(listing.images[0].file_path) : undefined,
       noindex: isBuyer || isThinBusiness,
     });
-
-    const city = getListingCity(listing);
-    if (city) {
-      api.get<ApiResponse<Listing[]>>('/api/v1/listings', {
-        params: { city, status: 'approved', limit: 8 }
-      }).then((res) => {
-        const candidates = Array.isArray(res.data?.data) ? res.data.data : [];
-        setSimilarListings(candidates.filter((l) => Number(l.id) !== Number(listing.id)).slice(0, 6));
-      }).catch(() => {});
-    }
   }, [listing]);
 
   // Sync wishlist status
@@ -648,73 +637,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           </aside>
         </div>
 
-        {/* B3: Similar Listings Block (max 6 approved) */}
-        {similarListings.length > 0 && (
-          <div className="ld-similar-block" style={{ marginTop: '48px', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                Similar Properties in {getListingCity(listing) || 'Area'}
-              </h2>
-              {getListingCity(listing) && (
-                <a
-                  href={`/properties/${slugify(getListingCity(listing))}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate('properties-city', slugify(getListingCity(listing)));
-                  }}
-                  style={{ color: '#0c6253', fontSize: '14px', fontWeight: 600, textDecoration: 'none' }}
-                >
-                  View all in {getListingCity(listing)} →
-                </a>
-              )}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
-              {similarListings.map((sim) => {
-                const simImg = sim.images?.[0] ? getImageUrl(sim.images[0].file_path) : '/no-image.svg';
-                const simPrice = Number(sim.price) > 0 ? formatListingPrice(sim.price) : 'Contact for Price';
-                return (
-                  <div
-                    key={sim.id}
-                    onClick={() => onNavigate('listing', sim.id)}
-                    style={{
-                      background: '#fff',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      cursor: 'pointer',
-                      border: '1px solid #f1f5f9',
-                      transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-                    }}
-                  >
-                    <div style={{ height: '150px', background: '#f8fafc', overflow: 'hidden' }}>
-                      <img
-                        src={simImg}
-                        alt={sim.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = '/no-image.svg';
-                        }}
-                      />
-                    </div>
-                    <div style={{ padding: '14px' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#0c6253', marginBottom: '4px' }}>
-                        {simPrice}
-                      </div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b', lineHeight: 1.3, marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {sim.title}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>
-                        <i className="fas fa-map-marker-alt" style={{ marginRight: '4px' }}></i>
-                        {sim.location}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+
       </div>
 
       <ContactRevealModal

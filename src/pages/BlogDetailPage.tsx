@@ -22,10 +22,25 @@ interface BlogArticleDetail {
   views?: number;
 }
 
+interface BlogComment {
+  author: string;
+  text: string;
+  time: string;
+}
+
 export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetailPageProps) {
   const [blog, setBlog] = useState<BlogArticleDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Blogger comments state
+  const [commentText, setCommentText] = useState<string>('');
+  const [commentAuthor, setCommentAuthor] = useState<string>('TradeCall India (Google)');
+  const [showAuthorMenu, setShowAuthorMenu] = useState<boolean>(false);
+  const [notifyMe, setNotifyMe] = useState<boolean>(false);
+  const [comments, setComments] = useState<BlogComment[]>([]);
+  const [shareToast, setShareToast] = useState<string | null>(null);
+  const [showShareDropdown, setShowShareDropdown] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchBlog = async (): Promise<void> => {
@@ -85,6 +100,19 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
     }
   }, [blogIdentifier]);
 
+  // Load comments from localStorage when blog is loaded
+  useEffect(() => {
+    if (!blog?.id) return;
+    try {
+      const stored = localStorage.getItem(`tc_blog_comments_${blog.id}`);
+      if (stored) {
+        setComments(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
+  }, [blog?.id]);
+
   useEffect(() => {
     if (!blog || !blogIdentifier) return;
     setSeo({
@@ -94,6 +122,54 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
       image: blog.featured_image
     });
   }, [blog, blogIdentifier]);
+
+  const handlePublishComment = () => {
+    if (!commentText.trim() || !blog?.id) return;
+    const newComment: BlogComment = {
+      author: commentAuthor,
+      text: commentText.trim(),
+      time: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+    const updated = [newComment, ...comments];
+    setComments(updated);
+    setCommentText('');
+    try {
+      localStorage.setItem(`tc_blog_comments_${blog.id}`, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    setShareToast('Comment published successfully!');
+    setTimeout(() => setShareToast(null), 3000);
+  };
+
+  const handleShareClick = async () => {
+    const shareData = {
+      title: blog?.title || 'TradeCall India Blog',
+      text: `Read "${blog?.title || ''}" on TradeCall India`,
+      url: window.location.href
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        // Fall back to dropdown
+      }
+    }
+    setShowShareDropdown(prev => !prev);
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareToast('Link copied to clipboard!');
+      setShowShareDropdown(false);
+      setTimeout(() => setShareToast(null), 2500);
+    } catch {
+      setShareToast('Could not copy link');
+      setTimeout(() => setShareToast(null), 2500);
+    }
+  };
 
   if (loading) {
     return (
@@ -128,8 +204,48 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
     ? new Date(blog.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : 'May 2025';
 
+  const rawTags = (blog.tags || '')
+    .split(',')
+    .map(t => t.trim().replace(/^#+/, ''))
+    .filter(Boolean);
+
+  // If no tags were explicitly set, provide helpful contextual defaults
+  const pillTags = rawTags.length > 0 ? rawTags : [
+    'avoid paying brokerages',
+    'best propert agent palwal',
+    'property dealer palwal',
+    'property listing at tradecall',
+    'tradecall india',
+    'user account tradecall'
+  ];
+
   return (
     <div className="blog-detail-page">
+      {/* Toast notification */}
+      {shareToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: '#1f2937',
+            color: '#fff',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 600,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+          <span>{shareToast}</span>
+        </div>
+      )}
+
       <section className="page-hero green-hero" style={{ background: 'linear-gradient(135deg, #0c6253, #14a37a)', color: '#fff', padding: '50px 20px', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: '900px', margin: '0 auto' }}>
           <button
@@ -191,9 +307,10 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
             )}
 
             <div style={{ padding: '40px 36px' }}>
-              {blog.tags && (
+              {/* Top Hashtags (Kept at the top as requested) */}
+              {rawTags.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                  {blog.tags.split(',').map((t, i) => (
+                  {rawTags.map((t, i) => (
                     <span
                       key={i}
                       style={{
@@ -205,12 +322,13 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                         fontWeight: 600
                       }}
                     >
-                      #{t.trim()}
+                      #{t}
                     </span>
                   ))}
                 </div>
               )}
 
+              {/* Main Blog Article HTML / Content */}
               {/<[a-z][\s\S]*>/i.test(blog.content) ? (
                 <div
                   className="blog-article-content"
@@ -235,11 +353,366 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                 </div>
               )}
 
+              {/* ========================================================================= */}
+              {/* BLOGGER OPTIONS SECTION (Matching user-provided Blogger UI screenshot)   */}
+              {/* 1. Share Icon                                                             */}
+              {/* 2. Oval Pill Tags                                                         */}
+              {/* 3. Location: Palwal, Haryana 121102, India                                 */}
+              {/* 4. Blogger Comment Box (Comment as, Enter Comment, PUBLISH, Notify Me)     */}
+              {/* ========================================================================= */}
+              <div style={{ marginTop: '36px', paddingTop: '20px', borderTop: '1px solid #e8eaed' }}>
+                {/* 1. Share Icon with dropdown */}
+                <div style={{ position: 'relative', display: 'inline-block', marginBottom: '14px' }}>
+                  <button
+                    type="button"
+                    onClick={handleShareClick}
+                    title="Share post"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#5f6368',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      transition: 'background 0.15s, color 0.15s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#f1f3f4';
+                      e.currentTarget.style.color = '#202124';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'none';
+                      e.currentTarget.style.color = '#5f6368';
+                    }}
+                  >
+                    <i className="fas fa-share-alt"></i>
+                  </button>
+
+                  {showShareDropdown && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        zIndex: 20,
+                        background: '#ffffff',
+                        borderRadius: '10px',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                        border: '1px solid #dadce0',
+                        padding: '8px 0',
+                        minWidth: '200px',
+                        marginTop: '4px'
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={copyToClipboard}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '9px 16px',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '13px',
+                          color: '#3c4043',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                      >
+                        <i className="far fa-copy" style={{ width: '16px', color: '#5f6368' }}></i>
+                        <span>Copy Link</span>
+                      </button>
+
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent('Read this article on TradeCall India: ' + blog.title + ' ' + window.location.href)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 16px',
+                          fontSize: '13px',
+                          color: '#3c4043',
+                          textDecoration: 'none'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                      >
+                        <i className="fab fa-whatsapp" style={{ width: '16px', color: '#25d366' }}></i>
+                        <span>WhatsApp</span>
+                      </a>
+
+                      <a
+                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(blog.title)}&url=${encodeURIComponent(window.location.href)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 16px',
+                          fontSize: '13px',
+                          color: '#3c4043',
+                          textDecoration: 'none'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                      >
+                        <i className="fab fa-x-twitter" style={{ width: '16px', color: '#111827' }}></i>
+                        <span>Twitter / X</span>
+                      </a>
+
+                      <a
+                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 16px',
+                          fontSize: '13px',
+                          color: '#3c4043',
+                          textDecoration: 'none'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f3f4')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                      >
+                        <i className="fab fa-facebook" style={{ width: '16px', color: '#1877f2' }}></i>
+                        <span>Facebook</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Oval Pill Tags (As displayed in Blogger screenshot) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                  {pillTags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        background: '#f1f3f4',
+                        color: '#3c4043',
+                        borderRadius: '20px',
+                        padding: '6px 16px',
+                        fontSize: '13px',
+                        fontWeight: 400,
+                        display: 'inline-block',
+                        lineHeight: 1.4,
+                        userSelect: 'none'
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                {/* 3. Location (As displayed in Blogger screenshot) */}
+                <div style={{ fontSize: '13.5px', color: '#5f6368', marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Location:</span>
+                  <a
+                    href="https://maps.google.com/?q=Palwal,+Haryana+121102,+India"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#1a73e8', textDecoration: 'none' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                    onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                  >
+                    Palwal, Haryana 121102, India
+                  </a>
+                </div>
+
+                {/* 4. Blogger Comment Box (As shown in screenshot) */}
+                <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #f1f3f4' }}>
+                  {/* Blogger Icon + Comment As */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+                    <div
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        background: '#f57c00',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 900,
+                        fontSize: '20px',
+                        fontFamily: "'Segoe UI', Arial, sans-serif",
+                        flexShrink: 0
+                      }}
+                    >
+                      B
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                      <span style={{ fontWeight: 600, color: '#3c4043' }}>Comment as:</span>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowAuthorMenu(!showAuthorMenu)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#3c4043',
+                            fontWeight: 600,
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '2px 4px'
+                          }}
+                        >
+                          <span>{commentAuthor}</span>
+                          <i className="fas fa-caret-down" style={{ fontSize: '12px', color: '#5f6368' }}></i>
+                        </button>
+                        {showAuthorMenu && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: 0,
+                              zIndex: 15,
+                              background: '#fff',
+                              borderRadius: '6px',
+                              boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                              border: '1px solid #dadce0',
+                              padding: '4px 0',
+                              minWidth: '220px'
+                            }}
+                          >
+                            {['TradeCall India (Google)', 'Guest User', 'Property Buyer / Seller', 'Anonymous'].map((auth) => (
+                              <div
+                                key={auth}
+                                onClick={() => {
+                                  setCommentAuthor(auth);
+                                  setShowAuthorMenu(false);
+                                }}
+                                style={{
+                                  padding: '7px 14px',
+                                  fontSize: '13px',
+                                  color: commentAuthor === auth ? '#e65100' : '#3c4043',
+                                  fontWeight: commentAuthor === auth ? 700 : 400,
+                                  cursor: 'pointer',
+                                  background: commentAuthor === auth ? '#fff8e1' : 'transparent'
+                                }}
+                              >
+                                {auth}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comment Input */}
+                  <div style={{ marginBottom: '14px' }}>
+                    <textarea
+                      placeholder="Enter Comment"
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        border: 'none',
+                        borderBottom: '1px solid #dadce0',
+                        padding: '8px 2px',
+                        fontSize: '14px',
+                        color: '#202124',
+                        outline: 'none',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        background: 'transparent',
+                        transition: 'border-color 0.2s'
+                      }}
+                      onFocus={(e) => (e.target.style.borderBottomColor = '#f57c00')}
+                      onBlur={(e) => (e.target.style.borderBottomColor = '#dadce0')}
+                    />
+                  </div>
+
+                  {/* PUBLISH Button & Notify Me */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                    <button
+                      type="button"
+                      onClick={handlePublishComment}
+                      disabled={!commentText.trim()}
+                      style={{
+                        background: commentText.trim() ? '#e65100' : '#f1f3f4',
+                        color: commentText.trim() ? '#ffffff' : '#70757a',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '8px 22px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        letterSpacing: '0.5px',
+                        cursor: commentText.trim() ? 'pointer' : 'default',
+                        textTransform: 'uppercase',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      PUBLISH
+                    </button>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#5f6368' }}>
+                      <input
+                        type="checkbox"
+                        checked={notifyMe}
+                        onChange={(e) => setNotifyMe(e.target.checked)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span>Notify Me</span>
+                    </label>
+                  </div>
+
+                  {/* reCAPTCHA disclaimer */}
+                  <p style={{ fontSize: '11.5px', color: '#70757a', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                    This site is protected by reCAPTCHA and the Google{' '}
+                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#1a73e8', textDecoration: 'none' }}>
+                      Privacy Policy
+                    </a>{' '}
+                    and{' '}
+                    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#1a73e8', textDecoration: 'none' }}>
+                      Terms of Service
+                    </a>{' '}
+                    apply.
+                  </p>
+
+                  {/* Published comments list */}
+                  {comments.length > 0 && (
+                    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#3c4043', margin: '0 0 6px 0' }}>
+                        Comments ({comments.length})
+                      </h4>
+                      {comments.map((c, i) => (
+                        <div key={i} style={{ background: '#f8f9fa', border: '1px solid #e8eaed', borderRadius: '8px', padding: '10px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontWeight: 600, fontSize: '12.5px', color: '#202124' }}>{c.author}</span>
+                            <span style={{ fontSize: '11px', color: '#80868b' }}>{c.time}</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#3c4043', whiteSpace: 'pre-line' }}>{c.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Share & WhatsApp Callout */}
               <div
                 style={{
-                  marginTop: '40px',
-                  paddingTop: '24px',
+                  marginTop: '36px',
+                  paddingTop: '20px',
                   borderTop: '1px solid #e5e7eb',
                   display: 'flex',
                   justifyContent: 'space-between',

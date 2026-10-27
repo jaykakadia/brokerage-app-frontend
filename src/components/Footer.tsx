@@ -117,24 +117,11 @@ export default function Footer({ onNavigate }: FooterProps) {
         </div>
 
         <div className="footer-col">
-          <h4>Popular Localities</h4>
-          <ul>
-            <li><a href="/palwal/omaxe-city-phase-ii">Omaxe City Phase-II</a></li>
-            <li><a href="/palwal/village-mandkola">Village Mandkola</a></li>
-            <li><a href="/palwal/kailash-nagar">Kailash Nagar Palwal</a></li>
-            <li><a href="/palwal/panchwati-colony">Panchwati Colony</a></li>
-            <li><a href="/faridabad/sector-85">Sector 85 Faridabad</a></li>
-            <li><a href="/faridabad/nit-5">NIT-5 Faridabad</a></li>
-          </ul>
-        </div>
-
-        <div className="footer-col">
           <h4>Quick Links</h4>
           <ul>
             <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>Home</a></li>
             <li><a href="/business-directory" onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}>Business Directory</a></li>
             <li><a href="/blog" onClick={(e) => { e.preventDefault(); onNavigate('blog'); }}>Buyer Guides & Blog</a></li>
-            <li><a href="/listed-on-tradecall.svg" target="_blank" rel="noopener noreferrer" title="Get TradeCall Partner Badge">Listed on TradeCall Badge</a></li>
             <li><a href="/advertise" onClick={(e) => { e.preventDefault(); onNavigate('advertise'); }}>Advertise with Us</a></li>
             <li><a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }}>About Us</a></li>
             <li><a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}>Contact Us</a></li>
