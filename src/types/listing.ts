@@ -98,6 +98,8 @@ export interface ListingStatsResponse {
   cities_covered: number;
   registered_users: number;
   new_today?: number;
+  active_businesses?: number;
+  total_listings?: number;
   city_counts?: Array<{ name: string; count: number }>;
 }
 

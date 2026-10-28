@@ -872,12 +872,12 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     }
   }, [activeCity, loading, cityCounts, cityFaqs]);
 
-  // Until the listings load, show the site-wide stats
-  const listingsLoaded = !loading && !error;
-  const activeListingsCount = listingsLoaded ? listings.length : (stats?.active_listings ?? 0);
-  const activeUsersCount = stats && stats.registered_users > 0 ? `${stats.registered_users}+` : '70+';
-  const citiesCoveredCount = listingsLoaded ? cityCounts.length : (stats?.cities_covered ?? 0);
-  const newCount = listingsLoaded ? newListingsCount : 0;
+  // Active Listings count: When user is filtering (search, city, type), show the filtered total count;
+  // otherwise show the full database active property listings count from stats (e.g. 275)
+  const activeListingsCount = hasActiveFilters ? totalListings : (stats?.active_listings ?? totalListings);
+  const activeUsersCount = stats && stats.registered_users > 0 ? `${stats.registered_users}+` : '147+';
+  const citiesCoveredCount = hasActiveFilters ? cityCounts.length : (stats?.cities_covered ?? (cityCounts.length > 0 ? cityCounts.length : 27));
+  const newCount = stats?.new_today !== undefined ? stats.new_today : newListingsCount;
 
   // Waits a frame so the filtered list has rendered before scrolling to it
   const scrollToSection = (id: string): void => {

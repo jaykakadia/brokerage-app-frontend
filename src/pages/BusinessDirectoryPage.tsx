@@ -182,7 +182,9 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await api.get<{ status: string; data: Listing[] }>('/api/v1/listings', { params: { status: 'approved' } });
+        const res = await api.get<{ status: string; data: Listing[]; total?: number }>('/api/v1/listings', {
+          params: { status: 'approved', kind: 'business', limit: 1000 }
+        });
         setBusinesses((res.data?.data || []).filter(isBusinessListing));
       } catch (err: unknown) {
         setError(getApiErrorMessage(err, 'Unable to load businesses right now. Please try again.'));
@@ -220,8 +222,8 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return Array.from(byKey.values()).sort((a, b) => b.count - a.count);
   }, [businesses]);
 
-  const activeBusinessesCount = businesses.length;
-  const activeUsersCount = stats?.registered_users ? `${stats.registered_users}+` : '73+';
+  const activeBusinessesCount = stats?.active_businesses ?? businesses.length;
+  const activeUsersCount = stats?.registered_users ? `${stats.registered_users}+` : '147+';
   const citiesCoveredCount = cityCounts.length;
   const newBusinessesCount = useMemo(() => businesses.filter(isNewListing).length, [businesses]);
 
