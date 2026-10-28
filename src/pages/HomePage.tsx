@@ -152,7 +152,6 @@ export const DEFAULT_FEATURED_LISTINGS: Listing[] = [
 
 const LISTINGS_PER_PAGE = 12;
 // Featured cards visible at once on desktop (matches the Recent Listings row)
-const FEATURED_PER_VIEW = 4;
 
 function getPaginationItems(current: number, total: number): Array<number | '...'> {
   if (total <= 7) {
@@ -207,6 +206,10 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
   const [withTransition, setWithTransition] = useState<boolean>(true);
   const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
   const touchStartX = useRef<number | null>(null);
+  const [bizCarouselIndex, setBizCarouselIndex] = useState<number>(0);
+  const [bizWithTransition, setBizWithTransition] = useState<boolean>(true);
+  const [isBizCarouselHovered, setIsBizCarouselHovered] = useState<boolean>(false);
+  const bizTouchStartX = useRef<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
@@ -704,7 +707,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
     // 2. Featured businesses for TC Favourite section (cached, fast)
     api.get<{ status: string; data: Listing[] }>('/api/v1/listings', {
-      params: { status: 'approved', is_featured: true, limit: 6, kind: 'business' }
+      params: { status: 'approved', is_featured: true, limit: 20, kind: 'business' }
     }).then((res) => {
       if (res.data?.status === 'success' && Array.isArray(res.data.data)) {
         setFeaturedBusinesses(res.data.data);
@@ -884,8 +887,8 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }));
   };
 
-  // Featured cards slide only when there are more than fit in one row; otherwise they sit still in one row
-  const featuredSlides = featuredListings.length > FEATURED_PER_VIEW;
+  // Featured cards slide when there is more than 1 card; circular carousel rotates seamlessly
+  const featuredSlides = featuredListings.length > 1;
 
   // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
   const circularListings = useMemo(() => {
@@ -950,6 +953,68 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
       slideCarousel(diff > 0 ? 1 : -1);
     }
     touchStartX.current = null;
+  };
+
+  // Favourite businesses carousel
+  const featuredBizSlides = featuredBusinesses.length > 1;
+
+  const circularBusinesses = useMemo(() => {
+    if (!featuredBizSlides) return featuredBusinesses;
+    return [...featuredBusinesses, ...featuredBusinesses, ...featuredBusinesses];
+  }, [featuredBusinesses, featuredBizSlides]);
+
+  useEffect(() => {
+    setBizWithTransition(false);
+    setBizCarouselIndex(featuredBizSlides ? featuredBusinesses.length : 0);
+  }, [featuredBusinesses.length, featuredBizSlides]);
+
+  useEffect(() => {
+    const n = featuredBusinesses.length;
+    if (!featuredBizSlides || (bizCarouselIndex >= n && bizCarouselIndex < 2 * n)) return;
+    const id = window.setTimeout(() => {
+      setBizWithTransition(false);
+      setBizCarouselIndex((prev) => (((prev - n) % n) + n) % n + n);
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [bizCarouselIndex, featuredBusinesses.length, featuredBizSlides]);
+
+  useEffect(() => {
+    if (!bizWithTransition) {
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setBizWithTransition(true);
+        });
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [bizWithTransition]);
+
+  const slideBizCarousel = (dir: number): void => {
+    setBizWithTransition(true);
+    setBizCarouselIndex((prev) => prev + dir);
+  };
+
+  useEffect(() => {
+    if (!featuredBizSlides || isBizCarouselHovered || hasActiveFilters) return;
+    const interval = setInterval(() => {
+      if (document.hidden) return;
+      setBizWithTransition(true);
+      setBizCarouselIndex((prev) => prev + 1);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [featuredBizSlides, isBizCarouselHovered, hasActiveFilters]);
+
+  const handleBizTouchStart = (e: React.TouchEvent): void => {
+    bizTouchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleBizTouchEnd = (e: React.TouchEvent): void => {
+    if (bizTouchStartX.current === null) return;
+    const diff = bizTouchStartX.current - e.changedTouches[0].clientX;
+    if (featuredBizSlides && Math.abs(diff) > 40) {
+      slideBizCarousel(diff > 0 ? 1 : -1);
+    }
+    bizTouchStartX.current = null;
   };
 
   const handleClearFilters = (): void => {
@@ -1152,7 +1217,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     );
   };
 
-  const renderBusinessCard = (business: Listing) => {
+  const renderBusinessCard = (business: Listing, keyOverride?: string) => {
     const imgSrc = getFirstImageUrl(business);
     const categories = getBusinessCategories(business);
     const categoryName: string = categories[0] || (typeof business.form_data?.categoryName === 'string' ? business.form_data.categoryName : '') || 'Business';
@@ -1162,8 +1227,8 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
     return (
       <div
-        key={`business-${business.id}`}
-        className="listing-card business-featured-card"
+        key={keyOverride || `business-${business.id}`}
+        className="listing-card featured-card business-featured-card"
       >
         <a
           href={businessUrl}
@@ -1847,17 +1912,82 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
               </h2>
               <p>Handpicked &amp; featured local businesses on TradeCall</p>
             </div>
-            <button
-              type="button"
-              className="btn-outline-green"
-              onClick={() => onNavigate('business-directory')}
-              style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              Explore Business Directory <i className="fas fa-arrow-right"></i>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {featuredBizSlides && (
+                <div className="carousel-nav-header">
+                  <button
+                    type="button"
+                    className="carousel-nav-btn prev"
+                    onClick={() => slideBizCarousel(-1)}
+                    aria-label="Previous favourite businesses"
+                    title="Previous"
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className="carousel-nav-btn next"
+                    onClick={() => slideBizCarousel(1)}
+                    aria-label="Next favourite businesses"
+                    title="Next"
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                className="btn-outline-green"
+                onClick={() => onNavigate('business-directory')}
+                style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                Explore Business Directory <i className="fas fa-arrow-right"></i>
+              </button>
+            </div>
           </div>
-          <div className="recent-grid">
-            {featuredBusinesses.slice(0, 4).map((business) => renderBusinessCard(business))}
+          <div
+            className="carousel-wrapper"
+            onMouseEnter={() => setIsBizCarouselHovered(true)}
+            onMouseLeave={() => setIsBizCarouselHovered(false)}
+            onTouchStart={handleBizTouchStart}
+            onTouchEnd={handleBizTouchEnd}
+          >
+            {featuredBizSlides && (
+              <button
+                type="button"
+                className="carousel-btn prev"
+                onClick={() => slideBizCarousel(-1)}
+                aria-label="Previous favourite businesses"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+            )}
+
+            <div className="carousel-viewport">
+              <div
+                className={`carousel-track ${featuredBizSlides ? '' : 'static'}`}
+                id="bizCarouselTrack"
+                style={featuredBizSlides ? {
+                  transform: `translateX(calc(${-bizCarouselIndex} * (100% + 20px) / var(--per-view)))`,
+                  transition: bizWithTransition ? 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)' : 'none'
+                } : undefined}
+              >
+                {circularBusinesses.map((b, index) =>
+                  renderBusinessCard(b, `biz-featured-${index}`)
+                )}
+              </div>
+            </div>
+
+            {featuredBizSlides && (
+              <button
+                type="button"
+                className="carousel-btn next"
+                onClick={() => slideBizCarousel(1)}
+                aria-label="Next favourite businesses"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            )}
           </div>
         </div>
       </section>

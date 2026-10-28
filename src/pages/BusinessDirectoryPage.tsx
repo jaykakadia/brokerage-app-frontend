@@ -29,7 +29,6 @@ function businessInfo(listing: Listing): BusinessInfo {
 }
 
 const BUSINESSES_PER_PAGE = 8; // 2 rows of 4 cards on desktop
-const FEATURED_PER_VIEW = 4;
 
 function getPaginationItems(current: number, total: number): Array<number | '...'> {
   if (total <= 7) {
@@ -355,7 +354,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
 
   const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
 
-  const featuredSlides = featuredBusinesses.length > FEATURED_PER_VIEW;
+  const featuredSlides = featuredBusinesses.length > 1;
 
   // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
   const circularBusinesses = useMemo(() => {
