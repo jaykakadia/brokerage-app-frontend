@@ -338,7 +338,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     ? new Date(listing.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
         .replace(/^(\w+) (\d+), (\d+)$/, '$2 $1 $3')
     : '';
-  const whatsappDigits = (contactData?.owner_whatsapp || contactData?.owner_phone || '').replace(/\D/g, '').slice(-10);
+  const whatsappDigits = (contactData?.owner_whatsapp || contactData?.owner_phone || (isBusiness ? getBusinessMobile(listing) : '')).replace(/\D/g, '').slice(-10);
 
   return (
     <section className="ld-wrap">
@@ -550,6 +550,21 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   Owner / Contact: <strong>{listing.owner_name}</strong>
                 </div>
                 {listing.owner_role && <div className="ld-meta">Role: <strong>{listing.owner_role}</strong></div>}
+                {getBusinessMobile(listing) && (
+                  <div className="ld-meta">
+                    Phone: <strong><a href={`tel:${getBusinessMobile(listing)}`} style={{ color: 'inherit', textDecoration: 'none' }}>{getBusinessMobile(listing)}</a></strong>
+                  </div>
+                )}
+                {contactData?.owner_email && (
+                  <div className="ld-meta">
+                    Email: <strong><a href={`mailto:${contactData.owner_email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{contactData.owner_email}</a></strong>
+                  </div>
+                )}
+                {!contactData && !isOwner && (
+                  <div className="ld-meta" style={{ marginTop: '10px', fontSize: '13px', color: '#6b7280' }}>
+                    Email & other details are locked. Tap <strong>Contact</strong> to unlock (1 lead).
+                  </div>
+                )}
               </>
             ) : isOwner || contactData ? (
               <>
@@ -557,6 +572,16 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   Owner / Posted by: <strong>{contactData?.owner_name || listing.owner_name}</strong>
                 </div>
                 {listing.owner_role && <div className="ld-meta">Role: <strong>{listing.owner_role}</strong></div>}
+                {contactData?.owner_phone && (
+                  <div className="ld-meta">
+                    Phone: <strong><a href={`tel:${contactData.owner_phone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{contactData.owner_phone}</a></strong>
+                  </div>
+                )}
+                {contactData?.owner_email && (
+                  <div className="ld-meta">
+                    Email: <strong><a href={`mailto:${contactData.owner_email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{contactData.owner_email}</a></strong>
+                  </div>
+                )}
               </>
             ) : (
               <div className="ld-meta" style={{ marginTop: '10px' }}>
@@ -570,22 +595,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <i className="fas fa-user-check" style={{ color: '#0c6253', marginRight: '6px' }}></i>
                   This is your listing.
                 </div>
-              ) : isBusiness ? (
-                <div className="ld-unlocked-contact">
-                  {getBusinessMobile(listing) ? (
-                    <a className="btn-contact" href={`tel:${getBusinessMobile(listing)}`}>
-                      <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {getBusinessMobile(listing)}
-                    </a>
-                  ) : (
-                    <div className="ld-meta">Mobile not available</div>
-                  )}
-                </div>
               ) : contactData ? (
                 <div className="ld-unlocked-contact">
-                  {contactData.owner_phone ? (
+                  {(contactData.owner_phone || (isBusiness && getBusinessMobile(listing))) ? (
                     <>
-                      <a className="btn-contact" href={`tel:${contactData.owner_phone}`}>
-                        <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> {contactData.owner_phone}
+                      <a className="btn-contact" href={`tel:${contactData.owner_phone || getBusinessMobile(listing)}`}>
+                        <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {contactData.owner_phone || getBusinessMobile(listing)}
                       </a>
                       {whatsappDigits && (
                         <a
