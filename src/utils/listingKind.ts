@@ -46,6 +46,21 @@ export const getPrimaryBusinessCategory = (listing: Pick<Listing, 'form_data'> &
   return '';
 };
 
+/** Business mobile number (if available). */
+export const getBusinessMobile = (listing: Pick<Listing, 'form_data' | 'owner_phone'> & { mobile?: string | null }): string => {
+  if (typeof listing.mobile === 'string' && listing.mobile.trim()) {
+    return listing.mobile.trim();
+  }
+  const fdMobile = listing.form_data?.mobile;
+  if (typeof fdMobile === 'string' && fdMobile.trim()) {
+    return fdMobile.trim();
+  }
+  if (typeof listing.owner_phone === 'string' && listing.owner_phone.trim()) {
+    return listing.owner_phone.trim();
+  }
+  return '';
+};
+
 /**
  * Description to show on a listing page. Business listings save a summary block (categories, address,
  * contact…) as the description, which the page already shows elsewhere; only the owner's own text is shown.

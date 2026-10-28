@@ -6,7 +6,7 @@ import { formatListingPrice } from '../utils/formatters';
 import { getListingUniqueId, getListingUrl, isLegacyListingCode, slugify } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
-import { getBusinessCategories, getListingDescription, publicListingTitle, getListingCity } from '../utils/listingKind';
+import { getBusinessCategories, getBusinessMobile, getListingDescription, publicListingTitle, getListingCity } from '../utils/listingKind';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
@@ -544,7 +544,14 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
               <div className="ld-meta">Associate Code: <strong>{listing.reference_code}</strong></div>
             )}
 
-            {isOwner || contactData ? (
+            {isBusiness ? (
+              <>
+                <div className="ld-meta" style={{ marginTop: '10px' }}>
+                  Owner / Contact: <strong>{listing.owner_name}</strong>
+                </div>
+                {listing.owner_role && <div className="ld-meta">Role: <strong>{listing.owner_role}</strong></div>}
+              </>
+            ) : isOwner || contactData ? (
               <>
                 <div className="ld-meta" style={{ marginTop: '10px' }}>
                   Owner / Posted by: <strong>{contactData?.owner_name || listing.owner_name}</strong>
@@ -562,6 +569,16 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                 <div className="ld-meta" style={{ margin: 0 }}>
                   <i className="fas fa-user-check" style={{ color: '#0c6253', marginRight: '6px' }}></i>
                   This is your listing.
+                </div>
+              ) : isBusiness ? (
+                <div className="ld-unlocked-contact">
+                  {getBusinessMobile(listing) ? (
+                    <a className="btn-contact" href={`tel:${getBusinessMobile(listing)}`}>
+                      <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {getBusinessMobile(listing)}
+                    </a>
+                  ) : (
+                    <div className="ld-meta">Mobile not available</div>
+                  )}
                 </div>
               ) : contactData ? (
                 <div className="ld-unlocked-contact">

@@ -56,6 +56,7 @@ export interface Listing {
   owner_phone?: string | null;
   owner_email?: string | null;
   reference_code?: string | null;
+  mobile?: string | null;
   form_data?: ListingFormData | null;
   user_id: number;
   status: 'pending' | 'approved' | 'suspended' | 'sold' | 'rented' | 'deleted' | string;
