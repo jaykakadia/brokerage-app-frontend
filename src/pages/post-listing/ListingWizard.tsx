@@ -26,7 +26,7 @@ import type { Listing, Location, ApiResponse, RefCodeItem } from '../../types';
 const LISTING_ROLES: ListingRole[] = ['business', 'buyer', 'owner'];
 
 const listingRoleOf = (listing: Listing): ListingRole | '' => {
-  const kind = listing.form_data?.kind;
+  const kind = listing.form_data?.kind || listing.kind;
   return LISTING_ROLES.includes(kind as ListingRole) ? (kind as ListingRole) : '';
 };
 
