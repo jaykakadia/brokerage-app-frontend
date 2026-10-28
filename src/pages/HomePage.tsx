@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { getBusinessMobile, getPrimaryBusinessCategory, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { getPrimaryBusinessCategory, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import { setSeo } from '../utils/seo';
 
@@ -1326,34 +1326,22 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
           <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
             Contact: <strong>{business.owner_name}</strong>
           </div>
-          <div className="card-footer card-footer-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-            {getBusinessMobile(business) ? (
-              <a
-                href={`tel:${getBusinessMobile(business)}`}
-                className="btn-contact"
-                style={{ width: '100%', textAlign: 'center', justifyContent: 'center', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', padding: '8px 12px', fontSize: '13px', boxSizing: 'border-box' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {getBusinessMobile(business)}
-              </a>
-            ) : null}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%' }}>
-              <a
-                href={businessUrl}
-                className="btn-view"
-                onClick={(e) => handleListingLinkClick(e, business)}
-              >
-                <i className="fas fa-info-circle"></i> Details
-              </a>
-              <button
-                type="button"
-                className={`btn-wishlist ${isSaved ? 'active' : ''}`}
-                onClick={(e) => void handleToggleWishlist(e, business.id)}
-              >
-                <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
-                <span>Wishlist</span>
-              </button>
-            </div>
+          <div className="card-footer card-footer-actions">
+            <a
+              href={businessUrl}
+              className="btn-view"
+              onClick={(e) => handleListingLinkClick(e, business)}
+            >
+              <i className="fas fa-info-circle"></i> Details
+            </a>
+            <button
+              type="button"
+              className={`btn-wishlist ${isSaved ? 'active' : ''}`}
+              onClick={(e) => void handleToggleWishlist(e, business.id)}
+            >
+              <i className={isSaved ? 'fas fa-heart' : 'far fa-heart'}></i>
+              <span>Wishlist</span>
+            </button>
           </div>
         </div>
       </div>

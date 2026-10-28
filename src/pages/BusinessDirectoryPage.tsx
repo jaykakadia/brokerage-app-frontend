@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { cityNameVariants, getBusinessCategories, getBusinessMobile, getPrimaryBusinessCategory, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { cityNameVariants, getBusinessCategories, getPrimaryBusinessCategory, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { getListingUrl } from '../utils/url';
@@ -558,34 +558,22 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
           <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
             Owner: <strong>{b.owner_name || 'Business Owner'}</strong>{b.owner_role ? ` (${b.owner_role})` : ''}
           </div>
-          <div className="card-footer card-footer-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-            {getBusinessMobile(b) ? (
-              <a
-                href={`tel:${getBusinessMobile(b)}`}
-                className="btn-contact"
-                style={{ width: '100%', textAlign: 'center', justifyContent: 'center', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', padding: '8px 12px', fontSize: '13px', boxSizing: 'border-box' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {getBusinessMobile(b)}
-              </a>
-            ) : null}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%' }}>
-              <a
-                href={bUrl}
-                className="btn-view"
-                onClick={(e) => handleLinkClick(e, b)}
-              >
-                <i className="fas fa-info-circle"></i> Details
-              </a>
-              <button
-                type="button"
-                className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
-                onClick={() => void toggleSaved(b.id)}
-              >
-                <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
-                <span>Wishlist</span>
-              </button>
-            </div>
+          <div className="card-footer card-footer-actions">
+            <a
+              href={bUrl}
+              className="btn-view"
+              onClick={(e) => handleLinkClick(e, b)}
+            >
+              <i className="fas fa-info-circle"></i> Details
+            </a>
+            <button
+              type="button"
+              className={`btn-wishlist ${wishlistIds.has(b.id) ? 'active' : ''}`}
+              onClick={() => void toggleSaved(b.id)}
+            >
+              <i className={wishlistIds.has(b.id) ? 'fas fa-heart' : 'far fa-heart'}></i>
+              <span>Wishlist</span>
+            </button>
           </div>
         </div>
       </div>
