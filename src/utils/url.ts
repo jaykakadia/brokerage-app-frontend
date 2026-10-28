@@ -47,6 +47,47 @@ export function getListingUrl(listing: {
   return `/${city}/${title}/${uniqueId}`;
 }
 
+// Reserved root path segments that must never be treated as city slugs by pattern matchers
+const RESERVED_CITY_PREFIXES = new Set([
+  'blog',
+  'listing',
+  'property',
+  'properties',
+  'city',
+  'hi',
+  'home',
+  'advertise',
+  'business-directory',
+  'businesses',
+  'cities',
+  'all-cities',
+  'about',
+  'about-us',
+  'contact',
+  'contact-us',
+  'post-listing',
+  'post-free',
+  'account',
+  'admin',
+  'dashboard',
+  'faq',
+  'faqs',
+  'frequently-asked-questions',
+  'terms',
+  'terms-of-use',
+  'terms-of-use-tradecall-india',
+  'privacy',
+  'privacy-policy',
+  'login',
+  'signin',
+  'register',
+  'signup',
+  'admin-login',
+  'assets',
+  'api',
+  'uploads',
+]);
+
 export interface ParsedRoute {
   page: string;
   param: string | number | null;
@@ -152,21 +193,21 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
     return { page: 'properties-city', param: citySlug };
   }
 
-  // Sub-locality Hub: /:city/:locality (e.g. /palwal/omaxe-city-phase-ii)
-  if (parts.length === 2 && getCityFromSlug(parts[0].toLowerCase())) {
-    const citySlug = parts[0].toLowerCase();
-    const localitySlug = parts[1].toLowerCase();
-    return { page: 'properties-city', param: `${citySlug}/${localitySlug}` };
-  }
-
   // Blog detail: /blog/:slug
   if (parts.length === 2 && parts[0].toLowerCase() === 'blog') {
     return { page: 'blog-detail', param: parts[1] };
   }
 
-  // Legacy listing detail: /listing/:id
+  // Legacy listing detail: /listing/:id or /property/:id
   if (parts.length === 2 && (parts[0].toLowerCase() === 'listing' || parts[0].toLowerCase() === 'property')) {
     return { page: 'listing-detail', param: parts[1] };
+  }
+
+  // Sub-locality Hub: /:city/:locality (e.g. /palwal/omaxe-city-phase-ii)
+  if (parts.length === 2 && !RESERVED_CITY_PREFIXES.has(parts[0].toLowerCase()) && getCityFromSlug(parts[0].toLowerCase())) {
+    const citySlug = parts[0].toLowerCase();
+    const localitySlug = parts[1].toLowerCase();
+    return { page: 'properties-city', param: `${citySlug}/${localitySlug}` };
   }
 
   // Justdial style: /:city/:slug/:uniqueId (3 parts)
