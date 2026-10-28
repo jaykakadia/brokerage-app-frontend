@@ -19,6 +19,34 @@ export const getBusinessCategories = (listing: Pick<Listing, 'form_data'> & { ca
 };
 
 /**
+ * Primary category to display on business cards and badges (only the first category).
+ * The card API sends category_name as a comma-separated string; this splits on ',' and takes the first.
+ */
+export const getPrimaryBusinessCategory = (listing: Pick<Listing, 'form_data'> & { categories?: string[]; category_name?: string | null }): string => {
+  if (typeof listing.category_name === 'string' && listing.category_name.trim()) {
+    const first = listing.category_name.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  if (Array.isArray(listing.categories) && listing.categories.length) {
+    const first = listing.categories[0];
+    if (first) {
+      const split = first.split(',')[0]?.trim();
+      if (split) return split;
+    }
+  }
+  const data = listing.form_data || {};
+  const selected = Array.isArray(data.selectedCategories) ? data.selectedCategories as Array<{ name?: string }> : [];
+  if (selected.length && selected[0]?.name?.trim()) {
+    return selected[0].name.trim();
+  }
+  if (typeof data.categoryName === 'string' && data.categoryName.trim()) {
+    const first = data.categoryName.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return '';
+};
+
+/**
  * Description to show on a listing page. Business listings save a summary block (categories, address,
  * contact…) as the description, which the page already shows elsewhere; only the owner's own text is shown.
  */

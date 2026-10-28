@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import api, { getWishlist, toggleWishlist, getApiErrorMessage, getListingStats } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { getBusinessCategories, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { getPrimaryBusinessCategory, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import { setSeo } from '../utils/seo';
 
@@ -1219,8 +1219,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
   const renderBusinessCard = (business: Listing, keyOverride?: string) => {
     const imgSrc = getFirstImageUrl(business);
-    const categories = getBusinessCategories(business);
-    const categoryName: string = categories[0] || (typeof business.form_data?.categoryName === 'string' ? business.form_data.categoryName : '') || 'Business';
+    const categoryName: string = getPrimaryBusinessCategory(business) || 'Business';
     const isSaved = wishlistIds.has(business.id);
 
     const businessUrl = getListingUrl(business);

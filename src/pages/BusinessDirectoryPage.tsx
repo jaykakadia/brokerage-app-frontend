@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
-import { cityNameVariants, getBusinessCategories, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
+import { cityNameVariants, getBusinessCategories, getPrimaryBusinessCategory, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
 import { getListingUrl } from '../utils/url';
@@ -485,12 +485,11 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   };
 
   const renderBusinessCard = (b: Listing, isFeatured: boolean = false, keyPrefix: string = '') => {
-    const info = businessInfo(b);
     const bUrl = getListingUrl(b);
     const imgSrc = getFirstImageUrl(b);
     const title = publicListingTitle(b) || b.title;
     const priceStr = b.price && Number(b.price) > 0 ? formatListingPrice(b.price) : '';
-    const categoryLabel = info.categories[0] || 'Business';
+    const categoryLabel = getPrimaryBusinessCategory(b) || 'Business';
 
     return (
       <div key={keyPrefix ? `${keyPrefix}-${b.id}` : b.id} className={`listing-card ${isFeatured ? 'featured-card' : 'business-dir-card'}`}>
