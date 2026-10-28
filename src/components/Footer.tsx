@@ -44,7 +44,7 @@ export default function Footer({ onNavigate }: FooterProps) {
               <span className="logo-india">India</span>
             </span>
           </div>
-          <p>Palwal's trusted property and business directory serving the NCR/Haryana corridor.</p>
+          <p>A Trusted Property and Business Listing Company serving all over India.</p>
           <div className="footer-email" style={{ marginBottom: '8px' }}>
             <a href={`mailto:${links.support_email || 'support.tradecall@gmail.com'}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <i className="fas fa-envelope"></i> {links.support_email || 'support.tradecall@gmail.com'}

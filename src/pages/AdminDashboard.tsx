@@ -538,7 +538,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         params: {
           status: tab,
           search: query.trim() || undefined,
-          kind
+          kind,
+          limit: 1000
         }
       });
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
@@ -610,7 +611,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       const [res, live] = await Promise.all([
         api.get('/api/v1/locations'),
         // Live (approved) listings, counted per city for the state-wise list
-        api.get('/api/v1/listings', { params: { status: 'approved' } }).catch(() => null)
+        api.get('/api/v1/listings', { params: { status: 'approved', limit: 1000 } }).catch(() => null)
       ]);
       if (res.data?.status === 'success' && Array.isArray(res.data?.data)) {
         setLocations(res.data.data);
