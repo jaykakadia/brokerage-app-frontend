@@ -335,11 +335,27 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                   onClick={(e) => {
                     const target = (e.target as HTMLElement).closest('a');
                     if (!target) return;
-                    const href = target.getAttribute('href');
-                    if (href && href.startsWith('/') && !href.startsWith('//') && !target.getAttribute('target')) {
+                    const href = target.getAttribute('href')?.trim();
+                    if (!href) return;
+
+                    // Existing internal-link behavior
+                    if (href.startsWith('/') && !href.startsWith('//') && !target.getAttribute('target')) {
                       e.preventDefault();
                       window.history.pushState(null, '', href);
                       window.dispatchEvent(new PopStateEvent('popstate'));
+                      return;
+                    }
+
+                    // Render safety: if href has no scheme, does not start with / # ?,
+                    // and the first part looks like a domain (contains dot, no spaces), open as https:// in new tab
+                    const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href);
+                    const isRelativeOrAnchor = /^[/#?]/.test(href);
+                    if (!hasScheme && !isRelativeOrAnchor) {
+                      const firstPart = href.split('/')[0];
+                      if (firstPart.includes('.') && !/\s/.test(firstPart)) {
+                        e.preventDefault();
+                        window.open(`https://${href}`, '_blank', 'noopener,noreferrer');
+                      }
                     }
                   }}
                   dangerouslySetInnerHTML={{ __html: blog.content }}

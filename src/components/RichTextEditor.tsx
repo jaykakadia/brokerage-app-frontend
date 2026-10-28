@@ -316,10 +316,17 @@ export default function RichTextEditor({
   };
 
   const handleApplyLink = () => {
-    if (!linkUrl.trim()) return;
+    const rawUrl = linkUrl.trim();
+    if (!rawUrl) return;
+
+    // If the URL does not start with http://, https://, mailto:, tel:, #, or /, prepend https://
+    const cleanUrl = /^(https?:\/\/|mailto:|tel:|[/#])/i.test(rawUrl)
+      ? rawUrl
+      : `https://${rawUrl}`;
+
     const target = linkNewTab ? ' target="_blank" rel="noopener noreferrer"' : '';
-    const text = linkText.trim() || linkUrl.trim();
-    const linkHtml = `<a href="${linkUrl.trim()}"${target} style="color:#0c6253;text-decoration:underline;">${text}</a>`;
+    const text = linkText.trim() || rawUrl;
+    const linkHtml = `<a href="${cleanUrl}"${target} style="color:#0c6253;text-decoration:underline;">${text}</a>`;
     insertHtmlAtCaret(linkHtml);
     setLinkModalOpen(false);
   };
