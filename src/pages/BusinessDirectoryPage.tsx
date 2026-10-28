@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
+import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getBusinessCategories, getPrimaryBusinessCategory, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { POPULAR_BROWSE_CITIES } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
@@ -488,7 +488,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     const bUrl = getListingUrl(b);
     const imgSrc = getFirstImageUrl(b);
     const title = publicListingTitle(b) || b.title;
-    const priceStr = b.price && Number(b.price) > 0 ? formatListingPrice(b.price) : '';
     const categoryLabel = getPrimaryBusinessCategory(b) || 'Business';
 
     return (
@@ -546,12 +545,26 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
           </span>
         </div>
         <div className="card-body">
-          <div className="card-price">
-            {priceStr || categoryLabel}
-          </div>
-          <h3 className="card-title" title={title}>
+          <h3
+            className="card-price"
+            title={title}
+            style={{
+              margin: 0,
+              marginBottom: '6px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
             {title}
           </h3>
+          <div
+            className="card-title"
+            title={categoryLabel}
+            style={{ minHeight: 'auto', marginBottom: '6px' }}
+          >
+            {categoryLabel}
+          </div>
           <div className="card-location">
             <i className="fas fa-map-marker-alt"></i> <span>{b.location}</span>
           </div>

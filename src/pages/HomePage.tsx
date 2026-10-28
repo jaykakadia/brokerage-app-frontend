@@ -1301,24 +1301,28 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
         </div>
 
         <div className="card-body">
-          <div
+          <h3
             className="card-price"
+            title={business.title}
             style={{
-              fontSize: '14px',
-              color: '#0d7a5f',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              textTransform: 'capitalize'
+              margin: '0 0 6px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
             }}
           >
-            <i className="fas fa-store" style={{ fontSize: '12px', color: '#0d7a5f' }}></i>
+            {business.title}
+          </h3>
+          <div
+            className="card-title"
+            title={categoryName}
+            style={{ minHeight: 'auto', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <i className="fas fa-store" style={{ fontSize: '12px', color: '#6b7280' }}></i>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {categoryName}
             </span>
           </div>
-          <h3 className="card-title" title={business.title}>{business.title}</h3>
           <div className="card-location">
             <i className="fas fa-map-marker-alt"></i>
             <span>{business.location}</span>
