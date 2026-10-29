@@ -865,8 +865,6 @@ export default function RichTextEditor({
         style={{
           flex: 1,
           overflowY: 'auto',
-          display: 'flex',
-          justifyContent: 'center',
           padding: '24px 20px 80px 20px',
           background: '#f8f9fa',
           cursor: 'text',
@@ -882,6 +880,7 @@ export default function RichTextEditor({
           style={{
             width: '100%',
             maxWidth: '860px',
+            margin: '0 auto',
             minHeight: `${minHeight}px`,
             background: '#ffffff',
             borderRadius: '2px',
