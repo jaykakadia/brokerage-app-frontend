@@ -35,9 +35,12 @@ export interface SignupGuideSettings {
 }
 
 export interface SocialLinksSettings {
-  facebook_url: string;
-  instagram_url: string;
-  youtube_url: string;
-  whatsapp_number: string;
-  support_email: string;
+  facebook_url?: string;
+  instagram_url?: string;
+  youtube_url?: string;
+  linkedin_url?: string;
+  x_url?: string;
+  gbp_url?: string;
+  whatsapp_number?: string;
+  support_email?: string;
 }

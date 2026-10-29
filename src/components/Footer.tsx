@@ -9,11 +9,23 @@ export interface FooterProps {
   onNavigate: NavigateFunction;
 }
 
+const FOOTER_SOCIAL_LINKS: Array<{ key: keyof SocialLinksSettings; title: string; icon: string }> = [
+  { key: 'facebook_url', title: 'Facebook', icon: 'fab fa-facebook-f' },
+  { key: 'instagram_url', title: 'Instagram', icon: 'fab fa-instagram' },
+  { key: 'youtube_url', title: 'YouTube', icon: 'fab fa-youtube' },
+  { key: 'linkedin_url', title: 'LinkedIn', icon: 'fab fa-linkedin-in' },
+  { key: 'x_url', title: 'X', icon: 'fab fa-x-twitter' },
+  { key: 'gbp_url', title: 'Google Business Page', icon: 'fab fa-google' },
+];
+
 export default function Footer({ onNavigate }: FooterProps) {
   const [links, setLinks] = useState<SocialLinksSettings>({
     facebook_url: 'https://facebook.com',
     instagram_url: 'https://instagram.com',
     youtube_url: 'https://youtube.com',
+    linkedin_url: 'https://linkedin.com',
+    x_url: 'https://x.com',
+    gbp_url: '',
     whatsapp_number: '9992292828',
     support_email: 'support.tradecall@gmail.com',
   });
@@ -64,22 +76,16 @@ export default function Footer({ onNavigate }: FooterProps) {
             <i className="fas fa-map-marker-alt" style={{ marginRight: '6px' }}></i>
             Palwal, Haryana
           </div>
-          <div className="footer-social" style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
-            {links.facebook_url && (
-              <a href={links.facebook_url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title="Facebook">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-            )}
-            {links.instagram_url && (
-              <a href={links.instagram_url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title="Instagram">
-                <i className="fab fa-instagram"></i>
-              </a>
-            )}
-            {links.youtube_url && (
-              <a href={links.youtube_url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title="YouTube">
-                <i className="fab fa-youtube"></i>
-              </a>
-            )}
+          <div className="footer-social" style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {FOOTER_SOCIAL_LINKS.map(({ key, title, icon }) => {
+              const url = links[key];
+              if (!url) return null;
+              return (
+                <a key={key} href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#fff' }} title={title} aria-label={title}>
+                  <i className={icon}></i>
+                </a>
+              );
+            })}
           </div>
         </div>
 

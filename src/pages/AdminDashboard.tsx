@@ -137,6 +137,89 @@ const USER_LINK_FIELDS: Array<{ key: UserLinkKey; label: string; icon: string; c
 const USER_FIELD_LABEL: React.CSSProperties = { display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' };
 const USER_FIELD_INPUT: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' };
 
+const SETTINGS_SOCIAL_FIELDS: Array<{
+  key: keyof SocialLinksSettings;
+  label: string;
+  icon: string;
+  color: string;
+  placeholder: string;
+  type?: string;
+}> = [
+  { key: 'facebook_url', label: 'Facebook Link', icon: 'fab fa-facebook-f', color: '#1877f2', placeholder: 'https://facebook.com/yourpage' },
+  { key: 'instagram_url', label: 'Instagram Link', icon: 'fab fa-instagram', color: '#e1306c', placeholder: 'https://instagram.com/yourprofile' },
+  { key: 'youtube_url', label: 'YouTube Link', icon: 'fab fa-youtube', color: '#dc2626', placeholder: 'https://youtube.com/@yourchannel' },
+  { key: 'linkedin_url', label: 'LinkedIn Link', icon: 'fab fa-linkedin-in', color: '#0a66c2', placeholder: 'https://linkedin.com/company/yourpage' },
+  { key: 'x_url', label: 'X (Twitter) Link', icon: 'fab fa-x-twitter', color: '#0f1419', placeholder: 'https://x.com/yourhandle' },
+  { key: 'gbp_url', label: 'Google Business Page', icon: 'fab fa-google', color: '#4285f4', placeholder: 'https://maps.app.goo.gl/...' },
+  { key: 'whatsapp_number', label: 'WhatsApp Contact Number', icon: 'fab fa-whatsapp', color: '#16a34a', placeholder: 'e.g. 9992292828' },
+  { key: 'support_email', label: 'Support Email', icon: 'fas fa-envelope', color: '#0c6253', placeholder: 'support.tradecall@gmail.com', type: 'email' },
+];
+
+const settingsCardStyle: React.CSSProperties = {
+  background: '#ffffff',
+  borderRadius: '16px',
+  padding: '26px 28px',
+  border: '1px solid #eef2f6',
+  boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
+};
+
+const settingsHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: '14px',
+  marginBottom: '22px',
+};
+
+const settingsIconBadgeStyle = (bg = '#e6f4f1', color = '#0c6253'): React.CSSProperties => ({
+  width: '42px',
+  height: '42px',
+  borderRadius: '12px',
+  background: bg,
+  color,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '18px',
+  flexShrink: 0,
+});
+
+const settingsTitleStyle: React.CSSProperties = {
+  fontSize: '17px',
+  fontWeight: 700,
+  margin: '0 0 4px 0',
+  color: '#111827',
+  letterSpacing: '-0.2px',
+};
+
+const settingsSubtitleStyle: React.CSSProperties = {
+  color: '#64748b',
+  fontSize: '13px',
+  margin: 0,
+  lineHeight: 1.45,
+};
+
+const settingsLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '7px',
+  fontSize: '13px',
+  fontWeight: 600,
+  color: '#374151',
+  marginBottom: '6px',
+};
+
+const settingsInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 13px',
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  fontSize: '13.5px',
+  color: '#1f2937',
+  background: '#fafbfc',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
 interface EmployeeFormState {
   id: number;
   reference_code: string;
@@ -483,6 +566,9 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     facebook_url: '',
     instagram_url: '',
     youtube_url: '',
+    linkedin_url: '',
+    x_url: '',
+    gbp_url: '',
     whatsapp_number: '',
     support_email: ''
   });
@@ -3789,326 +3875,284 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {/* MODULE 9: SETTINGS (CREDENTIALS, SMTP & PAYMENTS) */}
         {/* ======================================================== */}
         {activeModule === 'settings' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px', alignItems: 'start' }}>
-            {/* Update Credentials Card */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px', color: '#111827' }}>
-                <i className="fas fa-user-lock" style={{ color: '#0c6253', marginRight: '8px' }}></i>
-                Update Credentials
-              </h2>
-              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
-                Change your administrative password.
-              </p>
-              <form onSubmit={handleUpdateCredentials}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Enter current password"
-                    value={credForm.currPassword}
-                    onChange={(e) => setCredForm({ ...credForm, currPassword: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
-                    required
-                  />
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
+            gap: '24px',
+            alignItems: 'start'
+          }}>
+            {/* Column 1: Security & Mail Configuration */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Update Credentials Card */}
+              <div style={settingsCardStyle}>
+                <div style={settingsHeaderStyle}>
+                  <div style={settingsIconBadgeStyle('#e6f4f1', '#0c6253')}>
+                    <i className="fas fa-user-lock"></i>
+                  </div>
+                  <div>
+                    <h2 style={settingsTitleStyle}>Update Credentials</h2>
+                    <p style={settingsSubtitleStyle}>Change your administrative password.</p>
+                  </div>
                 </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Enter new password (min 6 characters)"
-                    value={credForm.newPassword}
-                    onChange={(e) => setCredForm({ ...credForm, newPassword: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ width: '100%', padding: '12px' }}
-                  disabled={credSaving}
-                >
-                  {credSaving ? <><i className="fas fa-spinner fa-spin"></i> Updating...</> : 'Update Credentials'}
-                </button>
-              </form>
-            </div>
-
-            {/* Sign-up Guide Links Card */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <i className="fas fa-circle-question" style={{ color: '#0c6253', fontSize: '20px' }}></i>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  Sign-up Guide Links
-                </h2>
-              </div>
-              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
-                Shown as "Need help signing up?" below the Create Account button (sign-up page and popup). YouTube links play right on the page. Without a guide link, "Blog guide" opens the Blog page; without a video link, "Video tutorial" shows as coming soon.
-              </p>
-              <form onSubmit={handleSaveSignupGuide}>
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    <i className="fas fa-book-open" style={{ marginRight: '6px', color: '#0c6253' }}></i>Blog / Guide Link
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://tradecall.in/blog/how-to-create-account"
-                    value={signupGuide.blog_url}
-                    onChange={(e) => setSignupGuide({ ...signupGuide, blog_url: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                    <i className="fab fa-youtube" style={{ marginRight: '6px', color: '#dc2626' }}></i>Video Link
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://youtu.be/..."
-                    value={signupGuide.video_url}
-                    onChange={(e) => setSignupGuide({ ...signupGuide, video_url: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ width: '100%', padding: '11px', fontSize: '13px' }}
-                  disabled={signupGuideSaving}
-                >
-                  {signupGuideSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Guide Links'}
-                </button>
-              </form>
-            </div>
-
-            {/* Social Media & Footer Links Card */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <i className="fas fa-share-nodes" style={{ color: '#0c6253', fontSize: '20px' }}></i>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  Social Media &amp; Footer Links
-                </h2>
-              </div>
-              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
-                Manage the public social media links (Facebook, Instagram, YouTube) and contact information displayed in the website footer.
-              </p>
-
-              {socialLinksLoading ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
-                  <div>Loading links...</div>
-                </div>
-              ) : (
-                <form onSubmit={handleSaveSocialLinks}>
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      <i className="fab fa-facebook-f" style={{ marginRight: '6px', color: '#1877f2', width: '16px' }}></i>Facebook Link
-                    </label>
+                <form onSubmit={handleUpdateCredentials}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={settingsLabelStyle}>Current Password</label>
                     <input
-                      type="text"
-                      placeholder="https://facebook.com/yourpage"
-                      value={socialLinks.facebook_url}
-                      onChange={(e) => setSocialLinks({ ...socialLinks, facebook_url: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      type="password"
+                      placeholder="Enter current password"
+                      value={credForm.currPassword}
+                      onChange={(e) => setCredForm({ ...credForm, currPassword: e.target.value })}
+                      style={settingsInputStyle}
+                      required
                     />
                   </div>
-
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      <i className="fab fa-instagram" style={{ marginRight: '6px', color: '#e1306c', width: '16px' }}></i>Instagram Link
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="https://instagram.com/yourprofile"
-                      value={socialLinks.instagram_url}
-                      onChange={(e) => setSocialLinks({ ...socialLinks, instagram_url: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      <i className="fab fa-youtube" style={{ marginRight: '6px', color: '#dc2626', width: '16px' }}></i>YouTube Link
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="https://youtube.com/@yourchannel"
-                      value={socialLinks.youtube_url}
-                      onChange={(e) => setSocialLinks({ ...socialLinks, youtube_url: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      <i className="fab fa-whatsapp" style={{ marginRight: '6px', color: '#16a34a', width: '16px' }}></i>WhatsApp Contact Number
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 9992292828"
-                      value={socialLinks.whatsapp_number}
-                      onChange={(e) => setSocialLinks({ ...socialLinks, whatsapp_number: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                    />
-                  </div>
-
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      <i className="fas fa-envelope" style={{ marginRight: '6px', color: '#0c6253', width: '16px' }}></i>Support Email
-                    </label>
+                    <label style={settingsLabelStyle}>New Password</label>
                     <input
-                      type="email"
-                      placeholder="support.tradecall@gmail.com"
-                      value={socialLinks.support_email}
-                      onChange={(e) => setSocialLinks({ ...socialLinks, support_email: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
+                      type="password"
+                      placeholder="Enter new password (min 6 characters)"
+                      value={credForm.newPassword}
+                      onChange={(e) => setCredForm({ ...credForm, newPassword: e.target.value })}
+                      style={settingsInputStyle}
+                      required
                     />
                   </div>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ width: '100%', padding: '12px', fontSize: '13.5px' }}
+                    disabled={credSaving}
+                  >
+                    {credSaving ? <><i className="fas fa-spinner fa-spin"></i> Updating...</> : 'Update Credentials'}
+                  </button>
+                </form>
+              </div>
 
+              {/* SMTP Mail Configuration Card */}
+              <div style={settingsCardStyle}>
+                <div style={settingsHeaderStyle}>
+                  <div style={settingsIconBadgeStyle('#e6f4f1', '#0c6253')}>
+                    <i className="fas fa-envelope"></i>
+                  </div>
+                  <div>
+                    <h2 style={settingsTitleStyle}>Mail Configuration (SMTP)</h2>
+                    <p style={settingsSubtitleStyle}>
+                      Registration and Forgot Password OTP emails are dispatched using these SMTP settings.
+                    </p>
+                  </div>
+                </div>
+
+                {smtpLoading ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
+                    <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
+                    <div>Loading mail settings...</div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveMailSettings}>
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={settingsLabelStyle}>SMTP Host</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. smtp.gmail.com"
+                        value={smtpSettings.host}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, host: e.target.value })}
+                        style={settingsInputStyle}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={settingsLabelStyle}>SMTP Mail ID / Username</label>
+                      <input
+                        type="email"
+                        placeholder="youremail@domain.com"
+                        value={smtpSettings.email}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, email: e.target.value })}
+                        style={settingsInputStyle}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={settingsLabelStyle}>
+                        SMTP Password / App Password {smtpSettings.has_password && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showSmtpPassword ? 'text' : 'password'}
+                          placeholder={smtpSettings.has_password ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter SMTP password'}
+                          value={smtpSettings.password}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, password: e.target.value })}
+                          style={{ ...settingsInputStyle, paddingRight: '38px' }}
+                        />
+                        <i
+                          className={`fas ${showSmtpPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+                          style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#6b7280' }}
+                          onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                        ></i>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={settingsLabelStyle}>SMTP Port</label>
+                        <input
+                          type="number"
+                          placeholder="465"
+                          value={smtpSettings.port}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, port: parseInt(e.target.value, 10) || 465 })}
+                          style={settingsInputStyle}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label style={settingsLabelStyle}>Encryption</label>
+                        <select
+                          value={smtpSettings.encryption}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, encryption: e.target.value })}
+                          style={settingsInputStyle}
+                        >
+                          <option value="ssl">SSL (port 465)</option>
+                          <option value="tls">TLS (port 587)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={settingsLabelStyle}>From Name</label>
+                      <input
+                        type="text"
+                        placeholder="TradeCall India"
+                        value={smtpSettings.from_name}
+                        onChange={(e) => setSmtpSettings({ ...smtpSettings, from_name: e.target.value })}
+                        style={settingsInputStyle}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        style={{ flex: 1, padding: '11px', fontSize: '13px' }}
+                        disabled={smtpSaving}
+                      >
+                        {smtpSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Mail Settings'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        style={{ padding: '11px 16px', fontSize: '13px' }}
+                        onClick={handleSendTestMail}
+                      >
+                        <i className="fas fa-paper-plane" style={{ marginRight: '6px' }}></i> Send Test Email
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+
+            {/* Column 2: Public Content & Links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Sign-up Guide Links Card */}
+              <div style={settingsCardStyle}>
+                <div style={settingsHeaderStyle}>
+                  <div style={settingsIconBadgeStyle('#e6f4f1', '#0c6253')}>
+                    <i className="fas fa-circle-question"></i>
+                  </div>
+                  <div>
+                    <h2 style={settingsTitleStyle}>Sign-up Guide Links</h2>
+                    <p style={settingsSubtitleStyle}>
+                      Shown as &quot;Need help signing up?&quot; below the Create Account button (sign-up page and popup).
+                    </p>
+                  </div>
+                </div>
+                <form onSubmit={handleSaveSignupGuide}>
+                  <div style={{ marginBottom: '14px' }}>
+                    <label style={settingsLabelStyle}>
+                      <i className="fas fa-book-open" style={{ color: '#0c6253', width: '16px', textAlign: 'center' }}></i>
+                      Blog / Guide Link
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://tradecall.in/blog/how-to-create-account"
+                      value={signupGuide.blog_url}
+                      onChange={(e) => setSignupGuide({ ...signupGuide, blog_url: e.target.value })}
+                      style={settingsInputStyle}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={settingsLabelStyle}>
+                      <i className="fab fa-youtube" style={{ color: '#dc2626', width: '16px', textAlign: 'center' }}></i>
+                      Video Link
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://youtu.be/..."
+                      value={signupGuide.video_url}
+                      onChange={(e) => setSignupGuide({ ...signupGuide, video_url: e.target.value })}
+                      style={settingsInputStyle}
+                    />
+                  </div>
                   <button
                     type="submit"
                     className="btn-primary"
                     style={{ width: '100%', padding: '11px', fontSize: '13px' }}
-                    disabled={socialLinksSaving}
+                    disabled={signupGuideSaving}
                   >
-                    {socialLinksSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Social &amp; Footer Links'}
+                    {signupGuideSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Guide Links'}
                   </button>
                 </form>
-              )}
-            </div>
-
-            {/* SMTP Mail Configuration Card */}
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <i className="fas fa-envelope" style={{ color: '#0c6253', fontSize: '20px' }}></i>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#111827' }}>
-                  Mail Configuration (SMTP)
-                </h2>
               </div>
-              <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px' }}>
-                Registration and Forgot Password OTP emails are dispatched using these SMTP settings.
-              </p>
 
-              {smtpLoading ? (
-                <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
-                  <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
-                  <div>Loading mail settings...</div>
+              {/* Social Media & Footer Links Card */}
+              <div style={settingsCardStyle}>
+                <div style={settingsHeaderStyle}>
+                  <div style={settingsIconBadgeStyle('#e6f4f1', '#0c6253')}>
+                    <i className="fas fa-share-nodes"></i>
+                  </div>
+                  <div>
+                    <h2 style={settingsTitleStyle}>Social Media & Footer Links</h2>
+                    <p style={settingsSubtitleStyle}>
+                      Manage the public social media links and contact information displayed in the website footer.
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <form onSubmit={handleSaveMailSettings}>
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      SMTP Host
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. smtp.gmail.com"
-                      value={smtpSettings.host}
-                      onChange={(e) => setSmtpSettings({ ...smtpSettings, host: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                      required
-                    />
-                  </div>
 
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      SMTP Mail ID / Username
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="youremail@domain.com"
-                      value={smtpSettings.email}
-                      onChange={(e) => setSmtpSettings({ ...smtpSettings, email: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                      required
-                    />
+                {socialLinksLoading ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: '#6b7280' }}>
+                    <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0c6253', marginBottom: '8px' }}></i>
+                    <div>Loading links...</div>
                   </div>
+                ) : (
+                  <form onSubmit={handleSaveSocialLinks}>
+                    {SETTINGS_SOCIAL_FIELDS.map((field) => (
+                      <div key={field.key} style={{ marginBottom: '14px' }}>
+                        <label style={settingsLabelStyle}>
+                          <i className={field.icon} style={{ color: field.color, width: '16px', textAlign: 'center' }}></i>
+                          {field.label}
+                        </label>
+                        <input
+                          type={field.type || 'text'}
+                          placeholder={field.placeholder}
+                          value={socialLinks[field.key] || ''}
+                          onChange={(e) => setSocialLinks({ ...socialLinks, [field.key]: e.target.value })}
+                          style={settingsInputStyle}
+                        />
+                      </div>
+                    ))}
 
-                  <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      SMTP Password / App Password {smtpSettings.has_password && <span style={{ color: '#16a34a', fontWeight: 600 }}>(Configured ✓)</span>}
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type={showSmtpPassword ? 'text' : 'password'}
-                        placeholder={smtpSettings.has_password ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter SMTP password'}
-                        value={smtpSettings.password}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, password: e.target.value })}
-                        style={{ width: '100%', padding: '9px 36px 9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                      />
-                      <i
-                        className={`fas ${showSmtpPassword ? 'fa-eye-slash' : 'fa-eye'}`}
-                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#6b7280' }}
-                        onClick={() => setShowSmtpPassword(!showSmtpPassword)}
-                      ></i>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                        SMTP Port
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="465"
-                        value={smtpSettings.port}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, port: parseInt(e.target.value, 10) || 465 })}
-                        style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                        Encryption
-                      </label>
-                      <select
-                        value={smtpSettings.encryption}
-                        onChange={(e) => setSmtpSettings({ ...smtpSettings, encryption: e.target.value })}
-                        style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                      >
-                        <option value="ssl">SSL (port 465)</option>
-                        <option value="tls">TLS (port 587)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>
-                      From Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="TradeCall India"
-                      value={smtpSettings.from_name}
-                      onChange={(e) => setSmtpSettings({ ...smtpSettings, from_name: e.target.value })}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button
                       type="submit"
                       className="btn-primary"
-                      style={{ flex: 1, padding: '11px', fontSize: '13px' }}
-                      disabled={smtpSaving}
+                      style={{ width: '100%', padding: '12px', fontSize: '13.5px', marginTop: '6px' }}
+                      disabled={socialLinksSaving}
                     >
-                      {smtpSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Mail Settings'}
+                      {socialLinksSaving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : 'Save Social & Footer Links'}
                     </button>
-                    <button
-                      type="button"
-                      className="btn-outline"
-                      style={{ padding: '11px 16px', fontSize: '13px' }}
-                      onClick={handleSendTestMail}
-                    >
-                      <i className="fas fa-paper-plane" style={{ marginRight: '6px' }}></i> Send Test Email
-                    </button>
-                  </div>
-                </form>
-              )}
+                  </form>
+                )}
+              </div>
             </div>
           </div>
         )}
