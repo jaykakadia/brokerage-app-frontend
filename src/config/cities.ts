@@ -46,6 +46,8 @@ export const ALL_INDIAN_CITIES: CityInfo[] = [
   { name: 'Hisar', slug: 'hisar', state: 'Haryana' },
   { name: 'Panchkula', slug: 'panchkula', state: 'Haryana' },
   { name: 'Rewari', slug: 'rewari', state: 'Haryana' },
+  { name: 'Yamunanagar', slug: 'yamunanagar', state: 'Haryana' },
+  { name: 'Yamuna Nagar', slug: 'yamunanagar', state: 'Haryana' },
   { name: 'Noida', slug: 'noida', state: 'Uttar Pradesh' },
   { name: 'Greater Noida', slug: 'greater-noida', state: 'Uttar Pradesh' },
   { name: 'Ghaziabad', slug: 'ghaziabad', state: 'Uttar Pradesh' },
