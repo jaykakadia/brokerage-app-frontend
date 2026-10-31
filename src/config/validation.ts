@@ -28,7 +28,7 @@ const PRESERVED_ACRONYMS = new Set(['RPS', 'NH', 'BPTP', 'HUDA', 'Omaxe', 'SRS',
 
 export function cleanAndNormalizeLocality(value?: string | null): string {
   if (!value) return '';
-  const cleaned = value.replace(/[\s_\-]+/g, ' ').replace(/^[ ,.-;/]+|[ ,.-;/]+$/g, '');
+  const cleaned = value.replace(/[\s_\-]+/g, ' ').replace(/^[ ,.\-;/]+|[ ,.\-;/]+$/g, '');
   if (!cleaned) return '';
 
   return cleaned
