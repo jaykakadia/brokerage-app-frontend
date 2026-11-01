@@ -962,6 +962,7 @@ ul { list-style: none; }
   display: flex;
   flex-direction: column;
   cursor: pointer;
+  min-height: 382px;
 }
 .card-stretched-link {
   position: absolute;
@@ -994,7 +995,7 @@ ul { list-style: none; }
 
 .card-img-wrap {
   position: relative;
-  height: 180px;
+  height: 185px;
   overflow: hidden;
   background: #e8f0ec;
 }
@@ -1043,6 +1044,7 @@ ul { list-style: none; }
   flex-direction: column;
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 195px;
 }
 .card-price {
   font-size: 18px;

@@ -67,6 +67,7 @@ export interface Listing {
   assigned_email?: string | null;
   created_at: string;
   seo_title?: string | null;
+  unlocked?: boolean;
   images: ListingImage[];
   city?: string;
   first_image_url?: string | null;

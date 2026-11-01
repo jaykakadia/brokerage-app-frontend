@@ -235,6 +235,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
         setContactData(contactDataFromReveal(res.data, listing, user.leads_balance));
         setContactModalOpen(true);
         await refreshUser();
+        await fetchListing();
       } else if (res.data?.code === 'no_leads') {
         setPlansModalOpen(true);
       } else {
@@ -338,6 +339,8 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     ? new Date(listing.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
         .replace(/^(\w+) (\d+), (\d+)$/, '$2 $1 $3')
     : '';
+  const isUnlocked = isOwner || isAdmin || Boolean(contactData) || Boolean(listing.unlocked);
+  const resolvedOwnerName = contactData?.owner_name || (listing.owner_name && listing.owner_name !== '[Hidden]' ? listing.owner_name : 'Owner');
   const whatsappDigits = (contactData?.owner_whatsapp || contactData?.owner_phone || (isBusiness ? getBusinessMobile(listing) : '')).replace(/\D/g, '').slice(-10);
 
   return (
@@ -566,10 +569,10 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   </div>
                 )}
               </>
-            ) : isOwner || contactData ? (
+            ) : isUnlocked ? (
               <>
                 <div className="ld-meta" style={{ marginTop: '10px' }}>
-                  Owner / Posted by: <strong>{contactData?.owner_name || listing.owner_name}</strong>
+                  Owner / Posted by: <strong>{resolvedOwnerName}</strong>
                 </div>
                 {listing.owner_role && <div className="ld-meta">Role: <strong>{listing.owner_role}</strong></div>}
                 {contactData?.owner_phone && (
@@ -595,17 +598,17 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <i className="fas fa-user-check" style={{ color: '#0c6253', marginRight: '6px' }}></i>
                   This is your listing.
                 </div>
-              ) : contactData ? (
+              ) : isUnlocked ? (
                 <div className="ld-unlocked-contact">
-                  {(contactData.owner_phone || (isBusiness && getBusinessMobile(listing))) ? (
+                  {(contactData?.owner_phone || (isBusiness && getBusinessMobile(listing))) ? (
                     <>
-                      <a className="btn-contact" href={`tel:${contactData.owner_phone || getBusinessMobile(listing)}`}>
-                        <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {contactData.owner_phone || getBusinessMobile(listing)}
+                      <a className="btn-contact" href={`tel:${contactData?.owner_phone || getBusinessMobile(listing)}`}>
+                        <i className="fas fa-phone-alt fa-flip-horizontal" style={{ display: 'inline-block', transform: 'scaleX(-1)' }}></i> Call {contactData?.owner_phone || getBusinessMobile(listing)}
                       </a>
                       {whatsappDigits && (
                         <a
                           className="btn-view"
-                          href={`https://wa.me/91${whatsappDigits}?text=${encodeURIComponent(`Hello ${listing.owner_name}, I am interested in "${heading}" on TradeCall.`)}`}
+                          href={`https://wa.me/91${whatsappDigits}?text=${encodeURIComponent(`Hello ${resolvedOwnerName}, I am interested in "${heading}" on TradeCall.`)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -616,12 +619,12 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   ) : (
                     <div className="ld-meta">Mobile not available</div>
                   )}
-                  {contactData.owner_email && (
+                  {contactData?.owner_email && (
                     <a className="btn-view" href={`mailto:${contactData.owner_email}`}>
                       <i className="fas fa-envelope"></i> {contactData.owner_email}
                     </a>
                   )}
-                  <ContactLinks links={contactData.links} />
+                  {contactData?.links && <ContactLinks links={contactData.links} />}
                 </div>
               ) : (
                 <button

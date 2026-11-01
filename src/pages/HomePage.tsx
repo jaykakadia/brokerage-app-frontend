@@ -1192,9 +1192,6 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
             <i className="fas fa-map-marker-alt"></i>
             <span>{listing.location}</span>
           </div>
-          <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-            Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
-          </div>
           <div className="card-footer card-footer-actions">
             <a
               href={listingUrl}
@@ -1328,7 +1325,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
             <span>{business.location}</span>
           </div>
           <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-            Contact: <strong>{business.owner_name}</strong>
+            Contact: <strong>{business.owner_name || (business.form_data as any)?.person || (business.form_data as any)?.name || 'Business Owner'}</strong>
           </div>
           <div className="card-footer card-footer-actions">
             <a
@@ -1859,9 +1856,6 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                         <div className="card-location">
                           <i className="fas fa-map-marker-alt"></i>
                           <span>{listing.location}</span>
-                        </div>
-                        <div className="card-features" style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>
-                          Owner: <strong>{listing.owner_name}</strong> ({listing.owner_role || 'Owner'})
                         </div>
                         <div className="card-footer card-footer-actions">
                           <a
