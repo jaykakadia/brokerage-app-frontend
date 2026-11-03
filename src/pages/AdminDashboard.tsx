@@ -37,6 +37,7 @@ import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
 import RichTextEditor from '../components/RichTextEditor';
 import AdminMetadataManager from '../components/AdminMetadataManager';
+import AdminAuditLogs from '../components/AdminAuditLogs';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
 import { normalizeExternalUrl } from '../utils/url';
@@ -275,6 +276,7 @@ type AdminModule =
   | 'blogs'
   | 'enquiries'
   | 'metadata'
+  | 'audit-logs'
   | 'settings'
   | 'cashfree';
 
@@ -290,6 +292,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
   { key: 'metadata', label: 'Meta Data', icon: 'fas fa-globe' },
+  { key: 'audit-logs', label: 'Audit Logs', icon: 'fas fa-history' },
   { key: 'settings', label: 'Settings', icon: 'fas fa-cog' },
   { key: 'cashfree', label: 'Cashfree Settings', icon: 'fas fa-credit-card' }
 ];
@@ -1765,6 +1768,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         {activeModule === 'metadata' && (
           <AdminMetadataManager showToast={showToast} />
+        )}
+
+        {activeModule === 'audit-logs' && (
+          <AdminAuditLogs showToast={showToast} />
         )}
 
         {/* ======================================================== */}

@@ -318,3 +318,48 @@ export const updatePageMetadata = (id: number, data: PageMetadataUpdate): Promis
 
 export const deletePageMetadata = (id: number): Promise<AxiosResponse<MessageResponse>> =>
   api.delete(`/api/v1/admin/metadata/${id}`);
+
+// --- Audit Logs ---
+export interface AuditLogChange {
+  old: any;
+  new: any;
+}
+
+export interface AuditLog {
+  id: number;
+  table_name: string;
+  record_id: number;
+  record_name?: string | null;
+  action: 'CREATE' | 'UPDATE' | 'SOFT_DELETE' | 'RESTORE' | string;
+  changes?: Record<string, AuditLogChange> | null;
+  actor_id?: number | null;
+  actor_email?: string | null;
+  actor_role?: string | null;
+  ip_address?: string | null;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  status: string;
+  data: {
+    items: AuditLog[];
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
+}
+
+export const getAdminAuditLogs = (params?: {
+  table_name?: string;
+  action?: string;
+  record_id?: number;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AxiosResponse<AuditLogListResponse>> =>
+  api.get('/api/v1/admin/audit-logs', { params });
+
+export const getAdminAuditTables = (): Promise<AxiosResponse<ApiResponse<string[]>>> =>
+  api.get('/api/v1/admin/audit-logs/tables');
+
