@@ -65,8 +65,8 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           RSYNC_SSH="ssh -i $HOME/.ssh/deploy_key"
-          rsync -az -e "$RSYNC_SSH" dist/assets/ "deploy@$VPS_HOST:/var/www/tradecall/assets/"
-          rsync -az --delete-after --delay-updates -e "$RSYNC_SSH" dist/ "deploy@$VPS_HOST:/var/www/tradecall/"
+          rsync -rlzt --no-owner --no-group --chmod=D755,F644 -e "$RSYNC_SSH" dist/assets/ "deploy@$VPS_HOST:/var/www/tradecall/assets/"
+          rsync -rlzt --delete-after --delay-updates --no-owner --no-group --chmod=D755,F644 -e "$RSYNC_SSH" dist/ "deploy@$VPS_HOST:/var/www/tradecall/"
 
       - name: Sync VPS repo & flush API cache
         env:
@@ -74,6 +74,7 @@ jobs:
         run: |
           ssh -i $HOME/.ssh/deploy_key "deploy@$VPS_HOST" bash -s -- "$GITHUB_SHA" <<'REMOTE'
           set -euo pipefail
+          git config --global --add safe.directory '*' || true
           if [ -d /opt/tradecall/brokerage-app-frontend/.git ]; then
             cd /opt/tradecall/brokerage-app-frontend
             git fetch --quiet origin main

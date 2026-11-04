@@ -363,3 +363,60 @@ export const getAdminAuditLogs = (params?: {
 export const getAdminAuditTables = (): Promise<AxiosResponse<ApiResponse<string[]>>> =>
   api.get('/api/v1/admin/audit-logs/tables');
 
+// --- Backup & Restore ---
+export interface BackupStats {
+  tables: Record<string, number>;
+  total_tables: number;
+  total_records: number;
+  images_count: number;
+  images_size_bytes: number;
+  images_size_formatted: string;
+  storage_backend: string;
+  upload_dir: string;
+}
+
+export interface BackupRestoreResult {
+  mode: 'replace' | 'upsert';
+  filename: string;
+  tables_restored: Record<string, number>;
+  total_records: number;
+  images_restored: number;
+}
+
+export const getAdminBackupStats = (): Promise<AxiosResponse<ApiResponse<BackupStats>>> =>
+  api.get('/api/v1/admin/backup/stats');
+
+export const downloadAdminBackup = async (): Promise<void> => {
+  const res = await api.get('/api/v1/admin/backup/export', { responseType: 'blob' });
+  const blob = new Blob([res.data], { type: 'application/zip' });
+  const disposition = (res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition'])) || '';
+  let filename = `tradecall_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  if (match && match[1]) {
+    filename = match[1];
+  }
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const restoreAdminBackup = (
+  file: File,
+  mode: 'replace' | 'upsert' = 'replace'
+): Promise<AxiosResponse<ApiResponse<BackupRestoreResult>>> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post(`/api/v1/admin/backup/restore?mode=${mode}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    timeout: 300000 // 5 minutes timeout for large restores
+  });
+};
+
+

@@ -38,6 +38,7 @@ import AdminEnquiries from '../components/AdminEnquiries';
 import RichTextEditor from '../components/RichTextEditor';
 import AdminMetadataManager from '../components/AdminMetadataManager';
 import AdminAuditLogs from '../components/AdminAuditLogs';
+import AdminBackupManager from '../components/AdminBackupManager';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
 import { normalizeExternalUrl } from '../utils/url';
@@ -277,6 +278,7 @@ type AdminModule =
   | 'enquiries'
   | 'metadata'
   | 'audit-logs'
+  | 'backup'
   | 'settings'
   | 'cashfree';
 
@@ -293,6 +295,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
   { key: 'metadata', label: 'Meta Data', icon: 'fas fa-globe' },
   { key: 'audit-logs', label: 'Audit Logs', icon: 'fas fa-history' },
+  { key: 'backup', label: 'Backup & Restore', icon: 'fas fa-database' },
   { key: 'settings', label: 'Settings', icon: 'fas fa-cog' },
   { key: 'cashfree', label: 'Cashfree Settings', icon: 'fas fa-credit-card' }
 ];
@@ -1772,6 +1775,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         {activeModule === 'audit-logs' && (
           <AdminAuditLogs showToast={showToast} />
+        )}
+
+        {activeModule === 'backup' && (
+          <AdminBackupManager showToast={showToast} />
         )}
 
         {/* ======================================================== */}
