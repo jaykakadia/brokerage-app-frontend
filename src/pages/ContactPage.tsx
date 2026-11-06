@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { submitEnquiry, getApiErrorMessage } from '../services/api';
+import { setSeo } from '../utils/seo';
 import type { NavigateFunction } from '../types';
 
 export interface ContactPageProps {
   onNavigate?: NavigateFunction;
 }
 
-export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProps) {
+export default function ContactPage({ onNavigate }: ContactPageProps) {
   const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -15,6 +16,47 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
   const [website, setWebsite] = useState(''); // honeypot, hidden from people
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSeo({
+      title: 'Contact TradeCall India – Property & Business Listing Support',
+      description: 'Get in touch with TradeCall India in Palwal, Haryana for property and business listing support. Call or WhatsApp +91 9992292828 or email support.tradecall@gmail.com.',
+      path: '/contact',
+      jsonLd: [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'ContactPage',
+          name: 'Contact TradeCall India – Property & Business Listing Support',
+          url: 'https://tradecall.in/contact',
+          description: 'Get in touch with TradeCall India for verified real estate inquiries, advertising, and business directory services in Palwal, Faridabad, and NCR.',
+          mainEntity: {
+            '@type': 'Organization',
+            '@id': 'https://tradecall.in/#organization',
+            name: 'TradeCall India',
+            url: 'https://tradecall.in',
+            telephone: '+91 9992292828',
+            email: 'support.tradecall@gmail.com',
+            hasMap: 'https://maps.google.com/?q=Palwal,+Haryana+121102,+India',
+            contactPoint: {
+              '@type': 'ContactPoint',
+              telephone: '+91 9992292828',
+              contactType: 'customer service',
+              areaServed: 'IN',
+              availableLanguage: ['en', 'hi']
+            },
+            address: {
+              '@type': 'PostalAddress',
+              streetAddress: 'Palwal',
+              addressLocality: 'Palwal',
+              addressRegion: 'Haryana',
+              postalCode: '121102',
+              addressCountry: 'IN'
+            }
+          }
+        }
+      ]
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -81,7 +123,24 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
               </div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>Office Address</h3>
               <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: 1.5, margin: 0 }}>
-                Palwal, Haryana
+                <a
+                  href="https://maps.google.com/?q=Palwal,+Haryana+121102,+India"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'none' }}
+                >
+                  Palwal, Haryana 121102 <i className="fas fa-external-link-alt" style={{ fontSize: '11px', marginLeft: '4px' }}></i>
+                </a>
+              </p>
+              <p style={{ marginTop: '6px', marginBottom: 0 }}>
+                <a
+                  href="https://maps.google.com/?q=Palwal,+Haryana+121102,+India"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#16a34a', fontSize: '13px', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  View on Google Maps
+                </a>
               </p>
               <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '6px' }}>Mon - Sat: 9:00 AM - 7:00 PM</p>
             </div>
@@ -170,6 +229,50 @@ export default function ContactPage({ onNavigate: _onNavigate }: ContactPageProp
                 </button>
               </form>
             )}
+          </div>
+
+          {/* Helpful Quick Links for SEO & User Navigation (Audit Point 6c) */}
+          <div style={{ maxWidth: '700px', margin: '36px auto 0', background: '#fff', borderRadius: '16px', padding: '24px 30px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#1a1a2e', marginBottom: '14px' }}>
+              Explore More on TradeCall India
+            </h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px' }}>
+              <a
+                href="/about"
+                onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate('about'); } }}
+                style={{ padding: '8px 16px', background: '#f0fdf4', color: '#0c6253', borderRadius: '8px', fontWeight: 600, fontSize: '13.5px', textDecoration: 'none', border: '1px solid #bbf7d0' }}
+              >
+                <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>About Us
+              </a>
+              <a
+                href="/faq"
+                onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate('faq'); } }}
+                style={{ padding: '8px 16px', background: '#f0fdf4', color: '#0c6253', borderRadius: '8px', fontWeight: 600, fontSize: '13.5px', textDecoration: 'none', border: '1px solid #bbf7d0' }}
+              >
+                <i className="fas fa-question-circle" style={{ marginRight: '6px' }}></i>FAQ
+              </a>
+              <a
+                href="/post-listing"
+                onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate('post-listing'); } }}
+                style={{ padding: '8px 16px', background: '#0c6253', color: '#fff', borderRadius: '8px', fontWeight: 600, fontSize: '13.5px', textDecoration: 'none' }}
+              >
+                <i className="fas fa-home" style={{ marginRight: '6px' }}></i>List Your Property
+              </a>
+              <a
+                href="/post-listing"
+                onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate('post-listing'); } }}
+                style={{ padding: '8px 16px', background: '#f0fdf4', color: '#0c6253', borderRadius: '8px', fontWeight: 600, fontSize: '13.5px', textDecoration: 'none', border: '1px solid #bbf7d0' }}
+              >
+                <i className="fas fa-store" style={{ marginRight: '6px' }}></i>List Your Business
+              </a>
+              <a
+                href="/business-directory"
+                onClick={(e) => { if (onNavigate) { e.preventDefault(); onNavigate('business-directory'); } }}
+                style={{ padding: '8px 16px', background: '#f8fafc', color: '#334155', borderRadius: '8px', fontWeight: 600, fontSize: '13.5px', textDecoration: 'none', border: '1px solid #e2e8f0' }}
+              >
+                <i className="fas fa-address-book" style={{ marginRight: '6px' }}></i>Business Directory
+              </a>
+            </div>
           </div>
         </div>
       </section>

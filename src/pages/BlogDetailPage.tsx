@@ -15,6 +15,7 @@ interface BlogArticleDetail {
   category?: string;
   author?: string;
   created_at?: string;
+  updated_at?: string;
   featured_image?: string;
   image_url?: string;
   content: string;
@@ -62,6 +63,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
               category: data.category,
               author: data.author,
               created_at: data.created_at,
+              updated_at: (data as any).updated_at,
               featured_image: data.image_url ? getImageUrl(data.image_url) : undefined,
               content: data.content,
               tags: data.tags || undefined,
@@ -115,11 +117,43 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
 
   useEffect(() => {
     if (!blog || !blogIdentifier) return;
+    const canonicalPath = `/blog/${blogIdentifier}`;
+    const canonicalUrl = `https://tradecall.in${canonicalPath}`;
+    const desc = toMetaDescription(blog.content);
+    const publishedIso = blog.created_at ? new Date(blog.created_at).toISOString().split('T')[0] : '2026-05-01';
+    const modifiedIso = blog.updated_at ? new Date(blog.updated_at).toISOString().split('T')[0] : publishedIso;
+
+    // Audit Point 5: BlogPosting schema with accurate author and publication dates
     setSeo({
       title: blog.title,
-      description: toMetaDescription(blog.content),
-      path: `/blog/${blogIdentifier}`,
-      image: blog.featured_image
+      description: desc,
+      path: canonicalPath,
+      image: blog.featured_image,
+      jsonLd: [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'BlogPosting',
+          headline: blog.title,
+          description: desc,
+          url: canonicalUrl,
+          datePublished: publishedIso,
+          dateModified: modifiedIso,
+          author: {
+            '@type': 'Person',
+            name: blog.author || 'TradeCall Team'
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'TradeCall India',
+            url: 'https://tradecall.in',
+            logo: {
+              '@type': 'ImageObject',
+              url: 'https://tradecall.in/favicon-192x192.png'
+            }
+          },
+          ...(blog.featured_image ? { image: [blog.featured_image] } : {})
+        }
+      ]
     });
   }, [blog, blogIdentifier]);
 
@@ -273,7 +307,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', fontSize: '14px', color: 'rgba(255,255,255,0.85)', flexWrap: 'wrap' }}>
             <span><i className="fas fa-user-edit"></i> {blog.author || 'TradeCall Team'}</span>
             <span>&middot;</span>
-            <span><i className="fas fa-calendar-alt"></i> {dateStr}</span>
+            <time dateTime={blog.created_at || '2025-05-01'}><i className="fas fa-calendar-alt"></i> {dateStr}</time>
             {blog.category && (
               <>
                 <span>&middot;</span>
@@ -307,7 +341,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
             )}
 
             <div style={{ padding: '40px 36px' }}>
-              {/* Top Hashtags (Kept at the top as requested) */}
+              {/* Top Hashtags */}
               {rawTags.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
                   {rawTags.map((t, i) => (
@@ -338,7 +372,6 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                     const href = target.getAttribute('href')?.trim();
                     if (!href) return;
 
-                    // Existing internal-link behavior
                     if (href.startsWith('/') && !href.startsWith('//') && !target.getAttribute('target')) {
                       e.preventDefault();
                       window.history.pushState(null, '', href);
@@ -346,8 +379,6 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                       return;
                     }
 
-                    // Render safety: if href has no scheme, does not start with / # ?,
-                    // and the first part looks like a domain (contains dot, no spaces), open as https:// in new tab
                     const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href);
                     const isRelativeOrAnchor = /^[/#?]/.test(href);
                     if (!hasScheme && !isRelativeOrAnchor) {
@@ -369,13 +400,65 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                 </div>
               )}
 
-              {/* ========================================================================= */}
-              {/* BLOGGER OPTIONS SECTION (Matching user-provided Blogger UI screenshot)   */}
-              {/* 1. Share Icon                                                             */}
-              {/* 2. Oval Pill Tags                                                         */}
-              {/* 3. Location: Palwal, Haryana 121102, India                                 */}
-              {/* 4. Blogger Comment Box (Comment as, Enter Comment, PUBLISH, Notify Me)     */}
-              {/* ========================================================================= */}
+              {/* Audit Point 5: Natural contextual links to Property Listings, Business Directory, Contact Page, and Registration */}
+              <div style={{ marginTop: '32px', padding: '22px 24px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0c6253', margin: '0 0 10px 0' }}>
+                  Looking to Buy, Sell, or List a Business on TradeCall India?
+                </h3>
+                <p style={{ fontSize: '14px', color: '#334155', lineHeight: 1.6, margin: '0 0 14px 0' }}>
+                  Explore verified zero-brokerage{' '}
+                  <a
+                    href="/properties/palwal"
+                    onClick={(e) => { e.preventDefault(); onNavigate('properties-city', 'palwal'); }}
+                    style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    property listings in Palwal
+                  </a>{' '}
+                  and{' '}
+                  <a
+                    href="/properties/faridabad"
+                    onClick={(e) => { e.preventDefault(); onNavigate('properties-city', 'faridabad'); }}
+                    style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    Faridabad
+                  </a>
+                  , connect with trusted dealers in our{' '}
+                  <a
+                    href="/business-directory"
+                    onClick={(e) => { e.preventDefault(); onNavigate('business-directory'); }}
+                    style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    local business directory
+                  </a>
+                  ,{' '}
+                  <a
+                    href="/register"
+                    onClick={(e) => { e.preventDefault(); onNavigate('register'); }}
+                    style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    register your free account
+                  </a>{' '}
+                  to{' '}
+                  <a
+                    href="/post-listing"
+                    onClick={(e) => { e.preventDefault(); onNavigate('post-listing'); }}
+                    style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    post a free property or business listing
+                  </a>
+                  , or visit our{' '}
+                  <a
+                    href="/contact"
+                    onClick={(e) => { e.preventDefault(); onNavigate('contact'); }}
+                    style={{ color: '#0c6253', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    contact page
+                  </a>{' '}
+                  for personalized assistance.
+                </p>
+              </div>
+
+              {/* BLOGGER OPTIONS SECTION */}
               <div style={{ marginTop: '36px', paddingTop: '20px', borderTop: '1px solid #e8eaed' }}>
                 {/* 1. Share Icon with dropdown */}
                 <div style={{ position: 'relative', display: 'inline-block', marginBottom: '14px' }}>
@@ -510,7 +593,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                   )}
                 </div>
 
-                {/* 2. Oval Pill Tags (As displayed in Blogger screenshot) */}
+                {/* 2. Oval Pill Tags */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                   {pillTags.map((tag, idx) => (
                     <span
@@ -532,7 +615,7 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                   ))}
                 </div>
 
-                {/* 3. Location (As displayed in Blogger screenshot) */}
+                {/* 3. Location */}
                 <div style={{ fontSize: '13.5px', color: '#5f6368', marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>Location:</span>
                   <a
@@ -547,9 +630,8 @@ export default function BlogDetailPage({ blogIdentifier, onNavigate }: BlogDetai
                   </a>
                 </div>
 
-                {/* 4. Blogger Comment Box (As shown in screenshot) */}
+                {/* 4. Blogger Comment Box */}
                 <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #f1f3f4' }}>
-                  {/* Blogger Icon + Comment As */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
                     <div
                       style={{

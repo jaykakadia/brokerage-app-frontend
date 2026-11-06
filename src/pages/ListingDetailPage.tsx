@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatListingPrice } from '../utils/formatters';
+import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { getListingUniqueId, getListingUrl, isLegacyListingCode, slugify } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
-import { getBusinessCategories, getBusinessMobile, getListingDescription, publicListingTitle, getListingCity } from '../utils/listingKind';
+import { getBusinessCategories, getBusinessMobile, getListingDescription, publicListingTitle, getListingCity, isBusinessListing } from '../utils/listingKind';
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
@@ -28,6 +28,7 @@ export interface ListingDetailPageProps {
 export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }: ListingDetailPageProps) {
   const { user, refreshUser } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
+  const [relatedListings, setRelatedListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -130,25 +131,140 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     }
   }, [listingId]);
 
+  // Fetch related properties or businesses in the same city/locality/category (Audit Points 2 & 2a)
+  useEffect(() => {
+    if (!listing) {
+      setRelatedListings([]);
+      return;
+    }
+    const isBiz = isBusinessListing(listing);
+    const currentCity = getListingCity(listing).toLowerCase();
+    const currentLocality = (listing.form_data?.locality || listing.location?.split(',')[0] || '').toString().trim().toLowerCase();
+    const currentCategories = getBusinessCategories(listing).map((c) => c.toLowerCase());
+    const currentPropType = (listing.form_data?.propType || '').toString().toLowerCase();
+
+    api
+      .get<ApiResponse<Listing[]>>('/api/v1/listings', {
+        params: { status: 'approved', kind: isBiz ? 'business' : undefined, limit: 80 }
+      })
+      .then((res) => {
+        const all = Array.isArray(res.data?.data) ? res.data.data : [];
+        const candidates = all.filter((item) => {
+          if (String(item.id) === String(listing.id)) return false;
+          if (item.form_data?.kind === 'buyer') return false;
+          return isBiz ? isBusinessListing(item) : !isBusinessListing(item);
+        });
+
+        const scored = candidates.map((item) => {
+          let score = 0;
+          const itemCity = getListingCity(item).toLowerCase();
+          const itemLoc = (item.form_data?.locality || item.location?.split(',')[0] || '').toString().trim().toLowerCase();
+          if (currentCity && itemCity === currentCity) score += 4;
+          if (currentLocality && itemLoc && itemLoc === currentLocality) score += 5;
+          if (isBiz) {
+            const itemCats = getBusinessCategories(item).map((c) => c.toLowerCase());
+            if (currentCategories.some((c) => itemCats.includes(c))) score += 5;
+          } else {
+            const itemPropType = (item.form_data?.propType || '').toString().toLowerCase();
+            if (currentPropType && itemPropType === currentPropType) score += 3;
+          }
+          return { item, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        setRelatedListings(scored.slice(0, 6).map((s) => s.item));
+      })
+      .catch(() => {
+        setRelatedListings([]);
+      });
+  }, [listing]);
+
   useEffect(() => {
     if (!listing) return;
     const isBuyer = listing.form_data?.kind === 'buyer';
     const isThinBusiness = listing.form_data?.kind === 'business' && !getListingDescription(listing) && !listing.location;
-    const isBiz = listing.form_data?.kind === 'business';
+    const isBiz = isBusinessListing(listing);
     const price = isBiz ? '' : formatListingPrice(listing.price);
     const summary = [price, listing.location].filter(Boolean).join(' · ');
-    const rawSeoTitle = listing.seo_title || `${publicListingTitle(listing)} | TradeCall India`;
-    const fullTitle = rawSeoTitle
-      .replace(/\b\d+\s*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land')
-      .replace(/\b\d+\s*BHK\+?\s+(Plot)\b/gi, 'Plot')
-      .replace(/\b\d+\s*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property')
-      .replace(/\b\d+\s*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
+    const city = getListingCity(listing) || 'Palwal';
+    const citySlug = slugify(city) || 'palwal';
+    const rawLocFirst = listing.location ? listing.location.split(',')[0].trim() : '';
+    const locality = (listing.form_data?.locality ? String(listing.form_data.locality).trim() : rawLocFirst) || city;
+    const localitySlug = slugify(locality);
+    const headingText = publicListingTitle(listing);
+    const primaryCat = getBusinessCategories(listing)[0] || 'Property Dealer';
+
+    let fullTitle: string;
+    let metaDescription: string;
+
+    if (isBiz) {
+      // Audit Point 3 & 8: Recommended meta title: "Ashoka Property Faridabad | Property Dealer – TradeCall India"
+      const hasCityInName = headingText.toLowerCase().includes(city.toLowerCase());
+      const nameWithCity = hasCityInName ? headingText : `${headingText} ${city}`;
+      fullTitle = listing.seo_title || `${nameWithCity} | ${primaryCat} – TradeCall India`;
+
+      // Audit Point 3: "Contact Ashoka Property in Greater Faridabad, Faridabad for real estate services. Find property dealers and consultants on TradeCall India."
+      const locDisplay = listing.location || (locality !== city ? `${locality}, ${city}` : city);
+      const ownerDesc = getListingDescription(listing);
+      metaDescription = toMetaDescription(
+        `Contact ${headingText} in ${locDisplay} for ${primaryCat.toLowerCase()} & real estate services.${ownerDesc ? ` ${ownerDesc}` : ''} Find property dealers and consultants on TradeCall India.`
+      );
+    } else {
+      const rawSeoTitle = listing.seo_title || `${headingText} | TradeCall India`;
+      fullTitle = rawSeoTitle
+        .replace(/\b\d+\s*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land')
+        .replace(/\b\d+\s*BHK\+?\s+(Plot)\b/gi, 'Plot')
+        .replace(/\b\d+\s*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property')
+        .replace(/\b\d+\s*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
+      metaDescription = toMetaDescription(
+        `${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`
+      );
+    }
+
+    const canonicalPath = getListingUrl(listing);
+    const canonicalUrl = `https://tradecall.in${canonicalPath}`;
+    const breadcrumbItems: Array<Record<string, unknown>> = [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://tradecall.in/'
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: city,
+        item: `https://tradecall.in/properties/${citySlug}`
+      }
+    ];
+    if (locality && locality.toLowerCase() !== city.toLowerCase() && localitySlug) {
+      breadcrumbItems.push({
+        '@type': 'ListItem',
+        position: 3,
+        name: locality,
+        item: `https://tradecall.in/${citySlug}/${localitySlug}`
+      });
+    }
+    breadcrumbItems.push({
+      '@type': 'ListItem',
+      position: breadcrumbItems.length + 1,
+      name: headingText,
+      item: canonicalUrl
+    });
+
     setSeo({
       title: fullTitle,
-      description: toMetaDescription(`${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`),
-      path: getListingUrl(listing),
+      description: metaDescription,
+      path: canonicalPath,
       image: listing.images?.[0] ? getImageUrl(listing.images[0].file_path) : undefined,
       noindex: isBuyer || isThinBusiness,
+      jsonLd: [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: breadcrumbItems
+        }
+      ]
     });
   }, [listing]);
 
@@ -318,7 +434,6 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     );
   }
 
-
   const isOwner = Boolean(user && user.id === listing.user_id);
   const isAdmin = Boolean(user && user.role?.toLowerCase() === 'admin');
   const canManage = isOwner || isAdmin;
@@ -331,7 +446,16 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
   const currentImg = images[activePhotoIdx] || images[0];
   const formData = listing.form_data || {};
   const heading = publicListingTitle(listing);
-  const isBusiness = formData.kind === 'business';
+  const isBusiness = isBusinessListing(listing);
+  const primaryCategory = getBusinessCategories(listing)[0] || '';
+  const cityName = getListingCity(listing);
+  const citySlug = slugify(cityName);
+  const rawLocFirst = listing.location ? listing.location.split(',')[0].trim() : '';
+  const localityName = formData.locality ? String(formData.locality).trim() : rawLocFirst;
+  const localitySlug = slugify(localityName);
+  const showLocalityCrumb = Boolean(localityName && cityName && localityName.toLowerCase() !== cityName.toLowerCase() && localitySlug);
+  const h1LocationLabel = localityName || cityName;
+
   const keyDetails = buildKeyDetails(formData);
   const amenities = Array.isArray(formData.amenities) ? formData.amenities.filter((a) => typeof a === 'string' && a) : [];
   const showPrice = !isBusiness;
@@ -354,14 +478,14 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
       <div className="container">
         <div className="ld-topbar">
           <a
-            href="#listings"
+            href={isBusiness ? '/business-directory' : '#listings'}
             className="ld-back"
             onClick={(e) => {
               e.preventDefault();
-              onNavigate('home');
+              onNavigate(isBusiness ? 'business-directory' : 'home');
             }}
           >
-            <i className="fas fa-arrow-left"></i> Back to Listings
+            <i className="fas fa-arrow-left"></i> {isBusiness ? 'Back to Business Directory' : 'Back to Listings'}
           </a>
 
           {canManage && (
@@ -416,7 +540,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           )}
         </div>
 
-        {/* B3 Breadcrumbs: Home > City > Locality > Property */}
+        {/* Audit Point 4 Breadcrumbs: Home → Palwal → Omaxe City Phase-II → Property Listing */}
         <nav aria-label="Breadcrumb" style={{ margin: '14px 0 18px 0', fontSize: '13px', color: '#64748b' }}>
           <a
             href="/"
@@ -428,28 +552,37 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           >
             Home
           </a>
-          {getListingCity(listing) && (
+          {cityName && (
             <>
-              <span style={{ margin: '0 8px', color: '#cbd5e1' }}>/</span>
+              <span style={{ margin: '0 8px', color: '#cbd5e1' }}>&rarr;</span>
               <a
-                href={`/properties/${slugify(getListingCity(listing))}`}
+                href={`/properties/${citySlug}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  onNavigate('properties-city', slugify(getListingCity(listing)));
+                  onNavigate('properties-city', citySlug);
                 }}
                 style={{ color: '#0c6253', textDecoration: 'none', fontWeight: 500 }}
               >
-                {getListingCity(listing)}
+                {cityName}
               </a>
             </>
           )}
-          {listing.location && (
+          {showLocalityCrumb && (
             <>
-              <span style={{ margin: '0 8px', color: '#cbd5e1' }}>/</span>
-              <span style={{ color: '#64748b' }}>{listing.location.split(',')[0].trim()}</span>
+              <span style={{ margin: '0 8px', color: '#cbd5e1' }}>&rarr;</span>
+              <a
+                href={`/${citySlug}/${localitySlug}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate('properties-city', `${citySlug}/${localitySlug}`);
+                }}
+                style={{ color: '#0c6253', textDecoration: 'none', fontWeight: 500 }}
+              >
+                {localityName}
+              </a>
             </>
           )}
-          <span style={{ margin: '0 8px', color: '#cbd5e1' }}>/</span>
+          <span style={{ margin: '0 8px', color: '#cbd5e1' }}>&rarr;</span>
           <span style={{ color: '#1e293b', fontWeight: 600 }}>{heading}</span>
         </nav>
 
@@ -458,7 +591,6 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
             <div className="ld-gallery">
               <div
                 className="ld-main-wrap"
-                // Blurred copy of the photo fills the space around it, so the full photo shows uncropped
                 style={hasPhotos ? ({ '--ld-bg': `url("${currentImg}")` } as React.CSSProperties) : undefined}
               >
                 <img
@@ -496,10 +628,19 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <i className="fas fa-check-circle"></i> Verified
                 </div>
               )}
+              {/* Audit Point 3 H1: e.g. "Ashoka Property – Property Dealer in Greater Faridabad" */}
               <h1 className="ld-title">
                 {heading}
-                {isBusiness && getBusinessCategories(listing)[0] && (
-                  <> <span className="title-category">-&nbsp;{getBusinessCategories(listing)[0]}</span></>
+                {isBusiness && primaryCategory && (
+                  <>
+                    {' '}
+                    <span className="title-category">
+                      &ndash;&nbsp;{primaryCategory}
+                      {h1LocationLabel && !heading.toLowerCase().includes(h1LocationLabel.toLowerCase())
+                        ? ` in ${h1LocationLabel}`
+                        : ''}
+                    </span>
+                  </>
                 )}
               </h1>
               {showPrice && <div className="ld-price">{formatListingPrice(listing.price)}</div>}
@@ -660,19 +801,149 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
 
               <a
                 className="btn-view"
-                href="#listings"
+                href={isBusiness ? '/business-directory' : '#listings'}
                 onClick={(e) => {
                   e.preventDefault();
-                  onNavigate('home');
+                  onNavigate(isBusiness ? 'business-directory' : 'home');
                 }}
               >
-                <i className="fas fa-list"></i> More Listings
+                <i className="fas fa-list"></i> {isBusiness ? 'All Businesses' : 'More Listings'}
               </a>
             </div>
           </aside>
         </div>
 
+        {/* Audit Points 2 & 2a: Internal Linking to Related Properties / Businesses in the Same City & Category */}
+        <div style={{ marginTop: '36px', background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+              {isBusiness
+                ? `Other Businesses${cityName ? ` in ${cityName}` : ''}${primaryCategory ? ` (${primaryCategory})` : ''}`
+                : `Related Properties${showLocalityCrumb ? ` in ${localityName}, ${cityName}` : cityName ? ` in ${cityName}` : ''}`}
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {cityName && (
+                <a
+                  href={`/properties/${citySlug}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('properties-city', citySlug);
+                  }}
+                  style={{ fontSize: '13px', fontWeight: 600, color: '#0c6253', textDecoration: 'none', background: '#f0fdf4', padding: '6px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}
+                >
+                  Properties in {cityName} &rarr;
+                </a>
+              )}
+              {showLocalityCrumb && (
+                <a
+                  href={`/${citySlug}/${localitySlug}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('properties-city', `${citySlug}/${localitySlug}`);
+                  }}
+                  style={{ fontSize: '13px', fontWeight: 600, color: '#0c6253', textDecoration: 'none', background: '#f0fdf4', padding: '6px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}
+                >
+                  More in {localityName} &rarr;
+                </a>
+              )}
+              {isBusiness && cityName && (
+                <a
+                  href={`/business-directory?city=${encodeURIComponent(cityName)}${primaryCategory ? `&category=${encodeURIComponent(primaryCategory)}` : ''}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.history.pushState(null, '', `/business-directory?city=${encodeURIComponent(cityName)}${primaryCategory ? `&category=${encodeURIComponent(primaryCategory)}` : ''}`);
+                    onNavigate('business-directory');
+                  }}
+                  style={{ fontSize: '13px', fontWeight: 600, color: '#0c6253', textDecoration: 'none', background: '#f0fdf4', padding: '6px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}
+                >
+                  {primaryCategory ? `${primaryCategory} in ${cityName}` : `Businesses in ${cityName}`} &rarr;
+                </a>
+              )}
+            </div>
+          </div>
 
+          {relatedListings.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
+              {relatedListings.map((rel) => {
+                const relUrl = getListingUrl(rel);
+                const relTitle = publicListingTitle(rel) || rel.title;
+                const relIsBiz = isBusinessListing(rel);
+                const relCat = getBusinessCategories(rel)[0];
+                const relImg = getFirstImageUrl(rel);
+                return (
+                  <a
+                    key={rel.id}
+                    href={relUrl}
+                    onClick={(e) => {
+                      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+                      e.preventDefault();
+                      onNavigate('listing-detail', rel);
+                    }}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      background: '#f8fafc',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                    }}
+                  >
+                    <div style={{ height: '140px', overflow: 'hidden', background: '#e2e8f0', position: 'relative' }}>
+                      <img
+                        src={relImg}
+                        alt={relTitle}
+                        loading="lazy"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
+                      />
+                    </div>
+                    <div style={{ padding: '12px 14px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {relTitle}
+                      </div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0c6253', marginBottom: '4px' }}>
+                        {relIsBiz ? (relCat || 'Verified Business') : formatListingPrice(rel.price)}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <i className="fas fa-map-marker-alt" style={{ marginRight: '4px' }}></i>
+                        {rel.location}
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          ) : (
+            <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
+              Explore more verified listings in{' '}
+              <a
+                href={cityName ? `/properties/${citySlug}` : '/cities'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (cityName) onNavigate('properties-city', citySlug);
+                  else onNavigate('cities');
+                }}
+                style={{ color: '#0c6253', fontWeight: 600 }}
+              >
+                {cityName || 'all cities'}
+              </a>{' '}
+              or browse our{' '}
+              <a
+                href="/business-directory"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate('business-directory');
+                }}
+                style={{ color: '#0c6253', fontWeight: 600 }}
+              >
+                Business Directory
+              </a>.
+            </p>
+          )}
+        </div>
       </div>
 
       <ContactRevealModal

@@ -70,10 +70,10 @@ export function setSeo({ title, description, path, image, noindex = false, jsonL
     raw = raw.replace(/\s*\|\s*Tradecall\s*\|\s*TradeCall India$/i, '');
     raw = raw.replace(/\s*\|\s*TradeCall India$/i, '');
     raw = raw.replace(/\s*\|\s*Tradecall$/i, '');
-    raw = raw.replace(/\s*-\s*TradeCall India$/i, '');
-    raw = raw.replace(/\s*-\s*Tradecall$/i, '');
-    const isHyphenBrand = title.includes(' - TradeCall');
-    fullTitle = isHyphenBrand ? `${raw} - ${SITE_NAME}` : `${raw} | ${SITE_NAME}`;
+    raw = raw.replace(/\s*[–-]\s*TradeCall India$/i, '');
+    raw = raw.replace(/\s*[–-]\s*Tradecall$/i, '');
+    const isHyphenBrand = title.includes(' - TradeCall') || title.includes(' – TradeCall');
+    fullTitle = isHyphenBrand ? `${raw} – ${SITE_NAME}` : `${raw} | ${SITE_NAME}`;
   }
   const desc = description || DEFAULT_DESCRIPTION;
   const url = `${SITE_URL}${path ?? window.location.pathname}`;
@@ -95,6 +95,8 @@ export function setSeo({ title, description, path, image, noindex = false, jsonL
   }
   if (jsonLd) {
     setJsonLd('dynamic-page-jsonld', jsonLd);
+  } else {
+    setJsonLd('dynamic-page-jsonld', undefined);
   }
 }
 
@@ -102,8 +104,8 @@ export function setSeo({ title, description, path, image, noindex = false, jsonL
 export const PAGE_SEO: Record<string, SeoOptions> = {
   home: { path: '/' },
   'business-directory': {
-    title: 'Business Directory - Local Businesses in Palwal & NCR',
-    description: 'Find trusted local businesses in Palwal, Faridabad and the NCR: builders, interior designers, contractors, property dealers and more. Unlock contact details on TradeCall India.',
+    title: 'Business Directory in Palwal, Faridabad & Delhi NCR',
+    description: 'Find trusted local businesses in Palwal, Faridabad and Delhi NCR: property dealers, builders, interior designers, contractors and more. Unlock contact details on TradeCall India.',
     path: '/business-directory'
   },
   advertise: {
@@ -112,8 +114,8 @@ export const PAGE_SEO: Record<string, SeoOptions> = {
     path: '/advertise'
   },
   blog: {
-    title: 'Property Blog - Real Estate Tips & Guides for Palwal & NCR',
-    description: 'Real estate news, buying and renting guides, and property tips for Palwal, Faridabad and the NCR from TradeCall India.',
+    title: 'How to Register and Search Properties on TradeCall India | Property Blog',
+    description: 'Real estate news, how to register and search properties on TradeCall India, buying and renting guides, and property tips for Palwal, Faridabad and the NCR.',
     path: '/blog'
   },
   about: {
@@ -122,8 +124,8 @@ export const PAGE_SEO: Record<string, SeoOptions> = {
     path: '/about'
   },
   contact: {
-    title: 'Contact Us',
-    description: 'Get in touch with TradeCall India in Palwal, Haryana. Call or WhatsApp 9992292828 or email support.tradecall@gmail.com.',
+    title: 'Contact TradeCall India – Property & Business Listing Support',
+    description: 'Get in touch with TradeCall India in Palwal, Haryana for property and business listing support. Call or WhatsApp 9992292828 or email support.tradecall@gmail.com.',
     path: '/contact'
   },
   terms: { title: 'Terms of Use', path: '/terms-of-use' },

@@ -173,6 +173,14 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
 
   const parts = cleanPath.split('/');
 
+  // Business Directory city/category landing pages: /business-directory/:city or /business-directory/:city/:category
+  if (
+    (parts[0].toLowerCase() === 'business-directory' || parts[0].toLowerCase() === 'businesses') &&
+    (parts.length === 2 || parts.length === 3)
+  ) {
+    return { page: 'business-directory', param: parts.slice(1).join('/') };
+  }
+
   // Properties by city: /properties/:city
   if (parts.length === 2 && (parts[0].toLowerCase() === 'properties' || parts[0].toLowerCase() === 'city')) {
     const citySlug = parts[1].toLowerCase();

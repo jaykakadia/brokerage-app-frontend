@@ -183,7 +183,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleRouteChange);
   }, []);
 
-  // Listing, blog, city, and not-found pages set their own SEO once active
+  // Listing, blog, business-directory, contact, city, and not-found pages set their own SEO once active
   useEffect(() => {
     if (activePage === 'listing-detail' || activePage === 'blog-detail') return;
 
@@ -198,6 +198,8 @@ export default function App() {
       });
       return;
     }
+
+    if (activePage === 'business-directory' || activePage === 'contact') return;
 
     if (activePage === 'login' && loginTab === 'register') {
       setSeo({ title: 'Register', noindex: true });
@@ -295,6 +297,15 @@ export default function App() {
         }
         setActivePage('properties-city');
       }
+    } else if (page === 'business-directory') {
+      setActivePage('business-directory');
+      if (typeof param === 'string' && param.trim()) {
+        path = `/business-directory/${param.replace(/^\/+/, '')}`;
+      } else if (window.location.pathname.startsWith('/business-directory') && window.location.search) {
+        path = `${window.location.pathname}${window.location.search}`;
+      } else {
+        path = '/business-directory';
+      }
     } else if (page === 'cities') {
       setActivePage('cities');
       path = '/cities';
@@ -315,7 +326,7 @@ export default function App() {
       path = `/${page}`;
     }
 
-    if (window.location.pathname !== path) {
+    if (`${window.location.pathname}${window.location.search}` !== path) {
       window.history.pushState(null, '', path);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -416,7 +427,6 @@ export default function App() {
           {activePage === 'account' && (
             <AccountPage
               onNavigate={navigateTo}
-              onOpenAuth={openAuthModal}
             />
           )}
 

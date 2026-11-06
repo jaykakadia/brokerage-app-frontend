@@ -3,9 +3,9 @@ import api, { getApiErrorMessage, getListingStats, getWishlist, toggleWishlist }
 import { useAuth } from '../context/AuthContext';
 import { cardImageBackdrop, getFirstImageUrl } from '../utils/formatters';
 import { cityNameVariants, getBusinessCategories, getPrimaryBusinessCategory, getListingCity, isBusinessListing, isNewListing, publicListingTitle } from '../utils/listingKind';
-import { POPULAR_BROWSE_CITIES } from '../config/cities';
+import { POPULAR_BROWSE_CITIES, getCityFromSlug } from '../config/cities';
 import ALL_CITIES_DATA from '../config/allCities.json';
-import { getListingUrl } from '../utils/url';
+import { getListingUrl, slugify } from '../utils/url';
 import { setSeo } from '../utils/seo';
 import type { AuthModalOptions } from './ListingDetailPage';
 import type { Listing, ListingStatsResponse, NavigateFunction } from '../types';
@@ -30,6 +30,47 @@ function businessInfo(listing: Listing): BusinessInfo {
 
 const BUSINESSES_PER_PAGE = 8; // 2 rows of 4 cards on desktop
 
+const CATEGORY_SLUG_LABELS: Record<string, string> = {
+  'property-dealers': 'Property Dealers',
+  'property-dealer': 'Property Dealer',
+  'real-estate-agents': 'Real Estate Agents',
+  'builders-and-developers': 'Builders & Developers',
+  'builders': 'Builders & Developers',
+  'interior-designers': 'Interior Designers',
+  'contractors': 'Building Contractors',
+  'architects': 'Architects',
+  'legal-advisors': 'Property Legal Advisors',
+  'home-loans': 'Home Loan Consultants'
+};
+
+function parseDirectoryPathFilters(pathname: string, searchStr: string): { city: string; category: string; q: string; newOnly: boolean; page: number } {
+  const sp = new URLSearchParams(searchStr);
+  let city = sp.get('city') || '';
+  let category = sp.get('category') || '';
+  const q = sp.get('q') || sp.get('search') || '';
+  const newOnly = sp.get('new') === '1' || sp.get('new') === 'true';
+  const page = Math.max(1, parseInt(sp.get('page') || '1', 10) || 1);
+
+  const parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
+  if ((parts[0]?.toLowerCase() === 'business-directory' || parts[0]?.toLowerCase() === 'businesses') && parts.length >= 2) {
+    const seg1 = parts[1].toLowerCase();
+    const resolvedCity = getCityFromSlug(seg1);
+    if (resolvedCity && !city) {
+      city = resolvedCity;
+    } else if (!category && CATEGORY_SLUG_LABELS[seg1]) {
+      category = CATEGORY_SLUG_LABELS[seg1];
+    }
+    if (parts.length >= 3) {
+      const seg2 = parts[2].toLowerCase();
+      if (!category) {
+        category = CATEGORY_SLUG_LABELS[seg2] || seg2.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+    }
+  }
+
+  return { city, category, q, newOnly, page };
+}
+
 function getPaginationItems(current: number, total: number): Array<number | '...'> {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
@@ -49,19 +90,36 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   const [stats, setStats] = useState<ListingStatsResponse | null>(null);
   const [showCitiesPanel, setShowCitiesPanel] = useState(false);
   const citiesPanelRef = useRef<HTMLDivElement>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+
+  const initialParsed = useMemo(() => parseDirectoryPathFilters(window.location.pathname, window.location.search), []);
+
+  const [currentPage, setCurrentPage] = useState<number>(() => initialParsed.page);
   const [carouselIndex, setCarouselIndex] = useState<number>(0);
   const [withTransition, setWithTransition] = useState<boolean>(true);
   const [isCarouselHovered, setIsCarouselHovered] = useState<boolean>(false);
   const touchStartX = useRef<number | null>(null);
 
-  useEffect(() => {
-    setSeo({
-      title: 'Local Business Directory in Palwal & NCR | TradeCall India',
-      description: 'Explore verified local businesses, shops, and services across Palwal, Faridabad, and Haryana NCR. Free local business directory on TradeCall India.',
-      path: '/business-directory'
-    });
-  }, []);
+  const [businesses, setBusinesses] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState(() => initialParsed.q);
+  const [category, setCategory] = useState(() => initialParsed.category);
+  const [categoryInput, setCategoryInput] = useState(() => initialParsed.category);
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [categoryHighlightedIndex, setCategoryHighlightedIndex] = useState(-1);
+  const [allCategoriesPicked, setAllCategoriesPicked] = useState(false);
+  const categoryWrapperRef = useRef<HTMLDivElement>(null);
+
+  const [city, setCity] = useState(() => initialParsed.city);
+  const [cityInput, setCityInput] = useState(() => initialParsed.city);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [cityHighlightedIndex, setCityHighlightedIndex] = useState(-1);
+  const [allCitiesPicked, setAllCitiesPicked] = useState(false);
+  const cityWrapperRef = useRef<HTMLDivElement>(null);
+
+  const [newOnly, setNewOnly] = useState(() => initialParsed.newOnly);
+  const [copiedFilters, setCopiedFilters] = useState(false);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -117,62 +175,19 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     }
   };
 
-  // Read initial filter values from URL query parameters (if present) to support shared links
-  const initialUrlParams = useMemo(() => new URLSearchParams(window.location.search), []);
-  const [businesses, setBusinesses] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState(() => initialUrlParams.get('q') || initialUrlParams.get('search') || '');
-  const [category, setCategory] = useState(() => initialUrlParams.get('category') || '');
-  const [categoryInput, setCategoryInput] = useState(() => initialUrlParams.get('category') || '');
-  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
-  const [categoryHighlightedIndex, setCategoryHighlightedIndex] = useState(-1);
-  const [allCategoriesPicked, setAllCategoriesPicked] = useState(false);
-  const categoryWrapperRef = useRef<HTMLDivElement>(null);
-
-  const [city, setCity] = useState(() => initialUrlParams.get('city') || '');
-  const [cityInput, setCityInput] = useState(() => initialUrlParams.get('city') || '');
-  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const [cityHighlightedIndex, setCityHighlightedIndex] = useState(-1);
-  const [allCitiesPicked, setAllCitiesPicked] = useState(false);
-  const cityWrapperRef = useRef<HTMLDivElement>(null);
-
-  const [newOnly, setNewOnly] = useState(() => initialUrlParams.get('new') === '1' || initialUrlParams.get('new') === 'true');
-  const [copiedFilters, setCopiedFilters] = useState(false);
-  const [allCategories, setAllCategories] = useState<string[]>([]);
-
-  // Keep URL query params synchronized with active filters
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) params.set('q', search.trim());
-    if (category) params.set('category', category);
-    if (city) params.set('city', city);
-    if (newOnly) params.set('new', '1');
-
-    const searchStr = params.toString();
-    const newPathAndSearch = searchStr ? `${window.location.pathname}?${searchStr}` : window.location.pathname;
-    const currentPathAndSearch = `${window.location.pathname}${window.location.search}`;
-
-    if (newPathAndSearch !== currentPathAndSearch) {
-      window.history.replaceState(null, '', newPathAndSearch);
-    }
-  }, [search, category, city, newOnly]);
-
-  // Support browser Back/Forward navigation with filters
+  // Support browser Back/Forward navigation with filters & landing URLs
   useEffect(() => {
     const handlePopState = () => {
-      const sp = new URLSearchParams(window.location.search);
-      const q = sp.get('q') || sp.get('search') || '';
-      const cat = sp.get('category') || '';
-      const c = sp.get('city') || '';
-      setSearch(q);
-      setCategory(cat);
-      setCategoryInput(cat);
+      const parsed = parseDirectoryPathFilters(window.location.pathname, window.location.search);
+      setSearch(parsed.q);
+      setCategory(parsed.category);
+      setCategoryInput(parsed.category);
       setAllCategoriesPicked(false);
-      setCity(c);
-      setCityInput(c);
+      setCity(parsed.city);
+      setCityInput(parsed.city);
       setAllCitiesPicked(false);
-      setNewOnly(sp.get('new') === '1' || sp.get('new') === 'true');
+      setNewOnly(parsed.newOnly);
+      setCurrentPage(parsed.page);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -249,6 +264,122 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return all.filter((name) => name.toLowerCase().includes(q)).slice(0, 100);
   }, [cityInput, allCitiesPicked]);
 
+  const visible = useMemo(() => {
+    return businesses.filter((b) => {
+      const info = businessInfo(b);
+      if (newOnly && !isNewListing(b)) return false;
+      if (category) {
+        const targetCat = category.toLowerCase().replace(/s$/, '');
+        if (!info.categories.some((c) => c.toLowerCase() === targetCat || c.toLowerCase().includes(targetCat) || targetCat.includes(c.toLowerCase()))) return false;
+      }
+      if (city) {
+        const bCity = (info.city || getListingCity(b)).toLowerCase();
+        const targetVariants = cityNameVariants(city).map((v) => v.toLowerCase());
+        if (!targetVariants.some((v) => bCity === v || bCity.includes(v))) return false;
+      }
+      const q = search.trim().toLowerCase();
+      if (q) {
+        const haystack = [b.title, b.location, b.description || '', ...info.categories].join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [businesses, newOnly, category, city, search]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / BUSINESSES_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const pagedBusinesses = visible.slice((page - 1) * BUSINESSES_PER_PAGE, page * BUSINESSES_PER_PAGE);
+
+  // Build canonical path & query string for current state
+  const buildFilterUrl = (targetPage: number, overrideCity?: string, overrideCat?: string): string => {
+    const c = overrideCity !== undefined ? overrideCity : city;
+    const cat = overrideCat !== undefined ? overrideCat : category;
+    const cSlug = c ? slugify(c) : '';
+    const catSlug = cat ? slugify(cat) : '';
+
+    let basePath = '/business-directory';
+    if (cSlug && catSlug && !search.trim() && !newOnly) {
+      basePath = `/business-directory/${cSlug}/${catSlug}`;
+    } else if (cSlug && !catSlug && !search.trim() && !newOnly) {
+      basePath = `/business-directory/${cSlug}`;
+    }
+
+    const params = new URLSearchParams();
+    if (basePath === '/business-directory') {
+      if (search.trim()) params.set('q', search.trim());
+      if (cat) params.set('category', cat);
+      if (c) params.set('city', c);
+      if (newOnly) params.set('new', '1');
+    }
+    if (targetPage > 1) params.set('page', String(targetPage));
+
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
+
+  // Sync URL with active filters/page
+  useEffect(() => {
+    const targetUrl = buildFilterUrl(page);
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (targetUrl !== currentUrl) {
+      window.history.replaceState(null, '', targetUrl);
+    }
+  }, [search, category, city, newOnly, page]);
+
+  // Audit Point 7 & 8: Unique page titles, H1 headings, and CollectionPage + ItemList schema
+  const pageHeading = useMemo(() => {
+    if (category && city) return `${category} in ${city}`;
+    if (city) return `Business Directory in ${city}`;
+    if (category) return `${category} in Palwal, Faridabad & Delhi NCR`;
+    return 'Business Directory in Palwal, Faridabad & Delhi NCR';
+  }, [category, city]);
+
+  useEffect(() => {
+    const seoTitle = category && city
+      ? `${category} in ${city} | Business Directory`
+      : city
+      ? `Business Directory in ${city} – Local Businesses & Property Dealers`
+      : category
+      ? `${category} in Palwal, Faridabad & Delhi NCR | Business Directory`
+      : 'Business Directory in Palwal, Faridabad & Delhi NCR';
+
+    const seoDesc = category && city
+      ? `Find verified ${category.toLowerCase()} in ${city} on TradeCall India. View contact numbers, addresses, and local business profiles in ${city}.`
+      : city
+      ? `Explore verified local businesses, property dealers, builders, and services in ${city} on TradeCall India.`
+      : 'Explore verified local businesses, property dealers, builders, and services across Palwal, Faridabad & Delhi NCR on TradeCall India.';
+
+    const canonicalPath = buildFilterUrl(page);
+    const canonicalFull = `https://tradecall.in${canonicalPath}`;
+
+    const itemListElements = pagedBusinesses.map((b, idx) => ({
+      '@type': 'ListItem',
+      position: (page - 1) * BUSINESSES_PER_PAGE + idx + 1,
+      name: publicListingTitle(b) || b.title,
+      url: `https://tradecall.in${getListingUrl(b)}`
+    }));
+
+    setSeo({
+      title: seoTitle,
+      description: seoDesc,
+      path: canonicalPath,
+      jsonLd: [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: pageHeading,
+          description: seoDesc,
+          url: canonicalFull,
+          mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: visible.length,
+            itemListElement: itemListElements
+          }
+        }
+      ]
+    });
+  }, [pageHeading, category, city, page, pagedBusinesses, visible.length]);
+
   const handleSelectCity = (c: string): void => {
     const isAll = c === 'All Cities' || !c;
     setAllCitiesPicked(isAll);
@@ -272,6 +403,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     setCity(val.trim());
     setShowCitySuggestions(true);
     setCityHighlightedIndex(-1);
+    setCurrentPage(1);
   };
 
   const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -323,6 +455,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     setCategory(val.trim());
     setShowCategorySuggestions(true);
     setCategoryHighlightedIndex(-1);
+    setCurrentPage(1);
   };
 
   const handleCategoryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -353,22 +486,18 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
   };
 
   const featuredBusinesses = useMemo(() => businesses.filter((b) => b.is_featured), [businesses]);
-
   const featuredSlides = featuredBusinesses.length > 1;
 
-  // Circular carousel: triplicate list so after the last card, the first card appears seamlessly
   const circularBusinesses = useMemo(() => {
     if (!featuredSlides) return featuredBusinesses;
     return [...featuredBusinesses, ...featuredBusinesses, ...featuredBusinesses];
   }, [featuredBusinesses, featuredSlides]);
 
-  // Start at the beginning of the middle clone
   useEffect(() => {
     setWithTransition(false);
     setCarouselIndex(featuredSlides ? featuredBusinesses.length : 0);
   }, [featuredBusinesses.length, featuredSlides]);
 
-  // Once a slide has moved out of the middle clone, snap back into it without animation
   useEffect(() => {
     const n = featuredBusinesses.length;
     if (!featuredSlides || (carouselIndex >= n && carouselIndex < 2 * n)) return;
@@ -379,7 +508,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     return () => window.clearTimeout(id);
   }, [carouselIndex, featuredBusinesses.length, featuredSlides]);
 
-  // Re-enable CSS transition on the next frame after an instant snap
   useEffect(() => {
     if (!withTransition) {
       const id = requestAnimationFrame(() => {
@@ -411,7 +539,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
 
   const hasFilters = Boolean(search.trim() || category || city || newOnly);
 
-  // Auto slide periodically, pausing when user hovers over the carousel
   useEffect(() => {
     if (!featuredSlides || isCarouselHovered || hasFilters) return;
     const interval = setInterval(() => {
@@ -421,34 +548,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     }, 4500);
     return () => clearInterval(interval);
   }, [featuredSlides, isCarouselHovered, hasFilters]);
-
-  const visible = businesses.filter((b) => {
-    const info = businessInfo(b);
-    if (newOnly && !isNewListing(b)) return false;
-    if (category) {
-      const targetCat = category.toLowerCase();
-      if (!info.categories.some((c) => c.toLowerCase() === targetCat || c.toLowerCase().includes(targetCat))) return false;
-    }
-    if (city) {
-      const bCity = (info.city || getListingCity(b)).toLowerCase();
-      const targetVariants = cityNameVariants(city).map((v) => v.toLowerCase());
-      if (!targetVariants.some((v) => bCity === v || bCity.includes(v))) return false;
-    }
-    const q = search.trim().toLowerCase();
-    if (q) {
-      const haystack = [b.title, b.location, b.description || '', ...info.categories].join(' ').toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-    return true;
-  });
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, category, city, newOnly]);
-
-  const totalPages = Math.max(1, Math.ceil(visible.length / BUSINESSES_PER_PAGE));
-  const page = Math.min(currentPage, totalPages);
-  const pagedBusinesses = visible.slice((page - 1) * BUSINESSES_PER_PAGE, page * BUSINESSES_PER_PAGE);
 
   const goToPage = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -475,7 +574,6 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Industry standard navigation handler: preserves native browser right-click & middle-click
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, item: Listing): void => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
       return;
@@ -556,7 +654,13 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
               whiteSpace: 'nowrap'
             }}
           >
-            {title}
+            <a
+              href={bUrl}
+              onClick={(e) => handleLinkClick(e, b)}
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              {title}
+            </a>
           </h3>
           <div
             className="card-title"
@@ -593,13 +697,28 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
     );
   };
 
+  const popularLandingLinks = [
+    { city: 'Palwal', cat: 'Property Dealers', href: '/business-directory/palwal/property-dealers' },
+    { city: 'Faridabad', cat: 'Property Dealers', href: '/business-directory/faridabad/property-dealers' },
+    { city: 'Palwal', cat: 'Builders & Developers', href: '/business-directory/palwal/builders-and-developers' },
+    { city: 'Faridabad', cat: 'Builders & Developers', href: '/business-directory/faridabad/builders-and-developers' },
+    { city: 'Gurugram', cat: 'Property Dealers', href: '/business-directory/gurugram/property-dealers' },
+    { city: 'Noida', cat: 'Property Dealers', href: '/business-directory/noida/property-dealers' },
+    { city: 'Ballabgarh', cat: 'Property Dealers', href: '/business-directory/ballabgarh/property-dealers' },
+    { city: 'Hodal', cat: 'Property Dealers', href: '/business-directory/hodal/property-dealers' }
+  ];
+
   return (
     <>
       <section className="page-hero green-hero">
         <div className="container hero-content">
-          <h1><i className="fas fa-store"></i> Business Directory</h1>
+          <h1><i className="fas fa-store"></i> {pageHeading}</h1>
           <p style={{ margin: '-10px auto 24px', opacity: 0.95, fontSize: '16px', color: '#e6f4ea' }}>
-            Find trusted local businesses, services and shops near you
+            {category && city
+              ? `Browse verified ${category.toLowerCase()} and consultants in ${city}`
+              : city
+              ? `Find trusted local businesses, property dealers, and services in ${city}`
+              : 'Find trusted local businesses, property dealers, services and shops across Palwal, Faridabad & Delhi NCR'}
           </p>
 
           <div className="search-box" style={{ margin: '24px auto 24px', maxWidth: '1100px', textAlign: 'left' }}>
@@ -728,7 +847,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                 className="search-input"
                 placeholder="Search business name or keyword..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const el = document.getElementById('business-listings-section');
@@ -751,7 +870,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             </div>
           </div>
 
-          {/* Business Directory Metrics Bar (Derived from business listings only) */}
+          {/* Business Directory Metrics Bar */}
           <div className="metrics-inner">
             <button
               type="button"
@@ -826,7 +945,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             <button
               type="button"
               className="metric-item metric-clickable"
-              onClick={() => setNewOnly((v) => !v)}
+              onClick={() => { setNewOnly((v) => !v); setCurrentPage(1); }}
               title={newOnly ? 'Click to show all businesses' : 'Show businesses posted today'}
               style={newOnly ? { background: 'rgba(255, 255, 255, 0.2)' } : undefined}
             >
@@ -840,7 +959,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
         </div>
       </section>
 
-      {/* Explore Businesses in Popular Cities Section */}
+      {/* Explore Businesses in Popular Cities Section (with Crawlable City Landing Links) */}
       {!hasFilters && (
         <section className="popular-cities-section" id="popular-business-cities">
           <div className="container">
@@ -879,7 +998,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                 return (
                   <a
                     key={cityItem.slug}
-                    href={`#city-${cityItem.slug}`}
+                    href={`/business-directory/${cityItem.slug}`}
                     className="city-browse-card"
                     onClick={(e) => {
                       e.preventDefault();
@@ -900,11 +1019,45 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                 );
               })}
             </div>
+
+            {/* Audit Point 7: Category & City Landing Links (e.g. "Property Dealers in Palwal", "Property Dealers in Faridabad") */}
+            <div style={{ marginTop: '24px', paddingTop: '18px', borderTop: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#334155', marginBottom: '10px' }}>
+                Popular Business &amp; Dealer Searches:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {popularLandingLinks.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSelectCity(item.city);
+                      handleSelectCategory(item.cat);
+                      const el = document.getElementById('business-listings-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    style={{
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: '#0c6253',
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '20px',
+                      padding: '5px 12px',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    {item.cat} in {item.city}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       )}
 
-      {/* Featured Businesses Section (Matches Home Page Featured section) */}
+      {/* Featured Businesses Section */}
       {!hasFilters && featuredBusinesses.length > 0 && (
         <section className="featured-section" id="featured-businesses" style={{ padding: '28px 0 32px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
           <div className="container">
@@ -993,7 +1146,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
             <div>
               <h2>
                 <i className="fas fa-clock" style={{ color: '#0d7a5f', marginRight: '8px' }}></i>
-                {hasFilters ? 'Filtered Businesses' : 'Recent Businesses'}
+                {hasFilters ? pageHeading : 'Recent Businesses'}
               </h2>
               <p>{hasFilters ? 'Businesses matching your search and filter criteria' : 'Latest verified businesses posted on TradeCall'}</p>
             </div>
@@ -1007,7 +1160,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                   <span className="listing-filter-chip">
                     <i className="fas fa-bolt" style={{ color: '#0c6253', marginRight: '4px' }}></i>
                     New today
-                    <button type="button" onClick={() => setNewOnly(false)} title="Show all businesses">
+                    <button type="button" onClick={() => { setNewOnly(false); setCurrentPage(1); }} title="Show all businesses">
                       <i className="fas fa-times"></i>
                     </button>
                   </span>
@@ -1034,7 +1187,7 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                   <span className="listing-filter-chip">
                     <i className="fas fa-search" style={{ marginRight: '4px' }}></i>
                     &ldquo;{search.trim()}&rdquo;
-                    <button type="button" onClick={() => setSearch('')} title="Clear keyword">
+                    <button type="button" onClick={() => { setSearch(''); setCurrentPage(1); }} title="Clear keyword">
                       <i className="fas fa-times"></i>
                     </button>
                   </span>
@@ -1049,8 +1202,8 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                     if (navigator.share) {
                       try {
                         await navigator.share({
-                          title: 'Businesses on TradeCall',
-                          text: 'Check out these businesses on TradeCall',
+                          title: `${pageHeading} | TradeCall India`,
+                          text: `Check out ${pageHeading} on TradeCall India`,
                           url,
                         });
                         return;
@@ -1125,11 +1278,26 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                 {pagedBusinesses.map((b) => renderBusinessCard(b))}
               </div>
 
+              {/* Audit Point 7: Crawlable pagination links */}
               {!loading && !error && totalPages > 1 && (
-                <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '32px' }}>
-                  <button type="button" className="page-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>
-                    <i className="fas fa-chevron-left"></i> Prev
-                  </button>
+                <nav aria-label="Business Directory Pagination" className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '32px' }}>
+                  {page > 1 ? (
+                    <a
+                      href={buildFilterUrl(page - 1)}
+                      className="page-btn"
+                      style={{ textDecoration: 'none' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goToPage(page - 1);
+                      }}
+                    >
+                      <i className="fas fa-chevron-left"></i> Prev
+                    </a>
+                  ) : (
+                    <button type="button" className="page-btn" disabled>
+                      <i className="fas fa-chevron-left"></i> Prev
+                    </button>
+                  )}
                   {getPaginationItems(page, totalPages).map((item, idx) =>
                     item === '...' ? (
                       <span
@@ -1149,20 +1317,38 @@ export default function BusinessDirectoryPage({ onNavigate, onOpenAuth }: Busine
                         &hellip;
                       </span>
                     ) : (
-                      <button
+                      <a
                         key={item}
-                        type="button"
+                        href={buildFilterUrl(item)}
                         className={`page-btn ${item === page ? 'active' : ''}`}
-                        onClick={() => goToPage(item)}
+                        style={{ textDecoration: 'none' }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          goToPage(item);
+                        }}
                       >
                         {item}
-                      </button>
+                      </a>
                     )
                   )}
-                  <button type="button" className="page-btn" disabled={page === totalPages} onClick={() => goToPage(page + 1)}>
-                    Next <i className="fas fa-chevron-right"></i>
-                  </button>
-                </div>
+                  {page < totalPages ? (
+                    <a
+                      href={buildFilterUrl(page + 1)}
+                      className="page-btn"
+                      style={{ textDecoration: 'none' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goToPage(page + 1);
+                      }}
+                    >
+                      Next <i className="fas fa-chevron-right"></i>
+                    </a>
+                  ) : (
+                    <button type="button" className="page-btn" disabled>
+                      Next <i className="fas fa-chevron-right"></i>
+                    </button>
+                  )}
+                </nav>
               )}
             </>
           )}
