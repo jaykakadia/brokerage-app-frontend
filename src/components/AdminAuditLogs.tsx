@@ -138,39 +138,169 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
     };
   };
 
-  const renderValuePreview = (val: any): string => {
+  const renderValuePreview = (val: any, maxLength = 24): string => {
     if (val === null || val === undefined) return 'None';
     if (typeof val === 'boolean') return val ? 'True' : 'False';
-    if (typeof val === 'object') return JSON.stringify(val);
+    if (typeof val === 'object') {
+      if (Array.isArray(val)) {
+        return `[${val.length} item${val.length === 1 ? '' : 's'}]`;
+      }
+      const keysCount = Object.keys(val).length;
+      return `{${keysCount} field${keysCount === 1 ? '' : 's'}}`;
+    }
     const str = String(val);
-    return str.length > 50 ? str.slice(0, 47) + '...' : str;
+    return str.length > maxLength ? str.slice(0, Math.max(maxLength - 3, 3)) + '...' : str;
   };
 
-  const renderInlineSummary = (changes?: Record<string, AuditLogChange> | null) => {
+  const getFullValueTooltip = (val: any): string => {
+    if (val === null || val === undefined) return 'None';
+    if (typeof val === 'object') {
+      try {
+        return JSON.stringify(val, null, 2);
+      } catch {
+        return String(val);
+      }
+    }
+    return String(val);
+  };
+
+  const renderModalValue = (val: any) => {
+    if (val === null || val === undefined) {
+      return <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>None</span>;
+    }
+    if (typeof val === 'object') {
+      try {
+        return (
+          <pre
+            style={{
+              margin: 0,
+              fontSize: '11px',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: '180px',
+              overflowY: 'auto',
+              background: 'transparent'
+            }}
+          >
+            {JSON.stringify(val, null, 2)}
+          </pre>
+        );
+      } catch {
+        return String(val);
+      }
+    }
+    if (typeof val === 'boolean') {
+      return val ? 'True' : 'False';
+    }
+    return String(val);
+  };
+
+  const renderInlineSummary = (changes?: Record<string, AuditLogChange> | null, log?: AuditLog) => {
     if (!changes || Object.keys(changes).length === 0) {
-      return <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No field diff recorded</span>;
+      return <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>No field diff recorded</span>;
     }
     const keys = Object.keys(changes);
-    const previewKeys = keys.slice(0, 3);
-    const remaining = keys.length - 3;
+    const previewKeys = keys.slice(0, 2);
+    const remaining = keys.length - 2;
 
     return (
-      <div style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
-        {previewKeys.map((k) => (
-          <div key={k} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <strong style={{ color: '#334155' }}>{k}:</strong>{' '}
-            <span style={{ color: '#dc2626', textDecoration: 'line-through' }}>
-              {renderValuePreview(changes[k]?.old)}
-            </span>{' '}
-            <span style={{ color: '#64748b' }}>&rarr;</span>{' '}
-            <span style={{ color: '#16a34a', fontWeight: 600 }}>
-              {renderValuePreview(changes[k]?.new)}
-            </span>
-          </div>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '100%' }}>
+        {previewKeys.map((k) => {
+          const oldVal = changes[k]?.old;
+          const newVal = changes[k]?.new;
+          const oldStr = renderValuePreview(oldVal, 16);
+          const newStr = renderValuePreview(newVal, 16);
+          const tooltip = `${k}:\nEarlier: ${getFullValueTooltip(oldVal)}\nUpdated: ${getFullValueTooltip(newVal)}`;
+
+          return (
+            <div
+              key={k}
+              title={tooltip}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '11px',
+                lineHeight: '1.3',
+                maxWidth: '100%',
+                overflow: 'hidden'
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  padding: '1px 5px',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  fontSize: '10.5px',
+                  flexShrink: 0
+                }}
+              >
+                {k}:
+              </span>
+              <span
+                style={{
+                  color: '#dc2626',
+                  textDecoration: 'line-through',
+                  background: '#fef2f2',
+                  padding: '1px 4px',
+                  borderRadius: '3px',
+                  maxWidth: '90px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 1
+                }}
+              >
+                {oldStr}
+              </span>
+              <span style={{ color: '#94a3b8', fontSize: '10px', flexShrink: 0 }}>&rarr;</span>
+              <span
+                style={{
+                  color: '#16a34a',
+                  fontWeight: 600,
+                  background: '#f0fdf4',
+                  padding: '1px 4px',
+                  borderRadius: '3px',
+                  maxWidth: '110px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 1
+                }}
+              >
+                {newStr}
+              </span>
+            </div>
+          );
+        })}
         {remaining > 0 && (
-          <div style={{ color: '#2563eb', fontWeight: 600, marginTop: '2px', fontSize: '11px' }}>
-            +{remaining} more changed fields
+          <div>
+            <button
+              type="button"
+              onClick={() => log && setActiveLog(log)}
+              style={{
+                border: 'none',
+                background: '#eff6ff',
+                color: '#2563eb',
+                padding: '2px 7px',
+                borderRadius: '4px',
+                fontSize: '10.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#dbeafe')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#eff6ff')}
+            >
+              +{remaining} more changed {remaining === 1 ? 'field' : 'fields'}
+            </button>
           </div>
         )}
       </div>
@@ -336,16 +466,16 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
         }}
       >
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px', tableLayout: 'fixed', minWidth: '1050px' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '10px 14px', width: '150px' }}>Timestamp</th>
-                <th style={{ padding: '10px 12px', width: '120px' }}>Action</th>
-                <th style={{ padding: '10px 12px', width: '130px' }}>Entity</th>
-                <th style={{ padding: '10px 14px' }}>Record / Title</th>
-                <th style={{ padding: '10px 14px', width: '180px' }}>Changed By</th>
-                <th style={{ padding: '10px 14px', minWidth: '220px' }}>Changes Preview</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', width: '100px' }}>Details</th>
+                <th style={{ padding: '12px 18px', width: '185px' }}>Timestamp</th>
+                <th style={{ padding: '12px 14px', width: '125px' }}>Action</th>
+                <th style={{ padding: '12px 14px', width: '125px' }}>Entity</th>
+                <th style={{ padding: '12px 16px', width: '180px' }}>Record / Title</th>
+                <th style={{ padding: '12px 16px', width: '160px' }}>Changed By</th>
+                <th style={{ padding: '12px 16px' }}>Changes Preview</th>
+                <th style={{ padding: '12px 14px', textAlign: 'center', width: '90px' }}>Details</th>
               </tr>
             </thead>
             <tbody>
@@ -376,24 +506,24 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                       onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
                     >
                       {/* Timestamp */}
-                      <td style={{ padding: '10px 14px', color: '#64748b', fontSize: '11.5px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                      <td style={{ padding: '12px 18px', color: '#64748b', fontSize: '11.5px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                         {formatTimestamp(log.created_at)}
                       </td>
 
                       {/* Action */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
+                      <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                         <span
                           style={{
                             background: badge.bg,
                             color: badge.color,
                             border: `1px solid ${badge.border}`,
-                            padding: '3px 7px',
+                            padding: '3px 8px',
                             borderRadius: '5px',
                             fontSize: '10.5px',
                             fontWeight: 700,
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '5px'
                           }}
                         >
                           <i className={badge.icon}></i> {badge.label}
@@ -401,7 +531,7 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                       </td>
 
                       {/* Entity */}
-                      <td style={{ padding: '10px 12px', verticalAlign: 'middle' }}>
+                      <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                         <span
                           style={{
                             background: '#f1f5f9',
@@ -414,11 +544,11 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                         >
                           {log.table_name}
                         </span>{' '}
-                        <span style={{ color: '#94a3b8', fontSize: '11px' }}>#{log.record_id}</span>
+                        <span style={{ color: '#94a3b8', fontSize: '11px', marginLeft: '2px' }}>#{log.record_id}</span>
                       </td>
 
                       {/* Record Name */}
-                      <td style={{ padding: '10px 14px', verticalAlign: 'middle', maxWidth: '200px' }}>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
                         <div
                           style={{
                             fontWeight: 600,
@@ -434,8 +564,8 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                       </td>
 
                       {/* Changed By */}
-                      <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '11.5px' }}>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '11.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.actor_email || 'System'}>
                           {log.actor_email || 'System'}
                         </div>
                         <div style={{ fontSize: '10.5px', color: '#64748b' }}>
@@ -445,25 +575,29 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                       </td>
 
                       {/* Changes Inline Preview */}
-                      <td style={{ padding: '10px 14px', verticalAlign: 'middle' }}>
-                        {renderInlineSummary(log.changes)}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle', overflow: 'hidden' }}>
+                        {renderInlineSummary(log.changes, log)}
                       </td>
 
                       {/* View Diff Button */}
-                      <td style={{ padding: '10px 14px', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', verticalAlign: 'middle' }}>
                         <button
                           type="button"
                           onClick={() => setActiveLog(log)}
                           className="btn-outline"
                           style={{
-                            padding: '3px 9px',
+                            padding: '4px 10px',
                             fontSize: '11px',
                             borderRadius: '5px',
                             borderColor: '#cbd5e1',
-                            color: '#1e293b'
+                            color: '#1e293b',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
                           }}
                         >
-                          <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Diff
+                          <i className="fas fa-eye"></i> Diff
                         </button>
                       </td>
                     </tr>
@@ -657,14 +791,12 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                               background: diff?.old !== null && diff?.old !== undefined ? '#fef2f2' : '#f8fafc',
                               color: diff?.old !== null && diff?.old !== undefined ? '#991b1b' : '#94a3b8',
                               border: diff?.old !== null && diff?.old !== undefined ? '1px solid #fecaca' : '1px dashed #cbd5e1',
-                              padding: '5px 8px',
-                              borderRadius: '5px',
-                              fontFamily: typeof diff?.old === 'object' ? 'monospace' : 'inherit',
-                              wordBreak: 'break-word',
-                              whiteSpace: 'pre-wrap'
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              wordBreak: 'break-word'
                             }}
                           >
-                            {renderValuePreview(diff?.old)}
+                            {renderModalValue(diff?.old)}
                           </div>
                         </td>
                         <td style={{ padding: '8px 12px' }}>
@@ -673,14 +805,12 @@ export default function AdminAuditLogs({ showToast }: AdminAuditLogsProps) {
                               background: diff?.new !== null && diff?.new !== undefined ? '#f0fdf4' : '#f8fafc',
                               color: diff?.new !== null && diff?.new !== undefined ? '#166534' : '#94a3b8',
                               border: diff?.new !== null && diff?.new !== undefined ? '1px solid #bbf7d0' : '1px dashed #cbd5e1',
-                              padding: '5px 8px',
-                              borderRadius: '5px',
-                              fontFamily: typeof diff?.new === 'object' ? 'monospace' : 'inherit',
-                              wordBreak: 'break-word',
-                              whiteSpace: 'pre-wrap'
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              wordBreak: 'break-word'
                             }}
                           >
-                            {renderValuePreview(diff?.new)}
+                            {renderModalValue(diff?.new)}
                           </div>
                         </td>
                       </tr>
