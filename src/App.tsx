@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
+import SupportChatWidget from './components/SupportChatWidget';
 import HomePage from './pages/HomePage';
 
 // Route-level code-splitting for fast initial bundle
@@ -510,16 +511,10 @@ export default function App() {
         onSuccess={authModalConfig.onSuccess}
       />
 
-      {/* Floating WhatsApp CTA */}
-      <a
-        href="https://wa.me/919992292828"
-        className="floating-whatsapp"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Chat with us on WhatsApp"
-      >
-        <i className="fab fa-whatsapp"></i>
-      </a>
+      {/* Customer Support Live Chat & WhatsApp Widget */}
+      {activePage !== 'admin' && activePage !== 'admin-login' && (
+        <SupportChatWidget />
+      )}
     </div>
   );
 }

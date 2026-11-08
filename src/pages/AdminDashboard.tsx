@@ -25,7 +25,8 @@ import api, {
   getAdminSocialLinks,
   saveSocialLinks,
   getApiErrorMessage,
-  getEnquiryCounts
+  getEnquiryCounts,
+  getAdminSupportConversations
 } from '../services/api';
 import type { SocialLinksSettings } from '../types/setting';
 import { BLOG_CATEGORIES } from '../data/blogCategories';
@@ -35,6 +36,7 @@ import AdminLocationsByState from '../components/AdminLocationsByState';
 import { getListingCity, isBusinessListing, publicListingTitle } from '../utils/listingKind';
 import { StateOptions } from '../utils/indianStates';
 import AdminEnquiries from '../components/AdminEnquiries';
+import AdminSupportChat from '../components/AdminSupportChat';
 import RichTextEditor from '../components/RichTextEditor';
 import AdminMetadataManager from '../components/AdminMetadataManager';
 import AdminAuditLogs from '../components/AdminAuditLogs';
@@ -275,6 +277,7 @@ type AdminModule =
   | 'featured-plans'
   | 'tracker'
   | 'blogs'
+  | 'support-chat'
   | 'enquiries'
   | 'metadata'
   | 'audit-logs'
@@ -292,6 +295,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'featured-plans', label: 'Featured Listing Plans', icon: 'fas fa-star' },
   { key: 'tracker', label: 'Business Associates', icon: 'fas fa-chart-line' },
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
+  { key: 'support-chat', label: 'Live Support Chat', icon: 'fas fa-headset' },
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
   { key: 'metadata', label: 'Meta Data', icon: 'fas fa-globe' },
   { key: 'audit-logs', label: 'Audit Logs', icon: 'fas fa-history' },
@@ -433,6 +437,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const [featuringListing, setFeaturingListing] = useState<Listing | null>(null);
   const [featureDays, setFeatureDays] = useState<string>('7');
   const [newEnquiryCount, setNewEnquiryCount] = useState(0);
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0);
   const [listingCounts, setListingCounts] = useState<ListingCounts>({
     pending: 0,
     approved: 0,
@@ -602,12 +607,41 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Sidebar badge: how many Contact Us enquiries are still new
+  // Sidebar badges: Contact Us enquiries & real-time Support Chat unread count
   useEffect(() => {
     getEnquiryCounts()
       .then((res) => setNewEnquiryCount(res.data?.data?.new ?? 0))
       .catch(() => {/* badge is optional */});
+    getAdminSupportConversations({ page: 1, limit: 1 })
+      .then((res) => setUnreadSupportCount(res.data?.data?.counts?.unread_total ?? 0))
+      .catch(() => {/* badge is optional */});
   }, []);
+
+  useEffect(() => {
+    if (activeModule === 'support-chat') return;
+    const wsUrl = API_BASE_URL.startsWith('http')
+      ? API_BASE_URL.replace(/^http/, 'ws') + '/api/v1/admin/support/ws'
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/v1/admin/support/ws`;
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.counts && typeof payload.counts.unread_total === 'number') {
+            setUnreadSupportCount(payload.counts.unread_total);
+          }
+        } catch {
+          // ignore parse errors
+        }
+      };
+    } catch {
+      // ignore ws errors
+    }
+    return () => {
+      if (ws) ws.close();
+    };
+  }, [activeModule]);
 
   // --- FETCH LISTINGS & COUNTS ---
   const fetchListingCounts = async (mod = activeModule) => {
@@ -1756,12 +1790,22 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   {item.key === 'enquiries' && newEnquiryCount > 0 ? (
                     <span className="admin-nav-badge" title={`${newEnquiryCount} new`}>{newEnquiryCount}</span>
                   ) : null}
+                  {item.key === 'support-chat' && unreadSupportCount > 0 ? (
+                    <span className="admin-nav-badge" title={`${unreadSupportCount} unread`} style={{ backgroundColor: '#ef4444' }}>{unreadSupportCount}</span>
+                  ) : null}
                 </button>
               ))}
             </nav>
           </aside>
 
           <div className="admin-main">
+        {activeModule === 'support-chat' && (
+          <AdminSupportChat
+            showToast={showToast}
+            onCountsChange={(counts) => setUnreadSupportCount(counts.unread_total)}
+          />
+        )}
+
         {activeModule === 'enquiries' && (
           <AdminEnquiries
             showToast={showToast}

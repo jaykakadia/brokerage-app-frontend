@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api, { getWishlist, toggleWishlist, getApiErrorMessage } from '../services/api';
+import api, { getWishlist, toggleWishlist, getApiErrorMessage, getMySupportTickets } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import PlansModal from '../components/PlansModal';
@@ -7,7 +7,7 @@ import EditProfileModal from '../components/EditProfileModal';
 import UserEditListingModal from '../components/UserEditListingModal';
 import { publicListingTitle } from '../utils/listingKind';
 import { getListingUrl } from '../utils/url';
-import type { Listing, MessageResponse, NavigateFunction, Plan } from '../types';
+import type { Listing, MessageResponse, NavigateFunction, Plan, SupportConversationListItem } from '../types';
 
 // Website shows as a domain link; social profiles show as brand icon buttons.
 const SOCIAL_LINKS = [
@@ -40,11 +40,15 @@ export interface AccountPageProps {
 export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps) {
   const { user, refreshUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'password'>('my-listings');
+  const [activeTab, setActiveTab] = useState<'my-listings' | 'wishlist' | 'support' | 'password'>('my-listings');
   const [plansModalOpen, setPlansModalOpen] = useState(false);
   const [featureListing, setFeatureListing] = useState<Listing | null>(null);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // Support Tickets State
+  const [supportTickets, setSupportTickets] = useState<SupportConversationListItem[]>([]);
+  const [supportLoading, setSupportLoading] = useState(false);
 
   // Password Change State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -132,11 +136,47 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
     }
   };
 
+  const fetchSupportTickets = async () => {
+    setSupportLoading(true);
+    try {
+      const res = await getMySupportTickets();
+      if (res.data?.data) {
+        setSupportTickets(res.data.data);
+      }
+    } catch {
+      // Ignore tickets fetch error
+    } finally {
+      setSupportLoading(false);
+    }
+  };
+
+  const handleOpenTicketInChat = (sessionId?: string) => {
+    window.dispatchEvent(new CustomEvent('open_support_chat', { detail: { sessionId } }));
+  };
+
+  useEffect(() => {
+    const handleTicketUpdated = (e: Event) => {
+      const custom = e as CustomEvent<SupportConversationListItem>;
+      const item = custom.detail;
+      if (!item) return;
+      setSupportTickets(prev => {
+        const rest = prev.filter(t => t.id !== item.id && t.session_id !== item.session_id);
+        const next = [item, ...rest];
+        next.sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
+        return next;
+      });
+    };
+    window.addEventListener('support_ticket_updated', handleTicketUpdated);
+    return () => window.removeEventListener('support_ticket_updated', handleTicketUpdated);
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'my-listings') {
       void fetchMyListings();
     } else if (activeTab === 'wishlist') {
       void fetchWishlist();
+    } else if (activeTab === 'support') {
+      void fetchSupportTickets();
     }
   }, [activeTab, user]);
 
@@ -381,6 +421,18 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
             }}
           >
             <i className="fas fa-heart" style={{ color: activeTab === 'wishlist' ? '#fff' : '#dc2626' }}></i> Wishlist ({wishlistItems.length})
+          </button>
+          <button
+            type="button"
+            className={`btn-outline ${activeTab === 'support' ? 'active' : ''}`}
+            onClick={() => setActiveTab('support')}
+            style={{
+              background: activeTab === 'support' ? '#0c6253' : '#fff',
+              color: activeTab === 'support' ? '#fff' : '#374151',
+              borderColor: activeTab === 'support' ? '#0c6253' : '#d1d5db'
+            }}
+          >
+            <i className="fas fa-headset" style={{ color: activeTab === 'support' ? '#fff' : '#0c6253' }}></i> Support Tickets ({supportTickets.length})
           </button>
           <button
             type="button"
@@ -687,7 +739,137 @@ export default function AccountPage({ onNavigate, onOpenAuth }: AccountPageProps
           </div>
         )}
 
-        {/* TAB 3: Change Password */}
+        {/* TAB 3: Support Tickets */}
+        {activeTab === 'support' && (
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#111827' }}>
+                  Customer Support Tickets
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6b7280' }}>
+                  View all your inquiries and chat with our support team in real time.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => handleOpenTicketInChat()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', fontSize: '13px' }}
+              >
+                <i className="fas fa-plus"></i> New Support Ticket
+              </button>
+            </div>
+
+            {supportLoading ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginBottom: '12px' }}></i>
+                <div>Loading your support tickets...</div>
+              </div>
+            ) : supportTickets.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+                <i className="fas fa-headset" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px' }}></i>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#374151', margin: '0 0 8px' }}>No Support Tickets Found</h3>
+                <p style={{ fontSize: '13.5px', color: '#9ca3af', maxWidth: '360px', margin: '0 auto 20px' }}>
+                  Need help with a listing, featured plan, or enquiry? Start a conversation with us anytime.
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => handleOpenTicketInChat()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <i className="fas fa-comment-dots"></i> Start Live Chat
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {supportTickets.map((t) => (
+                  <div
+                    key={t.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '18px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '16px',
+                      flexWrap: 'wrap',
+                      transition: 'border-color 0.15s, box-shadow 0.15s'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+                          Ticket #{t.id}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            textTransform: 'uppercase',
+                            backgroundColor:
+                              t.status === 'open'
+                                ? '#dcfce7'
+                                : t.status === 'in_progress'
+                                ? '#e0f2fe'
+                                : t.status === 'resolved'
+                                ? '#f3e8ff'
+                                : '#f1f5f9',
+                            color:
+                              t.status === 'open'
+                                ? '#15803d'
+                                : t.status === 'in_progress'
+                                ? '#0369a1'
+                                : t.status === 'resolved'
+                                ? '#7e22ce'
+                                : '#475569'
+                          }}
+                        >
+                          {t.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#4b5563', marginBottom: '6px' }}>
+                        {t.last_message_text || 'Conversation initiated'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', display: 'flex', gap: '12px' }}>
+                        <span>
+                          <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
+                          {new Date(t.last_message_at).toLocaleString('en-IN', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => handleOpenTicketInChat(t.session_id)}
+                      style={{
+                        padding: '9px 16px',
+                        fontSize: '13px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        borderColor: '#0c6253',
+                        color: '#0c6253'
+                      }}
+                    >
+                      <i className="fas fa-comment-dots"></i> Open Chat
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: Change Password */}
 
         {activeTab === 'password' && (
           <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>

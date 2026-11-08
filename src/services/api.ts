@@ -33,6 +33,11 @@ import type {
   EnquiryCounts,
   EnquiryStatus,
   PageMetadata,
+  SupportConversation,
+  SupportConversationListItem,
+  SupportMessage,
+  SupportAdminListResponse,
+  SupportInitPayload,
   PageMetadataCreate,
   PageMetadataUpdate
 } from '../types';
@@ -418,5 +423,57 @@ export const restoreAdminBackup = (
     timeout: 300000 // 5 minutes timeout for large restores
   });
 };
+
+// --- Customer Support Live Chat ---
+export const initSupportConversation = (payload: SupportInitPayload): Promise<AxiosResponse<ApiResponse<SupportConversation>>> =>
+  api.post('/api/v1/support/conversations/init', payload);
+
+export const getSupportConversation = (sessionId: string): Promise<AxiosResponse<ApiResponse<SupportConversation>>> =>
+  api.get(`/api/v1/support/conversations/${sessionId}`);
+
+export const sendSupportVisitorMessage = (sessionId: string, message: string): Promise<AxiosResponse<ApiResponse<SupportMessage>>> =>
+  api.post(`/api/v1/support/conversations/${sessionId}/messages`, { message });
+
+export const pollSupportMessages = (sessionId: string, afterId = 0): Promise<AxiosResponse<ApiResponse<SupportMessage[]>>> =>
+  api.get(`/api/v1/support/conversations/${sessionId}/poll`, { params: { after_id: afterId } });
+
+export const reopenSupportConversation = (sessionId: string): Promise<AxiosResponse<ApiResponse<SupportConversation>>> =>
+  api.post(`/api/v1/support/conversations/${sessionId}/reopen`);
+
+export const getMySupportTickets = (
+  sessionIds?: string,
+  phone?: string,
+  name?: string,
+  email?: string
+): Promise<AxiosResponse<ApiResponse<SupportConversationListItem[]>>> =>
+  api.get('/api/v1/support/conversations/my-tickets', {
+    params: {
+      ...(sessionIds ? { session_ids: sessionIds } : {}),
+      ...(phone ? { phone } : {}),
+      ...(name ? { name } : {}),
+      ...(email ? { email } : {})
+    }
+  });
+
+export const getAdminSupportConversations = (params: {
+  status?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AxiosResponse<ApiResponse<SupportAdminListResponse>>> =>
+  api.get('/api/v1/admin/support/conversations', { params });
+
+export const getAdminSupportConversationDetail = (convId: number): Promise<AxiosResponse<ApiResponse<SupportConversation>>> =>
+  api.get(`/api/v1/admin/support/conversations/${convId}`);
+
+export const sendAdminSupportReply = (convId: number, message: string): Promise<AxiosResponse<ApiResponse<SupportMessage>>> =>
+  api.post(`/api/v1/admin/support/conversations/${convId}/messages`, { message });
+
+export const updateAdminSupportStatus = (convId: number, status: string): Promise<AxiosResponse<MessageResponse>> =>
+  api.patch(`/api/v1/admin/support/conversations/${convId}/status`, { status });
+
+export const deleteAdminSupportConversation = (convId: number): Promise<AxiosResponse<MessageResponse>> =>
+  api.delete(`/api/v1/admin/support/conversations/${convId}`);
+
 
 

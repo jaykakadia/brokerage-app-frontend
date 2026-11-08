@@ -15,3 +15,4 @@ export * from './wishlist';
 export * from './navigation';
 export * from './enquiry';
 export * from './metadata';
+export * from './supportChat';
