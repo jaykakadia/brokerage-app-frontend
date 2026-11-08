@@ -427,6 +427,7 @@ export default function App() {
           {activePage === 'account' && (
             <AccountPage
               onNavigate={navigateTo}
+              onOpenAuth={openAuthModal}
             />
           )}
 

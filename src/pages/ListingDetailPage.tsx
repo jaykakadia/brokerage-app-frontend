@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import api, { getImageUrl, getWishlist, toggleWishlist, revealContact, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { formatListingPrice, getFirstImageUrl } from '../utils/formatters';
+import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../utils/formatters';
 import { getListingUniqueId, getListingUrl, isLegacyListingCode, slugify } from '../utils/url';
 import { setSeo, toMetaDescription } from '../utils/seo';
 import { buildKeyDetails } from '../utils/listingDetails';
@@ -152,21 +152,25 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
         const candidates = all.filter((item) => {
           if (String(item.id) === String(listing.id)) return false;
           if (item.form_data?.kind === 'buyer') return false;
-          return isBiz ? isBusinessListing(item) : !isBusinessListing(item);
+          if (!(isBiz ? isBusinessListing(item) : !isBusinessListing(item))) return false;
+          // Hard filter: same city required
+          const itemCity = getListingCity(item).toLowerCase();
+          if (!itemCity || itemCity !== currentCity) return false;
+          // Hard filter: same property type required (for property listings)
+          if (!isBiz) {
+            const itemPropType = (item.form_data?.propType || '').toString().toLowerCase();
+            if (!itemPropType || itemPropType !== currentPropType) return false;
+          }
+          return true;
         });
 
         const scored = candidates.map((item) => {
           let score = 0;
-          const itemCity = getListingCity(item).toLowerCase();
           const itemLoc = (item.form_data?.locality || item.location?.split(',')[0] || '').toString().trim().toLowerCase();
-          if (currentCity && itemCity === currentCity) score += 4;
           if (currentLocality && itemLoc && itemLoc === currentLocality) score += 5;
           if (isBiz) {
             const itemCats = getBusinessCategories(item).map((c) => c.toLowerCase());
             if (currentCategories.some((c) => itemCats.includes(c))) score += 5;
-          } else {
-            const itemPropType = (item.form_data?.propType || '').toString().toLowerCase();
-            if (currentPropType && itemPropType === currentPropType) score += 3;
           }
           return { item, score };
         });
@@ -891,12 +895,11 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                       transition: 'transform 0.15s ease, box-shadow 0.15s ease'
                     }}
                   >
-                    <div style={{ height: '140px', overflow: 'hidden', background: '#e2e8f0', position: 'relative' }}>
+                    <div className="card-img-wrap" style={cardImageBackdrop(relImg)}>
                       <img
                         src={relImg}
                         alt={relTitle}
                         loading="lazy"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/placeholder-property.svg'; }}
                       />
                     </div>

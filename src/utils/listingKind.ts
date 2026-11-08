@@ -143,6 +143,8 @@ export const publicListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>
     t = t.replace(/\b\d+\s*BHK\+?\s+(Plot)\b/gi, 'Plot');
     t = t.replace(/\b\d+\s*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property');
     t = t.replace(/\b\d+\s*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
+    // Fix "in Near / in Next To / in Opp." → "- Near / - Next To / - Opp."
+    t = t.replace(/\bin ((?:near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent)\b)/gi, '- $1');
     return t;
   }
   const saved = fd as Partial<PropertyFormState>;

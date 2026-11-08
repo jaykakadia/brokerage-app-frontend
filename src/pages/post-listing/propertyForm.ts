@@ -205,7 +205,8 @@ export function listingTitle(form: PropertyFormState, isBuyer = false): string {
   } else {
     title = `${rooms}${typeText} ${form.forWhat === 'rent' ? 'for Rent' : 'for Sale'}`;
   }
-  return `${title}${place ? ` in ${place}` : ''}`.replace(/\s+/g, ' ').trim();
+  const placeJoiner = /^(near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent)\b/i.test(place) ? ' - ' : ' in ';
+  return `${title}${place ? `${placeJoiner}${place}` : ''}`.replace(/\s+/g, ' ').trim();
 }
 
 export function canonicalPosterRole(role: PosterRole): 'Owner' | 'Agent' | 'Builder' {
