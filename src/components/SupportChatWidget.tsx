@@ -7,6 +7,8 @@ import {
   pollSupportMessages,
   reopenSupportConversation,
   getMySupportTickets,
+  uploadSupportImage,
+  getImageUrl,
   API_BASE_URL
 } from '../services/api';
 import { playNotificationSound } from '../utils/audioNotification';
@@ -125,11 +127,18 @@ export default function SupportChatWidget() {
     }
   }, [isMobile, isOpen, showChoiceMenu]);
 
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const retryTimeoutRef = useRef<number | null>(null);
   const pingIntervalRef = useRef<number | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const userTypingTimerRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const retryDelayRef = useRef<number>(1000);
   const isReconnectingRef = useRef<boolean>(false);
   const messagesRef = useRef<SupportMessage[]>(messages);
@@ -138,6 +147,38 @@ export default function SupportChatWidget() {
   conversationRef.current = conversation;
   const isOpenRef = useRef<boolean>(isOpen);
   isOpenRef.current = isOpen;
+
+  const clearSelectedImage = () => {
+    if (selectedImagePreview) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
+    setSelectedImageFile(null);
+    setSelectedImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setFormError('Please select a valid image file (JPEG, PNG, WEBP, GIF).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setFormError('Selected image exceeds 10MB limit.');
+      return;
+    }
+
+    setFormError(null);
+    if (selectedImagePreview) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
+    setSelectedImageFile(file);
+    setSelectedImagePreview(URL.createObjectURL(file));
+  };
 
   const upsertTicketItem = useCallback((item: SupportConversationListItem) => {
     setTicketsList(prev => {
@@ -369,16 +410,18 @@ export default function SupportChatWidget() {
                 setMessages([]);
               }
             } else if (payload.type === 'typing' && payload.sender === 'admin') {
-              if (
-                conversationRef.current &&
-                (!payload.session_id || payload.session_id === conversationRef.current.session_id)
-              ) {
+              const targetMatches =
+                !payload.session_id ||
+                payload.session_id === activeSessionId ||
+                payload.session_id === conversationRef.current?.session_id;
+
+              if (targetMatches) {
                 if (payload.is_typing) {
                   setAdminTyping(true);
                   if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
                   typingTimeoutRef.current = window.setTimeout(() => {
                     setAdminTyping(false);
-                  }, 3500);
+                  }, 4000);
                 } else {
                   setAdminTyping(false);
                 }
@@ -434,6 +477,10 @@ export default function SupportChatWidget() {
       if (typingTimeoutRef.current) {
         window.clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
+      }
+      if (userTypingTimerRef.current) {
+        window.clearTimeout(userTypingTimerRef.current);
+        userTypingTimerRef.current = null;
       }
       if (socketRef.current) {
         socketRef.current.close();
@@ -515,27 +562,100 @@ export default function SupportChatWidget() {
       socketRef.current &&
       socketRef.current.readyState === WebSocket.OPEN
     ) {
+      const isTyping = value.trim().length > 0;
       socketRef.current.send(
         JSON.stringify({
           type: 'typing',
           session_id: conversation.session_id,
-          is_typing: value.trim().length > 0
+          is_typing: isTyping
         })
       );
+
+      if (userTypingTimerRef.current) window.clearTimeout(userTypingTimerRef.current);
+      if (isTyping) {
+        userTypingTimerRef.current = window.setTimeout(() => {
+          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && conversation?.session_id) {
+            socketRef.current.send(
+              JSON.stringify({
+                type: 'typing',
+                session_id: conversation.session_id,
+                is_typing: false
+              })
+            );
+          }
+        }, 2500);
+      }
     }
   };
 
-  // Send message handler (via WebSocket when open, with HTTP fallback)
+  // Send message handler (supports text and/or VPS image attachment)
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputText.trim();
-    if (!text || !conversation || sending) return;
+    if ((!text && !selectedImageFile) || !conversation || sending || uploadingImage) return;
 
     if (conversation.status === 'closed' || conversation.status === 'resolved') {
       setFormError(`This ticket is ${conversation.status}. Please reopen the ticket to continue chatting.`);
       return;
     }
 
+    // Immediately stop typing indicator
+    if (userTypingTimerRef.current) {
+      window.clearTimeout(userTypingTimerRef.current);
+      userTypingTimerRef.current = null;
+    }
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
+        JSON.stringify({
+          type: 'typing',
+          session_id: conversation.session_id,
+          is_typing: false
+        })
+      );
+    }
+
+    // Case 1: Image attachment present -> upload directly to VPS
+    if (selectedImageFile) {
+      const imgFile = selectedImageFile;
+      const previewUrl = selectedImagePreview;
+      clearSelectedImage();
+      setInputText('');
+      setUploadingImage(true);
+
+      const tempId = -Date.now();
+      const optimisticMsg: SupportMessage = {
+        id: tempId,
+        conversation_id: conversation.id,
+        sender_type: user ? 'user' : 'guest',
+        sender_name: user ? user.name : (guestForm.name || 'You'),
+        message: text || '📷 Photo',
+        attachment_url: previewUrl,
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
+
+      try {
+        const res = await uploadSupportImage(imgFile, conversation.session_id, text || undefined);
+        if (res.data?.data) {
+          const confirmed = res.data.data;
+          setMessages(prev => {
+            if (prev.some(m => m.id === confirmed.id)) {
+              return prev.filter(m => m.id !== tempId);
+            }
+            return prev.map(m => (m.id === tempId ? confirmed : m));
+          });
+        }
+      } catch (err: any) {
+        setFormError(err?.response?.data?.message || err?.message || 'Failed to send image');
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      } finally {
+        setUploadingImage(false);
+      }
+      return;
+    }
+
+    // Case 2: Text message only
     setInputText('');
     setSending(true);
 
@@ -837,6 +957,104 @@ export default function SupportChatWidget() {
           background-color: #94a3b8;
           cursor: not-allowed;
           transform: none;
+        }
+
+        .tc-chat-attach-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background-color: #f1f5f9;
+          color: #475569;
+          border: 1px solid #cbd5e1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 15px;
+          flex-shrink: 0;
+          transition: background-color 0.2s, color 0.2s;
+        }
+
+        .tc-chat-attach-btn:hover:not(:disabled) {
+          background-color: #e2e8f0;
+          color: #0c6253;
+        }
+
+        .tc-chat-attach-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .tc-image-preview-bar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 14px;
+          background-color: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+        }
+
+        .tc-image-preview-thumb {
+          position: relative;
+          width: 44px;
+          height: 44px;
+          border-radius: 6px;
+          overflow: hidden;
+          border: 1px solid #cbd5e1;
+          flex-shrink: 0;
+        }
+
+        .tc-image-preview-thumb img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .tc-image-preview-remove {
+          position: absolute;
+          top: 1px;
+          right: 1px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.65);
+          color: #ffffff;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9px;
+        }
+
+        .tc-image-preview-name {
+          font-size: 12px;
+          color: #475569;
+          max-width: 200px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        /* Animated typing dots */
+        .tc-typing-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background-color: #0c6253;
+          display: inline-block;
+          animation: tcBounceDot 1.2s infinite ease-in-out;
+        }
+
+        @keyframes tcBounceDot {
+          0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.35;
+          }
+          30% {
+            transform: translateY(-5px);
+            opacity: 1;
+          }
         }
 
         /* Locked bar */
@@ -2046,7 +2264,7 @@ export default function SupportChatWidget() {
                       </div>
                       <div
                         style={{
-                          padding: '10px 14px',
+                          padding: m.attachment_url && (!m.message || m.message === '📷 Photo') ? '4px' : '10px 14px',
                           borderRadius: isVisitor ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                           backgroundColor: isVisitor ? '#0c6253' : '#ffffff',
                           color: isVisitor ? '#ffffff' : '#1e293b',
@@ -2060,7 +2278,30 @@ export default function SupportChatWidget() {
                           whiteSpace: 'pre-wrap'
                         }}
                       >
-                        {m.message}
+                        {m.attachment_url && (
+                          <div style={{ marginBottom: m.message && m.message !== '📷 Photo' ? '8px' : '0' }}>
+                            <img
+                              src={getImageUrl(m.attachment_url)}
+                              alt="Attachment"
+                              onClick={() => setLightboxImage(getImageUrl(m.attachment_url))}
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '240px',
+                                borderRadius: '10px',
+                                objectFit: 'cover',
+                                display: 'block',
+                                cursor: 'pointer',
+                                border: isVisitor ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
+                              }}
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                        {m.message && m.message !== '📷 Photo' && (
+                          <div style={{ padding: m.attachment_url ? '4px 6px 4px 6px' : '0' }}>
+                            {m.message}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -2070,17 +2311,27 @@ export default function SupportChatWidget() {
                   <div
                     style={{
                       alignSelf: 'flex-start',
-                      fontSize: '11.5px',
-                      color: '#64748b',
-                      fontStyle: 'italic',
-                      padding: '4px 10px',
-                      backgroundColor: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 14px',
+                      backgroundColor: '#f1f5f9',
                       border: '1px solid #e2e8f0',
-                      borderRadius: '12px'
+                      borderRadius: '16px 16px 16px 4px',
+                      fontSize: '12px',
+                      color: '#334155',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      marginBottom: '4px',
+                      animation: 'tcFadeIn 0.2s ease-out'
                     }}
                   >
-                    <i className="fas fa-circle-notch fa-spin" style={{ marginRight: '6px', color: '#0c6253' }} />
-                    Support agent is typing...
+                    <span style={{ fontWeight: 600, color: '#0c6253' }}>Customer Support</span>
+                    <span style={{ color: '#64748b' }}>is typing</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: '2px' }}>
+                      <span className="tc-typing-dot" style={{ animationDelay: '0ms' }} />
+                      <span className="tc-typing-dot" style={{ animationDelay: '200ms' }} />
+                      <span className="tc-typing-dot" style={{ animationDelay: '400ms' }} />
+                    </span>
                   </div>
                 )}
 
@@ -2158,31 +2409,69 @@ export default function SupportChatWidget() {
                   </div>
                 </div>
               ) : (
-                <form
-                  onSubmit={handleSendMessage}
-                  className="tc-chat-composer"
-                >
-                  <input
-                    type="text"
-                    placeholder="Type a message..."
-                    value={inputText}
-                    onChange={(e) => handleVisitorInputChange(e.target.value)}
-                    disabled={sending}
-                    className="tc-chat-input"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!inputText.trim() || sending}
-                    aria-label="Send message"
-                    className="tc-chat-send-btn"
+                <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                  {selectedImagePreview && (
+                    <div className="tc-image-preview-bar">
+                      <div className="tc-image-preview-thumb">
+                        <img src={selectedImagePreview} alt="Preview" />
+                        <button
+                          type="button"
+                          onClick={clearSelectedImage}
+                          className="tc-image-preview-remove"
+                          title="Remove image"
+                        >
+                          <i className="fas fa-times" />
+                        </button>
+                      </div>
+                      <span className="tc-image-preview-name">
+                        {selectedImageFile?.name}
+                      </span>
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={handleSendMessage}
+                    className="tc-chat-composer"
                   >
-                    {sending ? (
-                      <i className="fas fa-spinner fa-spin" />
-                    ) : (
-                      <i className="fas fa-paper-plane" />
-                    )}
-                  </button>
-                </form>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: 'none' }}
+                      onChange={handleFileSelect}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={sending || uploadingImage}
+                      title="Send image"
+                      aria-label="Send image"
+                      className="tc-chat-attach-btn"
+                    >
+                      <i className="fas fa-paperclip" />
+                    </button>
+                    <input
+                      type="text"
+                      placeholder={selectedImageFile ? "Add a caption (optional)..." : "Type a message..."}
+                      value={inputText}
+                      onChange={(e) => handleVisitorInputChange(e.target.value)}
+                      disabled={sending || uploadingImage}
+                      className="tc-chat-input"
+                    />
+                    <button
+                      type="submit"
+                      disabled={(!inputText.trim() && !selectedImageFile) || sending || uploadingImage}
+                      aria-label="Send message"
+                      className="tc-chat-send-btn"
+                    >
+                      {sending || uploadingImage ? (
+                        <i className="fas fa-spinner fa-spin" />
+                      ) : (
+                        <i className="fas fa-paper-plane" />
+                      )}
+                    </button>
+                  </form>
+                </div>
               )}
 
               {/* Brand Footer */}
@@ -2323,6 +2612,86 @@ export default function SupportChatWidget() {
           )}
         </button>
       </div>
+
+      {/* Lightbox Image Preview Modal */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            zIndex: 9999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '92vw',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: '8px', gap: '8px' }}>
+              <a
+                href={lightboxImage}
+                target="_blank"
+                rel="noreferrer"
+                download
+                style={{
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-external-link-alt" /> Open Full
+              </a>
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                style={{
+                  color: '#ffffff',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-times" /> Close
+              </button>
+            </div>
+            <img
+              src={lightboxImage}
+              alt="Enlarged"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '82vh',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.5)'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

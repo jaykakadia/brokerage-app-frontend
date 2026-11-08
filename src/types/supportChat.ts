@@ -8,6 +8,7 @@ export interface SupportMessage {
   sender_id?: number | null;
   sender_name: string;
   message: string;
+  attachment_url?: string | null;
   is_read: boolean;
   created_at: string;
 }

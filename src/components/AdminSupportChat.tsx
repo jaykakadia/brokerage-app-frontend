@@ -3,9 +3,11 @@ import {
   getAdminSupportConversations,
   getAdminSupportConversationDetail,
   sendAdminSupportReply,
+  uploadAdminSupportImage,
   updateAdminSupportStatus,
   deleteAdminSupportConversation,
   pollSupportMessages,
+  getImageUrl,
   getApiErrorMessage,
   API_BASE_URL
 } from '../services/api';
@@ -79,6 +81,11 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [visitorTypingSession, setVisitorTypingSession] = useState<string | null>(null);
 
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
   const [notificationsAllowed, setNotificationsAllowed] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -86,8 +93,41 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
   const retryTimeoutRef = useRef<number | null>(null);
   const pingIntervalRef = useRef<number | null>(null);
   const typingTimeoutRef = useRef<number | null>(null);
+  const adminTypingTimerRef = useRef<number | null>(null);
+  const adminFileInputRef = useRef<HTMLInputElement>(null);
   const retryDelayRef = useRef<number>(1000);
   const isReconnectingRef = useRef<boolean>(false);
+
+  const clearSelectedImage = () => {
+    if (selectedImagePreview) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
+    setSelectedImageFile(null);
+    setSelectedImagePreview(null);
+    if (adminFileInputRef.current) {
+      adminFileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (JPEG, PNG, WEBP, GIF).', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Selected image exceeds 10MB limit.', 'error');
+      return;
+    }
+
+    if (selectedImagePreview) {
+      URL.revokeObjectURL(selectedImagePreview);
+    }
+    setSelectedImageFile(file);
+    setSelectedImagePreview(URL.createObjectURL(file));
+  };
 
   const selectedIdRef = useRef<number | null>(null);
   selectedIdRef.current = selectedId;
@@ -426,6 +466,10 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
         window.clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
+      if (adminTypingTimerRef.current) {
+        window.clearTimeout(adminTypingTimerRef.current);
+        adminTypingTimerRef.current = null;
+      }
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
@@ -440,20 +484,36 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
       socketRef.current &&
       socketRef.current.readyState === WebSocket.OPEN
     ) {
+      const isTyping = value.trim().length > 0;
       socketRef.current.send(
         JSON.stringify({
           type: 'typing',
           session_id: activeConv.session_id,
-          is_typing: value.trim().length > 0
+          is_typing: isTyping
         })
       );
+
+      if (adminTypingTimerRef.current) window.clearTimeout(adminTypingTimerRef.current);
+      if (isTyping) {
+        adminTypingTimerRef.current = window.setTimeout(() => {
+          if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && activeConv?.session_id) {
+            socketRef.current.send(
+              JSON.stringify({
+                type: 'typing',
+                session_id: activeConv.session_id,
+                is_typing: false
+              })
+            );
+          }
+        }, 2500);
+      }
     }
   };
 
-  // Send admin reply (via WebSocket when connected, with HTTP fallback)
+  // Send admin reply (via WebSocket when connected, with HTTP fallback; supports VPS image upload)
   const handleSendReply = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!selectedId || !replyText.trim() || sendingReply) return;
+    if (!selectedId || (!replyText.trim() && !selectedImageFile) || sendingReply || uploadingImage) return;
 
     if (activeConv?.status === 'closed' || activeConv?.status === 'resolved') {
       showToast(`This ticket is ${activeConv.status}. Change status to Open or In Progress to reply.`, 'error');
@@ -462,6 +522,87 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
 
     const text = replyText.trim();
     setReplyText('');
+
+    // Immediately stop admin typing indicator
+    if (adminTypingTimerRef.current) {
+      window.clearTimeout(adminTypingTimerRef.current);
+      adminTypingTimerRef.current = null;
+    }
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && activeConv?.session_id) {
+      socketRef.current.send(
+        JSON.stringify({
+          type: 'typing',
+          session_id: activeConv.session_id,
+          is_typing: false
+        })
+      );
+    }
+
+    // Case 1: Image file attached
+    if (selectedImageFile) {
+      const imgFile = selectedImageFile;
+      const previewUrl = selectedImagePreview;
+      clearSelectedImage();
+      setUploadingImage(true);
+
+      const tempId = -Date.now();
+      const optimisticMsg: SupportMessage = {
+        id: tempId,
+        conversation_id: selectedId,
+        sender_type: 'admin',
+        sender_name: 'You (Support)',
+        message: text || '📷 Photo',
+        attachment_url: previewUrl,
+        is_read: true,
+        created_at: new Date().toISOString()
+      };
+      setActiveConv(prev =>
+        prev
+          ? {
+              ...prev,
+              status: prev.status === 'open' ? 'in_progress' : prev.status,
+              messages: [...prev.messages, optimisticMsg]
+            }
+          : prev
+      );
+
+      try {
+        const res = await uploadAdminSupportImage(selectedId, imgFile, text || undefined);
+        if (res.data?.data) {
+          const confirmed = res.data.data;
+          setActiveConv(prev => {
+            if (!prev) return prev;
+            if (prev.messages.some(m => m.id === confirmed.id)) {
+              return {
+                ...prev,
+                messages: prev.messages.filter(m => m.id !== tempId),
+                status: prev.status === 'open' ? 'in_progress' : prev.status
+              };
+            }
+            return {
+              ...prev,
+              messages: prev.messages.map(m => (m.id === tempId ? confirmed : m)),
+              status: prev.status === 'open' ? 'in_progress' : prev.status
+            };
+          });
+        }
+      } catch (err) {
+        showToast(getApiErrorMessage(err, 'Failed to send image'), 'error');
+        setActiveConv(prev =>
+          prev
+            ? {
+                ...prev,
+                messages: prev.messages.filter(m => m.id !== tempId)
+              }
+            : prev
+        );
+      } finally {
+        setUploadingImage(false);
+      }
+      return;
+    }
+
+    // Case 2: Text only
     setSendingReply(true);
 
     const tempId = -Date.now();
@@ -869,8 +1010,11 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                         }}
                       >
                         {visitorTypingSession === conv.session_id ? (
-                          <span style={{ color: '#0c6253', fontWeight: 600, fontStyle: 'italic' }}>
-                            Typing...
+                          <span style={{ color: '#0c6253', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            Typing
+                            <span className="tc-typing-dot" style={{ animationDelay: '0ms', width: '3px', height: '3px' }} />
+                            <span className="tc-typing-dot" style={{ animationDelay: '200ms', width: '3px', height: '3px' }} />
+                            <span className="tc-typing-dot" style={{ animationDelay: '400ms', width: '3px', height: '3px' }} />
                           </span>
                         ) : (
                           conv.last_message_text || 'Conversation initiated'
@@ -1124,7 +1268,7 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                       </div>
                       <div
                         style={{
-                          padding: '10px 14px',
+                          padding: m.attachment_url && (!m.message || m.message === '📷 Photo') ? '4px' : '10px 14px',
                           borderRadius: isAdmin ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                           backgroundColor: isAdmin ? '#0c6253' : isBot ? '#fef3c7' : '#ffffff',
                           color: isAdmin ? '#ffffff' : isBot ? '#78350f' : '#1e293b',
@@ -1136,7 +1280,30 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                           whiteSpace: 'pre-wrap'
                         }}
                       >
-                        {m.message}
+                        {m.attachment_url && (
+                          <div style={{ marginBottom: m.message && m.message !== '📷 Photo' ? '8px' : '0' }}>
+                            <img
+                              src={getImageUrl(m.attachment_url)}
+                              alt="Attachment"
+                              onClick={() => setLightboxImage(getImageUrl(m.attachment_url))}
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '260px',
+                                borderRadius: '8px',
+                                objectFit: 'cover',
+                                display: 'block',
+                                cursor: 'pointer',
+                                border: isAdmin ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
+                              }}
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                        {m.message && m.message !== '📷 Photo' && (
+                          <div style={{ padding: m.attachment_url ? '4px 6px 4px 6px' : '0' }}>
+                            {m.message}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1146,16 +1313,24 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                   <div
                     style={{
                       alignSelf: 'flex-start',
-                      fontSize: '12px',
-                      color: '#64748b',
-                      fontStyle: 'italic',
-                      padding: '4px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
                       backgroundColor: '#f1f5f9',
-                      borderRadius: '12px'
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '14px 14px 14px 4px',
+                      fontSize: '12px',
+                      color: '#334155'
                     }}
                   >
-                    <i className="fas fa-circle-notch fa-spin" style={{ marginRight: '6px', color: '#0c6253' }} />
-                    {activeConv.display_name} is typing...
+                    <span style={{ fontWeight: 600, color: '#0c6253' }}>{activeConv.display_name}</span>
+                    <span style={{ color: '#64748b' }}>is typing</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: '2px' }}>
+                      <span className="tc-typing-dot" style={{ animationDelay: '0ms' }} />
+                      <span className="tc-typing-dot" style={{ animationDelay: '200ms' }} />
+                      <span className="tc-typing-dot" style={{ animationDelay: '400ms' }} />
+                    </span>
                   </div>
                 )}
               </div>
@@ -1263,6 +1438,60 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                     ))}
                   </div>
 
+                  {/* Image Attachment Preview Bar */}
+                  {selectedImagePreview && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 16px',
+                        backgroundColor: '#f8fafc',
+                        borderTop: '1px solid #e2e8f0'
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '6px',
+                          overflow: 'hidden',
+                          border: '1px solid #cbd5e1',
+                          flexShrink: 0
+                        }}
+                      >
+                        <img src={selectedImagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          type="button"
+                          onClick={clearSelectedImage}
+                          title="Remove image"
+                          style={{
+                            position: 'absolute',
+                            top: '1px',
+                            right: '1px',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.65)',
+                            color: '#ffffff',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '9px'
+                          }}
+                        >
+                          <i className="fas fa-times" />
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#475569', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedImageFile?.name}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Reply Composer Form */}
                   <form
                     onSubmit={handleSendReply}
@@ -1276,11 +1505,39 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                     }}
                   >
                     <input
+                      ref={adminFileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      style={{ display: 'none' }}
+                      onChange={handleFileSelect}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => adminFileInputRef.current?.click()}
+                      disabled={sendingReply || uploadingImage}
+                      title="Attach image"
+                      style={{
+                        padding: '10px 14px',
+                        backgroundColor: '#f1f5f9',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        cursor: sendingReply || uploadingImage ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <i className="fas fa-paperclip" />
+                    </button>
+                    <input
                       type="text"
-                      placeholder="Type your response to the customer..."
+                      placeholder={selectedImageFile ? "Add a caption for this image (optional)..." : "Type your response to the customer..."}
                       value={replyText}
                       onChange={(e) => handleAdminTyping(e.target.value)}
-                      disabled={sendingReply}
+                      disabled={sendingReply || uploadingImage}
                       style={{
                         flex: 1,
                         padding: '10px 14px',
@@ -1299,27 +1556,31 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
                     />
                     <button
                       type="submit"
-                      disabled={!replyText.trim() || sendingReply}
+                      disabled={(!replyText.trim() && !selectedImageFile) || sendingReply || uploadingImage}
                       style={{
                         padding: '10px 18px',
-                        backgroundColor: !replyText.trim() || sendingReply ? '#94a3b8' : '#0c6253',
+                        backgroundColor: (!replyText.trim() && !selectedImageFile) || sendingReply || uploadingImage ? '#94a3b8' : '#0c6253',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '8px',
                         fontWeight: 600,
                         fontSize: '13.5px',
-                        cursor: !replyText.trim() || sendingReply ? 'not-allowed' : 'pointer',
+                        cursor: (!replyText.trim() && !selectedImageFile) || sendingReply || uploadingImage ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '6px',
+                        flexShrink: 0
                       }}
                     >
-                      {sendingReply ? (
-                        <i className="fas fa-spinner fa-spin" />
+                      {sendingReply || uploadingImage ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin" />
+                          <span>Sending...</span>
+                        </>
                       ) : (
                         <>
                           <i className="fas fa-paper-plane" />
-                          Send Reply
+                          <span>Send Reply</span>
                         </>
                       )}
                     </button>
@@ -1330,6 +1591,108 @@ export default function AdminSupportChat({ showToast, onCountsChange }: AdminSup
           )}
         </div>
       </div>
+
+      {/* Lightbox Image Preview Modal */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            zIndex: 9999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '92vw',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: '8px', gap: '8px' }}>
+              <a
+                href={lightboxImage}
+                target="_blank"
+                rel="noreferrer"
+                download
+                style={{
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-external-link-alt" /> Open Full Image
+              </a>
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                style={{
+                  color: '#ffffff',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-times" /> Close
+              </button>
+            </div>
+            <img
+              src={lightboxImage}
+              alt="Enlarged"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '82vh',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.5)'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Typing animation keyframes */}
+      <style>{`
+        .tc-typing-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background-color: #0c6253;
+          display: inline-block;
+          animation: tcBounceDot 1.2s infinite ease-in-out;
+        }
+        @keyframes tcBounceDot {
+          0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.35;
+          }
+          30% {
+            transform: translateY(-5px);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

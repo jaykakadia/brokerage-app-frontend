@@ -431,8 +431,29 @@ export const initSupportConversation = (payload: SupportInitPayload): Promise<Ax
 export const getSupportConversation = (sessionId: string): Promise<AxiosResponse<ApiResponse<SupportConversation>>> =>
   api.get(`/api/v1/support/conversations/${sessionId}`);
 
-export const sendSupportVisitorMessage = (sessionId: string, message: string): Promise<AxiosResponse<ApiResponse<SupportMessage>>> =>
-  api.post(`/api/v1/support/conversations/${sessionId}/messages`, { message });
+export const sendSupportVisitorMessage = (
+  sessionId: string,
+  message: string,
+  attachmentUrl?: string
+): Promise<AxiosResponse<ApiResponse<SupportMessage>>> =>
+  api.post(`/api/v1/support/conversations/${sessionId}/messages`, {
+    message,
+    ...(attachmentUrl ? { attachment_url: attachmentUrl } : {})
+  });
+
+export const uploadSupportImage = (
+  file: File,
+  sessionId: string,
+  message?: string
+): Promise<AxiosResponse<ApiResponse<SupportMessage>>> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('session_id', sessionId);
+  if (message) formData.append('message', message);
+  return api.post('/api/v1/support/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
 
 export const pollSupportMessages = (sessionId: string, afterId = 0): Promise<AxiosResponse<ApiResponse<SupportMessage[]>>> =>
   api.get(`/api/v1/support/conversations/${sessionId}/poll`, { params: { after_id: afterId } });
@@ -466,8 +487,28 @@ export const getAdminSupportConversations = (params: {
 export const getAdminSupportConversationDetail = (convId: number): Promise<AxiosResponse<ApiResponse<SupportConversation>>> =>
   api.get(`/api/v1/admin/support/conversations/${convId}`);
 
-export const sendAdminSupportReply = (convId: number, message: string): Promise<AxiosResponse<ApiResponse<SupportMessage>>> =>
-  api.post(`/api/v1/admin/support/conversations/${convId}/messages`, { message });
+export const sendAdminSupportReply = (
+  convId: number,
+  message: string,
+  attachmentUrl?: string
+): Promise<AxiosResponse<ApiResponse<SupportMessage>>> =>
+  api.post(`/api/v1/admin/support/conversations/${convId}/messages`, {
+    message,
+    ...(attachmentUrl ? { attachment_url: attachmentUrl } : {})
+  });
+
+export const uploadAdminSupportImage = (
+  convId: number,
+  file: File,
+  message?: string
+): Promise<AxiosResponse<ApiResponse<SupportMessage>>> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (message) formData.append('message', message);
+  return api.post(`/api/v1/admin/support/conversations/${convId}/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
 
 export const updateAdminSupportStatus = (convId: number, status: string): Promise<AxiosResponse<MessageResponse>> =>
   api.patch(`/api/v1/admin/support/conversations/${convId}/status`, { status });
