@@ -5,23 +5,34 @@ import { EMPTY_PROPERTY_FORM, listingTitle, type PropertyFormState } from '../pa
 export const isBusinessListing = (listing: Pick<Listing, 'form_data'> & { kind?: string | null }): boolean =>
   listing.kind === 'business' || listing.form_data?.kind === 'business';
 
-/** Categories a business picked, in the order chosen (older listings saved them as one comma list). */
-export const getBusinessCategories = (listing: Pick<Listing, 'form_data'> & { categories?: string[]; category_name?: string | null }): string[] => {
-  if (Array.isArray(listing.categories) && listing.categories.length) return listing.categories;
-  if (listing.category_name) return [listing.category_name];
-  const data = listing.form_data || {};
-  const selected = Array.isArray(data.selectedCategories) ? data.selectedCategories as Array<{ name?: string }> : [];
-  const categories = selected.map((c) => c.name || '').filter(Boolean);
-  if (!categories.length && typeof data.categoryName === 'string' && data.categoryName) {
-    categories.push(...data.categoryName.split(',').map((c) => c.trim()).filter(Boolean));
-  }
-  return categories;
+/** Splits comma-joined category strings ("Real Estate Agent, Property Dealer") into separate, de-duplicated names. */
+const splitCategoryNames = (names: string[]): string[] => {
+  const seen = new Set<string>();
+  return names
+    .flatMap((n) => String(n || '').split(','))
+    .map((n) => n.trim())
+    .filter((n) => {
+      const key = n.toLowerCase();
+      if (!n || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 };
 
 /**
- * Primary category to display on business cards and badges (only the first category).
- * The card API sends category_name as a comma-separated string; this splits on ',' and takes the first.
+ * Categories a business picked, one entry per category, in the order chosen.
+ * Listing cards send them as one comma-joined `category_name`; older listings saved one comma list in form_data.
  */
+export const getBusinessCategories = (listing: Pick<Listing, 'form_data'> & { categories?: string[]; category_name?: string | null }): string[] => {
+  if (Array.isArray(listing.categories) && listing.categories.length) return splitCategoryNames(listing.categories);
+  if (listing.category_name) return splitCategoryNames([listing.category_name]);
+  const data = listing.form_data || {};
+  const selected = Array.isArray(data.selectedCategories) ? data.selectedCategories as Array<{ name?: string }> : [];
+  const categories = selected.map((c) => c.name || '');
+  if (!categories.some(Boolean) && typeof data.categoryName === 'string') categories.push(data.categoryName);
+  return splitCategoryNames(categories);
+};
+
 export const getPrimaryBusinessCategory = (listing: Pick<Listing, 'form_data'> & { categories?: string[]; category_name?: string | null }): string => {
   if (typeof listing.category_name === 'string' && listing.category_name.trim()) {
     const first = listing.category_name.split(',')[0]?.trim();
