@@ -39,6 +39,7 @@ const PageLoader = () => (
 import { parseAppRoute, getListingUrl } from './utils/url';
 import { PAGE_SEO, setSeo } from './utils/seo';
 import { getCityFromSlug, getCitySlug, LOCALITY_SLUG_MAP } from './config/cities';
+import { parseCityParam } from './config/typeHubs';
 import { getPageMetadataList } from './services/api';
 import type { NavigateFunction, PageMetadata } from './types';
 
@@ -58,11 +59,14 @@ export default function App() {
     }
     return '';
   });
+  // Property-type hub being viewed, e.g. "plots" on /properties/palwal/plots
+  const [activeTypeSlug, setActiveTypeSlug] = useState<string>(() =>
+    initialRoute.page === 'properties-city' ? parseCityParam(initialRoute.param).typeSlug : ''
+  );
   const [activeLocality, setActiveLocality] = useState<string>(() => {
     if (initialRoute.page === 'properties-city' && initialRoute.param) {
-      const parts = String(initialRoute.param).split('/');
-      if (parts.length > 1) {
-        const locSlug = parts[1];
+      const locSlug = parseCityParam(initialRoute.param).localitySlug;
+      if (locSlug) {
         const known = LOCALITY_SLUG_MAP[locSlug];
         return known ? known.name : locSlug.replace(/-/g, ' ');
       }
@@ -71,9 +75,8 @@ export default function App() {
   });
   const [activeLocalitySearch, setActiveLocalitySearch] = useState<string>(() => {
     if (initialRoute.page === 'properties-city' && initialRoute.param) {
-      const parts = String(initialRoute.param).split('/');
-      if (parts.length > 1) {
-        const locSlug = parts[1];
+      const locSlug = parseCityParam(initialRoute.param).localitySlug;
+      if (locSlug) {
         const known = LOCALITY_SLUG_MAP[locSlug];
         return known ? known.search : locSlug.replace(/-/g, ' ');
       }
@@ -160,11 +163,11 @@ export default function App() {
       } else if (parsed.page === 'login') {
         setLoginTab(parsed.param === 'register' ? 'register' : 'signin');
       } else if (parsed.page === 'properties-city' && parsed.param) {
-        const parts = String(parsed.param).split('/');
-        const city = getCityFromSlug(parts[0]);
+        const { citySlug: routeCity, localitySlug: locSlug, typeSlug } = parseCityParam(parsed.param);
+        const city = getCityFromSlug(routeCity);
         setActiveCity(city || '');
-        if (parts.length > 1) {
-          const locSlug = parts[1];
+        setActiveTypeSlug(typeSlug);
+        if (locSlug) {
           const known = LOCALITY_SLUG_MAP[locSlug];
           setActiveLocality(known ? known.name : locSlug.replace(/-/g, ' '));
           setActiveLocalitySearch(known ? known.search : locSlug.replace(/-/g, ' '));
@@ -206,6 +209,7 @@ export default function App() {
       setSeo({ title: 'Register', noindex: true });
       return;
     }
+    if (activePage === 'properties-city' && activeCity && activeTypeSlug) return; // HomePage sets the type hub's SEO
     if (activePage === 'properties-city' && activeCity) {
       const slug = getCitySlug(activeCity);
       const serverRobots = document.querySelector('meta[name="robots"]')?.getAttribute('content');
@@ -244,12 +248,13 @@ export default function App() {
       return;
     }
     setSeo(PAGE_SEO[activePage] ?? {});
-  }, [activePage, loginTab, activeCity, activeLocality, metaMap]);
+  }, [activePage, loginTab, activeCity, activeLocality, activeTypeSlug, metaMap]);
 
   const navigateTo: NavigateFunction = (page, param = null) => {
     let path = `/${page}`;
     if (page === 'home') {
       path = '/';
+      setActiveTypeSlug('');
       setActiveCity('');
       setActiveLocality('');
       setActiveLocalitySearch('');
@@ -276,16 +281,14 @@ export default function App() {
       path = slug ? `/blog/${slug}` : '/blog';
       setActivePage('blog-detail');
     } else if (page === 'properties-city' && param) {
-      const paramStr = String(param);
-      const parts = paramStr.split('/');
-      const citySlug = parts[0];
-      const localitySlug = parts[1] || '';
+      const { citySlug, localitySlug, typeSlug } = parseCityParam(param);
       const city = getCityFromSlug(citySlug);
       if (!city) {
         setActivePage('not-found');
         path = `/properties/${citySlug}`;
       } else {
         setActiveCity(city);
+        setActiveTypeSlug(typeSlug);
         if (localitySlug) {
           const known = LOCALITY_SLUG_MAP[localitySlug];
           setActiveLocality(known ? known.name : localitySlug.replace(/-/g, ' '));
@@ -294,7 +297,7 @@ export default function App() {
         } else {
           setActiveLocality('');
           setActiveLocalitySearch('');
-          path = `/properties/${citySlug}`;
+          path = typeSlug ? `/properties/${citySlug}/${typeSlug}` : `/properties/${citySlug}`;
         }
         setActivePage('properties-city');
       }
@@ -392,6 +395,7 @@ export default function App() {
               activeCity={activeCity}
               activeLocality={activeLocality}
               activeLocalitySearch={activeLocalitySearch}
+              activeTypeSlug={activeTypeSlug}
               onCitySelect={handleCitySelect}
               onNavigate={navigateTo}
               onOpenAuth={openAuthModal}

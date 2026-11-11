@@ -5,6 +5,7 @@ import { cardImageBackdrop, formatListingPrice, getFirstImageUrl } from '../util
 import { getPrimaryBusinessCategory, getListingCity, isNewListing, publicListingTitle } from '../utils/listingKind';
 import { ALL_INDIAN_CITIES, POPULAR_BROWSE_CITIES, getCitySlug } from '../config/cities';
 import { setSeo } from '../utils/seo';
+import { getTypeHubBySlug, getTypeHubByType, typeHubParam, type TypeHubData, type TypeHubLink } from '../config/typeHubs';
 
 // In-memory module cache for lazy-loaded cities
 let cachedAllCities: string[] | null = null;
@@ -44,9 +45,20 @@ export interface HomePageProps {
   activeCity?: string;
   activeLocality?: string;
   activeLocalitySearch?: string;
+  /** Property-type hub in the URL, e.g. "plots" on /properties/palwal/plots. */
+  activeTypeSlug?: string;
   onCitySelect?: (city: string) => void;
   onNavigate: NavigateFunction;
   onOpenAuth?: (options?: AuthModalOptions) => void;
+}
+
+/** Property type selected by the current URL: ?type=… or the hub segment of /properties/{city}/{type}. */
+function typeFromLocation(): string {
+  const sp = new URLSearchParams(window.location.search);
+  const fromQuery = sp.get('type') || sp.get('propType');
+  if (fromQuery) return fromQuery;
+  const hubSlug = window.location.pathname.match(/^\/properties\/[^/]+\/([^/]+)\/?$/)?.[1];
+  return getTypeHubBySlug(hubSlug)?.type || '';
 }
 
 interface PropertyTypeOption {
@@ -193,7 +205,7 @@ const HOMEPAGE_FAQS = [
   }
 ];
 
-export default function HomePage({ activeCity, activeLocality, activeLocalitySearch, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
+export default function HomePage({ activeCity, activeLocality, activeLocalitySearch, activeTypeSlug, onCitySelect, onNavigate, onOpenAuth }: HomePageProps) {
   const { user } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [totalListings, setTotalListings] = useState<number>(0);
@@ -279,7 +291,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
   // Read initial filter values from URL search params (if present) to support shared links
   const initialUrlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialCity = initialUrlParams.get('city') || activeCity || '';
-  const initialType = initialUrlParams.get('type') || initialUrlParams.get('propType') || '';
+  const initialType = useMemo(() => typeFromLocation(), []);
   const initialMinPrice = initialUrlParams.get('minPrice') || '';
   const initialMaxPrice = initialUrlParams.get('maxPrice') || '';
   const initialKeyword = initialUrlParams.get('q') || initialUrlParams.get('keyword') || '';
@@ -332,8 +344,13 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
   // Keep URL query params synchronized with active filters (for sharing & bookmarking)
   useEffect(() => {
     const params = new URLSearchParams();
-    if (heroCity) params.set('city', heroCity);
-    if (heroType) params.set('type', heroType);
+    // On /properties/{city} the path already says the city, and a type with a landing page becomes
+    // /properties/{city}/{type} instead of ?type=…, so each hub has one clean URL.
+    const cityInPath = !!activeCity && !activeLocality && heroCity === activeCity
+      && window.location.pathname.startsWith('/properties/');
+    const hubInPath = cityInPath ? getTypeHubByType(heroType) : undefined;
+    if (heroCity && !cityInPath) params.set('city', heroCity);
+    if (heroType && !hubInPath) params.set('type', heroType);
     if (budgetMin) params.set('minPrice', budgetMin);
     if (budgetMax) params.set('maxPrice', budgetMax);
     if (heroKeyword.trim()) params.set('q', heroKeyword.trim());
@@ -342,20 +359,23 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     if (currentPage > 1) params.set('page', String(currentPage));
 
     const searchStr = params.toString();
-    const newPathAndSearch = searchStr ? `${window.location.pathname}?${searchStr}` : window.location.pathname;
+    const basePath = cityInPath
+      ? `/properties/${getCitySlug(activeCity || '')}${hubInPath ? `/${hubInPath.slug}` : ''}`
+      : window.location.pathname;
+    const newPathAndSearch = searchStr ? `${basePath}?${searchStr}` : basePath;
     const currentPathAndSearch = `${window.location.pathname}${window.location.search}`;
 
     if (newPathAndSearch !== currentPathAndSearch) {
       window.history.replaceState(null, '', newPathAndSearch);
     }
-  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, newOnly, currentPage]);
+  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, newOnly, currentPage, activeCity, activeLocality]);
 
   // Support browser Back/Forward buttons updating filters & page
   useEffect(() => {
     const handlePopState = () => {
       const sp = new URLSearchParams(window.location.search);
       const c = sp.get('city') || activeCity || '';
-      const t = sp.get('type') || sp.get('propType') || '';
+      const t = typeFromLocation();
       const minP = sp.get('minPrice') || '';
       const maxP = sp.get('maxPrice') || '';
       const q = sp.get('q') || sp.get('keyword') || '';
@@ -415,6 +435,71 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
       setSelectedCities([]);
     }
   }, [activeCity]);
+
+  // Navigating to or away from a property-type hub (link click, Back/Forward) selects that type
+  const typeRouteSeen = useRef(false);
+  useEffect(() => {
+    if (!typeRouteSeen.current) {
+      typeRouteSeen.current = true;
+      return;
+    }
+    setHeroType(typeFromLocation());
+    setCurrentPage(1);
+  }, [activeTypeSlug, activeCity]);
+
+  // The hub being viewed ("Plots in Palwal"), when the city page is filtered to a type that has one
+  const typeHubDef = activeCity && !activeLocality && heroCity === activeCity ? getTypeHubByType(heroType) : undefined;
+  const typeHubSlug = typeHubDef?.slug || '';
+  // Robots tag the server sent for the URL the app loaded on; used until the hub's own data arrives
+  const [serverNoindexAtLoad] = useState(
+    () => document.querySelector('meta[name="robots"]')?.getAttribute('content')?.includes('noindex') ?? false
+  );
+  const [typeHubData, setTypeHubData] = useState<TypeHubData | null>(null);
+  const [typeHubLinks, setTypeHubLinks] = useState<TypeHubLink[]>([]);
+
+  useEffect(() => {
+    api.get<{ status: string; data: TypeHubLink[] }>('/api/v1/listings/type-hubs')
+      .then((res) => setTypeHubLinks(res.data.data || []))
+      .catch(() => setTypeHubLinks([]));
+  }, []);
+
+  useEffect(() => {
+    if (!typeHubSlug || !activeCity) {
+      setTypeHubData(null);
+      return;
+    }
+    let cancelled = false;
+    api.get<{ status: string; data: TypeHubData }>(`/api/v1/listings/type-hubs/${getCitySlug(activeCity)}/${typeHubSlug}`)
+      .then((res) => { if (!cancelled) setTypeHubData(res.data.data); })
+      .catch(() => { if (!cancelled) setTypeHubData(null); });
+    return () => { cancelled = true; };
+  }, [typeHubSlug, activeCity]);
+
+  /** Opens an internal hub link (a path like /properties/palwal/plots or /palwal/omaxe-city) without a page reload. */
+  const openHubPath = (e: React.MouseEvent<HTMLAnchorElement>, path: string): void => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+    e.preventDefault();
+    const parts = path.replace(/^\/+/, '').split('/');
+    if (parts[0] === 'properties' && parts.length === 3) {
+      setHeroType(getTypeHubBySlug(parts[2])?.type || '');
+      setCurrentPage(1);
+      onNavigate('properties-city', typeHubParam(parts[1], parts[2]));
+    } else if (parts[0] === 'properties') {
+      setHeroType('');
+      onNavigate('properties-city', parts[1]);
+    } else {
+      onNavigate('properties-city', parts.join('/'));
+    }
+  };
+
+  const cityTypeHubs = useMemo(
+    () => (activeCity ? typeHubLinks.filter((h) => h.city_slug === getCitySlug(activeCity)) : []),
+    [typeHubLinks, activeCity]
+  );
+
+  const hubFaqs = typeHubDef && typeHubData && typeHubData.type_slug === typeHubDef.slug
+    ? typeHubData.faqs.map((f) => ({ q: f.question, a: f.answer }))
+    : null;
 
   // Sync heroKeyword when activeLocality changes
   useEffect(() => {
@@ -819,6 +904,33 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
   // Ensure client-side setSeo is consistent with server: noindex for cities with 0 listings + FAQPage schema
   useEffect(() => {
+    if (activeCity && typeHubDef) {
+      // Property-type hub ("Plots in Palwal"): same title, description, canonical and FAQs as the server page
+      const hubPath = `/properties/${getCitySlug(activeCity)}/${typeHubDef.slug}`;
+      const otherFilters = !!(budgetMin || budgetMax || heroKeyword.trim() || newOnly || activeCategoryTab !== 'all');
+      const pageSuffix = currentPage > 1 ? ` - Page ${currentPage}` : '';
+      const ready = typeHubData && typeHubData.type_slug === typeHubDef.slug;
+      setSeo({
+        title: ready
+          ? typeHubData.title.replace(' | TradeCall India', `${pageSuffix} | TradeCall India`)
+          : `${typeHubDef.name} in ${activeCity}${pageSuffix}`,
+        description: ready ? `${typeHubData.description}${pageSuffix}` : undefined,
+        path: currentPage > 1 ? `${hubPath}?page=${currentPage}` : hubPath,
+        noindex: otherFilters || (ready ? !typeHubData.indexable : serverNoindexAtLoad),
+        jsonLd: ready
+          ? {
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: typeHubData.faqs.map((f) => ({
+                '@type': 'Question',
+                name: f.question,
+                acceptedAnswer: { '@type': 'Answer', text: f.answer }
+              }))
+            }
+          : undefined
+      });
+      return;
+    }
     if (activeCity && !loading) {
       const slug = getCitySlug(activeCity);
       const variants = [
@@ -873,7 +985,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
         }
       });
     }
-  }, [activeCity, loading, cityCounts, cityFaqs]);
+  }, [activeCity, loading, cityCounts, cityFaqs, typeHubDef, typeHubData, currentPage, budgetMin, budgetMax, heroKeyword, newOnly, activeCategoryTab]);
 
   // Active Listings count: When user is filtering (search, city, type), show the filtered total count;
   // otherwise show the full database active property listings count from stats (e.g. 275)
@@ -1355,7 +1467,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
       <section className="hero">
         <div className="hero-overlay"></div>
         <div className="container hero-content">
-          <h1>{activeCity ? (activeLocality ? `Properties in ${activeLocality}, ${activeCity}` : `Properties in ${activeCity}`) : 'Buy, Rent & Sell Property'}</h1>
+          <h1>{activeCity ? (activeLocality ? `Properties in ${activeLocality}, ${activeCity}` : typeHubDef ? `${typeHubDef.name} in ${activeCity}` : `Properties in ${activeCity}`) : 'Buy, Rent & Sell Property'}</h1>
 
           <div className="search-box">
             <div className="search-form">
@@ -2000,7 +2112,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                   <span className="listings-title-icon">
                     <i className="fas fa-clock"></i>
                   </span>
-                  Recent Listings
+                  {typeHubDef ? `Verified ${typeHubDef.name} in ${activeCity}` : 'Recent Listings'}
                 </h2>
                 {!loading && (
                   <span className="listings-count-badge">
@@ -2009,7 +2121,11 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                 )}
               </div>
               <p className="listings-header-sub">
-                {activeLocality ? `Verified properties in ${activeLocality}, ${activeCity}` : 'Latest verified properties posted on TradeCall'}
+                {activeLocality
+                  ? `Verified properties in ${activeLocality}, ${activeCity}`
+                  : typeHubDef
+                    ? `${typeHubDef.name} in ${activeCity} listed by owners and dealers, with zero brokerage`
+                    : 'Latest verified properties posted on TradeCall'}
               </p>
             </div>
 
@@ -2342,7 +2458,16 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
           {activeCity ? (
             /* City Hub Sections */
             <div>
-              {hasCityPriceGuide && (
+              {typeHubDef && typeHubData && typeHubData.type_slug === typeHubDef.slug && (
+                <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '28px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>
+                    <i className="fas fa-chart-line" style={{ color: '#0c6253', marginRight: '8px' }}></i>
+                    About {typeHubData.heading}
+                  </h2>
+                  <p style={{ color: '#475569', fontSize: '15px', lineHeight: 1.6, margin: 0 }}>{typeHubData.intro}</p>
+                </div>
+              )}
+              {hasCityPriceGuide && !typeHubDef && (
                 <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '28px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                   <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>
                     <i className="fas fa-chart-line" style={{ color: '#0c6253', marginRight: '8px' }}></i>
@@ -2359,13 +2484,36 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                   Explore Property Types in {activeCity}
                 </h2>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {cityTypeHubs.map((h) => {
+                    const current = h.type_slug === typeHubSlug;
+                    return (
+                      <a
+                        key={h.type_slug}
+                        href={`/properties/${h.city_slug}/${h.type_slug}`}
+                        onClick={(e) => openHubPath(e, `/properties/${h.city_slug}/${h.type_slug}`)}
+                        aria-current={current ? 'page' : undefined}
+                        style={{
+                          padding: '8px 16px',
+                          background: current ? '#0c6253' : '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          color: current ? '#fff' : '#0c6253',
+                          borderRadius: '20px',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        {h.name} in {activeCity} ({h.count})
+                      </a>
+                    );
+                  })}
                   {[
                     { label: `Flats & Apartments in ${activeCity}`, type: 'flat' },
                     { label: `Houses & Villas in ${activeCity}`, type: 'house' },
                     { label: `Plots & Land in ${activeCity}`, type: 'plot' },
                     { label: `Commercial Properties in ${activeCity}`, type: 'commercial' },
                     { label: `Agricultural Land in ${activeCity}`, type: 'agriculture' }
-                  ].map((item) => (
+                  ].filter((item) => !cityTypeHubs.some((h) => h.type === item.type)).map((item) => (
                     <button
                       key={item.type}
                       type="button"
@@ -2388,16 +2536,75 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                       {item.label}
                     </button>
                   ))}
+                  {typeHubDef && (
+                    <a
+                      href={`/properties/${getCitySlug(activeCity)}`}
+                      onClick={(e) => openHubPath(e, `/properties/${getCitySlug(activeCity)}`)}
+                      style={{ padding: '8px 16px', color: '#0c6253', fontWeight: 600, fontSize: '13px' }}
+                    >
+                      All properties in {activeCity}
+                    </a>
+                  )}
                 </div>
               </div>
+
+              {typeHubDef && typeHubData && typeHubData.type_slug === typeHubDef.slug && (
+                <>
+                  {typeHubData.localities.length > 0 && (
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '28px', border: '1px solid #e2e8f0' }}>
+                      <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>
+                        Localities with {typeHubData.name} in {activeCity}
+                      </h2>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {typeHubData.localities.map((loc) => loc.path ? (
+                          <a
+                            key={loc.name}
+                            href={loc.path}
+                            onClick={(e) => openHubPath(e, loc.path as string)}
+                            style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', borderRadius: '20px', fontWeight: 600, fontSize: '13px', textDecoration: 'none' }}
+                          >
+                            {loc.name} ({loc.count})
+                          </a>
+                        ) : (
+                          <span
+                            key={loc.name}
+                            style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '20px', fontWeight: 600, fontSize: '13px' }}
+                          >
+                            {loc.name} ({loc.count})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {typeHubData.other_cities.length > 0 && (
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '28px', border: '1px solid #e2e8f0' }}>
+                      <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '14px' }}>
+                        {typeHubData.name} in Other Cities
+                      </h2>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {typeHubData.other_cities.map((h) => (
+                          <a
+                            key={h.path}
+                            href={h.path}
+                            onClick={(e) => openHubPath(e, h.path)}
+                            style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', borderRadius: '20px', fontWeight: 600, fontSize: '13px', textDecoration: 'none' }}
+                          >
+                            {h.label} ({h.count})
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* City FAQs */}
               <div style={{ background: '#fff', borderRadius: '12px', padding: '28px', border: '1px solid #e2e8f0' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', marginBottom: '20px' }}>
-                  Frequently Asked Questions about {activeCity} Real Estate
+                  {hubFaqs ? `Frequently Asked Questions about ${typeHubData?.heading}` : `Frequently Asked Questions about ${activeCity} Real Estate`}
                 </h2>
                 <div>
-                  {cityFaqs.map((faq, idx) => {
+                  {(hubFaqs || cityFaqs).map((faq, idx) => {
                     const isOpen = openFaqIdx === idx;
                     return (
                       <div key={faq.q} style={{ borderBottom: '1px solid #e2e8f0', padding: '14px 0' }}>
@@ -2422,11 +2629,9 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                           <span>{faq.q}</span>
                           <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ color: '#0c6253', marginLeft: '12px' }}></i>
                         </button>
-                        {isOpen && (
-                          <p style={{ marginTop: '10px', color: '#475569', fontSize: '14px', lineHeight: 1.6, margin: '10px 0 0 0' }}>
-                            {faq.a}
-                          </p>
-                        )}
+                        <p style={{ display: isOpen ? 'block' : 'none', color: '#475569', fontSize: '14px', lineHeight: 1.6, margin: '10px 0 0 0' }}>
+                          {faq.a}
+                        </p>
                       </div>
                     );
                   })}
@@ -2517,12 +2722,31 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
               {/* Property Types Block */}
               <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', marginBottom: '32px', border: '1px solid #e2e8f0' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
-                  Explore Property Types
+                  Popular Property Searches
                 </h2>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {[
-                    { label: 'Flats & Apartments in Palwal', type: 'flat' },
-                    { label: 'Houses & Luxury Villas', type: 'house' },
+                  {typeHubLinks.slice(0, 18).map((h) => (
+                    <a
+                      key={`${h.city_slug}-${h.type_slug}`}
+                      href={`/properties/${h.city_slug}/${h.type_slug}`}
+                      onClick={(e) => openHubPath(e, `/properties/${h.city_slug}/${h.type_slug}`)}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        color: '#334155',
+                        borderRadius: '20px',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      {h.name} in {h.city} ({h.count})
+                    </a>
+                  ))}
+                  {typeHubLinks.length === 0 && [
+                    { label: 'Flats & Apartments', type: 'flat' },
+                    { label: 'Houses & Villas', type: 'house' },
                     { label: 'Residential Plots', type: 'plot' },
                     { label: 'Commercial Shops & Offices', type: 'commercial' },
                     { label: 'Agricultural & Farm Land', type: 'agriculture' }

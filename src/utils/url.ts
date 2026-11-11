@@ -1,4 +1,5 @@
 import { getCityFromSlug } from '../config/cities';
+import { getTypeHubBySlug, typeHubParam } from '../config/typeHubs';
 
 export function slugify(text?: string | null): string {
   if (!text) return '';
@@ -189,6 +190,16 @@ export function parseAppRoute(pathname: string, hash: string): ParsedRoute {
       return { page: 'not-found', param: citySlug };
     }
     return { page: 'properties-city', param: citySlug };
+  }
+
+  // Property-type hub: /properties/:city/:type (e.g. /properties/palwal/plots)
+  if (parts.length === 3 && parts[0].toLowerCase() === 'properties') {
+    const citySlug = parts[1].toLowerCase();
+    const hub = getTypeHubBySlug(parts[2]);
+    if (!hub || !getCityFromSlug(citySlug)) {
+      return { page: 'not-found', param: citySlug };
+    }
+    return { page: 'properties-city', param: typeHubParam(citySlug, hub.slug) };
   }
 
   // Hindi Pilot Hub: /hi/properties/:city
