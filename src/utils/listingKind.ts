@@ -133,7 +133,47 @@ export const getListingDeal = (listing: Pick<Listing, 'form_data' | 'description
   return 'sale';
 };
 
+const AREA_FIELDS: Record<string, Array<[string, string]>> = {
+  plot: [['plotArea', 'plotUnit']],
+  agriculture: [['agriArea', 'agriUnit']],
+  industrial_land: [['agriArea', 'agriUnit']],
+  r_zone_land: [['agriArea', 'agriUnit']],
+  flat: [['area', 'unit']],
+  house: [['area', 'unit']],
+  commercial: [['totalArea', 'totalUnit'], ['builtArea', 'builtUnit']]
+};
+
+/** Size of a property listing as entered in the post-listing form, e.g. "180 Sq.Yd"; '' when not given. */
+export const listingAreaLabel = (fd: Listing['form_data']): string => {
+  if (!fd || fd.kind === 'business') return '';
+  const defaults = EMPTY_PROPERTY_FORM as unknown as Record<string, string>;
+  for (const [areaKey, unitKey] of AREA_FIELDS[String(fd.propType || '')] || []) {
+    const area = String(fd[areaKey] ?? '').trim();
+    if (!area || !(Number(area.replace(/,/g, '')) > 0)) continue;
+    const unit = String(fd[unitKey] || defaults[unitKey] || '').trim();
+    return unit ? `${area} ${unit}` : '';
+  }
+  return '';
+};
+
+/** Puts the area at the front of a title ("180 Sq.Yd Plot for Sale in ..."), unless the title already states it. */
+const withAreaPrefix = (title: string, area: string, isBuyer: boolean): string => {
+  if (!area || !title) return title;
+  const amount = area.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`(^|[^\\d.])${amount}\\s*[a-z]`, 'i').test(title)) return title;
+  if (isBuyer) {
+    const looking = /^(Looking (?:to Buy|for Rent|for))\s+/i;
+    if (looking.test(title)) return title.replace(looking, `$1 ${area} `);
+  }
+  return `${area} ${title}`;
+};
+
 export const publicListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>): string => {
+  const fd = listing.form_data;
+  return withAreaPrefix(baseListingTitle(listing), listingAreaLabel(fd), fd?.kind === 'buyer');
+};
+
+const baseListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>): string => {
   const fd = listing.form_data;
   if (fd?.kind !== 'buyer') {
     let t = (listing.title || '').replace(/\bLooking to Rent\b/gi, 'Looking for Rent');
