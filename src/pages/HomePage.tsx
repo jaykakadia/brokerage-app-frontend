@@ -1223,8 +1223,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     return (
       <div
         key={listing.id}
-        className="listing-card"
-        style={asList ? { display: 'flex', flexDirection: 'row' } : {}}
+        className={`listing-card${asList ? ' listing-card--list' : ''}`}
       >
         <a
           href={listingUrl}
@@ -1234,7 +1233,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
         />
         <div
           className="card-img-wrap"
-          style={{ ...cardImageBackdrop(imgSrc), ...(asList ? { width: '280px', flexShrink: 0 } : {}) }}
+          style={cardImageBackdrop(imgSrc)}
         >
           <img
             src={imgSrc}
@@ -1297,7 +1296,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
           </button>
         </div>
 
-        <div className="card-body" style={{ flex: 1 }}>
+        <div className="card-body">
           <div className="card-price">{priceStr}</div>
           <h3 className="card-title">{title}</h3>
           <div className="card-location">

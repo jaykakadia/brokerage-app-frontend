@@ -735,6 +735,26 @@ ul { list-style: none; }
   padding: 0 4px; /* same card widths as the Featured row above */
 }
 .recent-grid .listing-card { width: auto; }
+
+/* List view: photo on the left, details on the right */
+.listing-card.listing-card--list { flex-direction: row; min-height: 0; }
+.listing-card--list .card-img-wrap { width: 280px; flex-shrink: 0; height: auto; min-height: 185px; }
+.listing-card--list .card-img-wrap img { position: absolute; inset: 0; } /* photo fills the box instead of sizing the card */
+.listing-card--list .card-img-wrap .badge-verified { display: none; } /* unpositioned; clipped below the photo in grid view too */
+.listing-card--list .card-body { min-height: 0; }
+@media (max-width: 600px) {
+  .listing-card--list .card-img-wrap { width: 128px; min-height: 150px; }
+  .listing-card--list .card-img-wrap .badge-featured { display: none; }
+  .listing-card--list .card-img-wrap button { top: 8px !important; right: 8px !important; width: 30px !important; height: 30px !important; font-size: 13px !important; }
+  .listing-card--list .card-body { padding: 10px 12px; }
+  .listing-card--list .card-price { font-size: 16px; margin-bottom: 4px; }
+  .listing-card--list .card-title { font-size: 13px; }
+  .listing-card--list .card-location { margin-bottom: 8px; }
+  .listing-card--list .card-location > span { min-height: 0; -webkit-line-clamp: 1; }
+  .listing-card--list .card-footer-actions { gap: 6px; }
+  .listing-card--list .card-footer-actions .btn-view,
+  .listing-card--list .card-footer-actions .btn-wishlist { padding: 6px 8px; font-size: 12px; }
+}
 @media (max-width: 991px) { .recent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 479px) { .recent-grid { grid-template-columns: minmax(0, 1fr); } }
 
