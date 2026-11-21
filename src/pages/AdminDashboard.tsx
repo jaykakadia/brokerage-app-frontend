@@ -76,6 +76,7 @@ interface PlanFormState {
   duration_days: number | string;
   description: string;
   status: string;
+  is_trial: boolean;
 }
 
 const EMPTY_PLAN_FORM: PlanFormState = {
@@ -85,7 +86,8 @@ const EMPTY_PLAN_FORM: PlanFormState = {
   leads_count: 10,
   duration_days: 90,
   description: '',
-  status: 'active'
+  status: 'active',
+  is_trial: false
 };
 
 interface UserFormState {
@@ -1127,7 +1129,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         leads_count: isFeatured ? 0 : parseInt(String(planForm.leads_count), 10) || 0,
         duration_days: parseInt(String(planForm.duration_days), 10) || 30,
         description: planForm.description.trim() || undefined,
-        status: planForm.status
+        status: planForm.status,
+        is_trial: isFeatured ? false : planForm.is_trial
       };
 
       if (editingPlanId) {
@@ -1157,7 +1160,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       leads_count: plan.leads_count,
       duration_days: plan.duration_days,
       description: plan.description || '',
-      status: plan.status || 'active'
+      status: plan.status || 'active',
+      is_trial: !!plan.is_trial
     });
   };
 
@@ -3013,6 +3017,21 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </div>
                 </div>
 
+                {planType !== 'featured' && (
+                  <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      id="plan_is_trial_leads"
+                      checked={planForm.is_trial}
+                      onChange={(e) => setPlanForm({ ...planForm, is_trial: e.target.checked })}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                    <label htmlFor="plan_is_trial_leads" style={{ fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#0f172a' }}>
+                      One-time Free Trial Plan (limit 1 per email address)
+                    </label>
+                  </div>
+                )}
+
                 <div className="form-group full" style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 600 }}>Description</label>
                   <textarea
@@ -3072,7 +3091,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     {plans.map((p) => (
                       <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '10px', color: '#64748b' }}>#{p.id}</td>
-                        <td style={{ padding: '10px', fontWeight: 700, color: '#111827' }}>{p.name}</td>
+                        <td style={{ padding: '10px', fontWeight: 700, color: '#111827' }}>
+                          {p.name}
+                          {p.is_trial && (
+                            <span style={{ marginLeft: '6px', fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                              TRIAL
+                            </span>
+                          )}
+                        </td>
                         <td style={{ padding: '10px', fontWeight: 700, color: '#0c6253' }}>
                           ₹{Number(p.price).toLocaleString('en-IN')}
                         </td>

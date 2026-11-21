@@ -12,6 +12,7 @@ export interface Plan {
   duration_days: number;
   status: 'active' | 'inactive' | string;
   sort_order: number;
+  is_trial?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -26,6 +27,7 @@ export interface PlanCreate {
   duration_days: number;
   status?: string;
   sort_order?: number;
+  is_trial?: boolean;
 }
 
 export interface PlanUpdate {
@@ -38,4 +40,5 @@ export interface PlanUpdate {
   duration_days?: number;
   status?: string;
   sort_order?: number;
+  is_trial?: boolean;
 }

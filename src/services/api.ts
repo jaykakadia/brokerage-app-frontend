@@ -175,6 +175,9 @@ export const updatePlan = (planId: number, planData: PlanUpdate): Promise<AxiosR
 export const deletePlan = (planId: number): Promise<AxiosResponse<MessageResponse>> =>
   api.delete(`/api/v1/plans/${planId}`);
 
+export const claimTrialPlan = (planId: number): Promise<AxiosResponse<ApiResponse<{ message: string; leads_balance: number; listing_limit: number; plan_expires_at: string | null }>>> =>
+  api.post(`/api/v1/plans/${planId}/claim-trial`);
+
 // Leads
 export const getLeadStatus = (): Promise<AxiosResponse<LeadStatusResponse>> =>
   api.get('/api/v1/leads/status');

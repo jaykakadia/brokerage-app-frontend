@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlans, createPaymentOrder, verifyPayment, getApiErrorMessage } from '../services/api';
+import { getPlans, createPaymentOrder, verifyPayment, claimTrialPlan, getApiErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { Listing, Plan, PlanType } from '../types';
 
@@ -70,6 +70,19 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
     setProcessing(true);
 
     try {
+      const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+      if (selectedPlan?.is_trial) {
+        await claimTrialPlan(selectedPlanId);
+        setSuccessMsg('Trial plan activated successfully! Your free leads have been credited.');
+        await refreshUser();
+        if (onSuccess) onSuccess();
+        setProcessing(false);
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+        return;
+      }
+
       const res = await createPaymentOrder(selectedPlanId, isFeatured ? listing?.id : undefined);
       const { order_id, payment_session_id, environment } = res.data;
 
@@ -376,6 +389,10 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
               {processing ? (
                 <>
                   <i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }}></i> Processing...
+                </>
+              ) : plans.find((p) => p.id === selectedPlanId)?.is_trial ? (
+                <>
+                  <i className="fas fa-gift" style={{ marginRight: '6px' }}></i> Claim Free Trial
                 </>
               ) : (
                 <>
