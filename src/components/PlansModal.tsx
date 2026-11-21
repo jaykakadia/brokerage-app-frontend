@@ -297,6 +297,25 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
                       justifyContent: 'space-between'
                     }}
                   >
+                    {plan.is_trial && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: '-10px',
+                          left: '12px',
+                          background: '#0c6253',
+                          color: '#5efbca',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}
+                      >
+                        <i className="fas fa-gift" style={{ marginRight: '4px' }}></i> Trial Plan
+                      </span>
+                    )}
                     {isSelected && (
                       <span
                         style={{

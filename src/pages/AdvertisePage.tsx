@@ -14,6 +14,7 @@ interface AdvertisePlan {
   duration: string;
   features: string[];
   isPopular: boolean;
+  isTrial?: boolean;
   buttonText: string;
   colorTheme: string;
 }
@@ -71,21 +72,25 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
         const data = res.data?.data || [];
         if (data.length > 0) {
           const sorted = [...data].sort((a, b) => Number(a.price) - Number(b.price));
-          const serverPlans: AdvertisePlan[] = sorted.map((p) => ({
-            id: String(p.id),
-            name: p.name.toUpperCase(),
-            price: `₹${p.price}`,
-            duration: `${p.leads_count} Leads / ${p.duration_days} Days`,
-            features: [
-              `+ ${p.leads_count} Direct Contact Reveals`,
-              `+ Active for ${p.duration_days} Days`,
-              '+ Verified Seller Support',
-              '+ Real-time Analytics'
-            ],
-            isPopular: p.leads_count >= 5,
-            buttonText: 'Buy Plan',
-            colorTheme: p.leads_count >= 5 ? 'orange' : 'gray'
-          }));
+          const serverPlans: AdvertisePlan[] = sorted.map((p) => {
+            const isTrial = Boolean(p.is_trial);
+            return {
+              id: String(p.id),
+              name: p.name.toUpperCase(),
+              price: `₹${p.price}`,
+              duration: `${p.leads_count} Leads / ${p.duration_days} Days`,
+              features: [
+                `+ ${p.leads_count} Direct Contact Reveals`,
+                `+ Active for ${p.duration_days} Days`,
+                isTrial ? '+ One-Time Trial Option' : '+ Verified Seller Support',
+                '+ Real-time Analytics'
+              ],
+              isPopular: !isTrial && p.leads_count >= 5,
+              isTrial: isTrial,
+              buttonText: isTrial ? 'Claim Trial Plan' : 'Buy Plan',
+              colorTheme: isTrial ? 'trial' : (p.leads_count >= 5 ? 'orange' : 'gray')
+            };
+          });
           setPlans(serverPlans);
         }
       } catch {
@@ -130,7 +135,15 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
               let textBase = '#374151';
               let textMuted = '#9ca3af';
 
-              if (plan.colorTheme === 'orange') {
+              if (plan.colorTheme === 'trial') {
+                themeColor = '#0c6253';
+                bg = '#ffffff';
+                btnBg = '#0c6253';
+                btnColor = '#ffffff';
+                btnBorder = 'none';
+                textBase = '#1e293b';
+                textMuted = '#64748b';
+              } else if (plan.colorTheme === 'orange') {
                 themeColor = '#5efbca';
                 bg = 'linear-gradient(135deg,#0a2e25,#0c6253)';
                 btnBg = '#f97316';
@@ -156,15 +169,36 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
                     background: bg,
                     borderRadius: '20px',
                     padding: '30px',
-                    border: plan.colorTheme === 'orange' ? 'none' : `2px solid ${borderColor}`,
+                    border: plan.colorTheme === 'trial' ? '2.5px solid #0c6253' : (plan.colorTheme === 'orange' ? 'none' : `2px solid ${borderColor}`),
                     textAlign: 'center',
                     position: 'relative',
-                    boxShadow: plan.colorTheme === 'orange' ? '0 10px 40px rgba(12,98,83,0.3)' : '0 4px 16px rgba(0,0,0,0.05)',
+                    boxShadow: plan.colorTheme === 'trial' ? '0 10px 30px rgba(12,98,83,0.18)' : (plan.colorTheme === 'orange' ? '0 10px 40px rgba(12,98,83,0.3)' : '0 4px 16px rgba(0,0,0,0.05)'),
                     display: 'flex',
                     flexDirection: 'column'
                   }}
                 >
-                  {plan.isPopular && (
+                  {plan.isTrial ? (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: '#0c6253',
+                        color: '#5efbca',
+                        border: '1px solid #14a37a',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        letterSpacing: '0.5px',
+                        padding: '4px 16px',
+                        borderRadius: '20px',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 4px 12px rgba(12,98,83,0.25)'
+                      }}
+                    >
+                      <i className="fas fa-gift" style={{ marginRight: '5px' }}></i> TRIAL PLAN
+                    </div>
+                  ) : plan.isPopular ? (
                     <div
                       style={{
                         position: 'absolute',
@@ -182,7 +216,7 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
                     >
                       MOST POPULAR
                     </div>
-                  )}
+                  ) : null}
 
                   <div
                     style={{
