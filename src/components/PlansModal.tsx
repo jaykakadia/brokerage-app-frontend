@@ -71,9 +71,9 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
 
     try {
       const selectedPlan = plans.find((p) => p.id === selectedPlanId);
-      if (selectedPlan?.is_trial) {
+      if (selectedPlan?.is_trial && Number(selectedPlan.price) === 0) {
         await claimTrialPlan(selectedPlanId);
-        setSuccessMsg('Trial plan activated successfully! Your free leads have been credited.');
+        setSuccessMsg('Trial plan activated successfully! Your leads have been credited.');
         await refreshUser();
         if (onSuccess) onSuccess();
         setProcessing(false);
@@ -411,7 +411,10 @@ export default function PlansModal({ isOpen, onClose, onSuccess, planType = 'lea
                 </>
               ) : plans.find((p) => p.id === selectedPlanId)?.is_trial ? (
                 <>
-                  <i className="fas fa-gift" style={{ marginRight: '6px' }}></i> Claim Free Trial
+                  <i className="fas fa-lock" style={{ marginRight: '6px' }}></i>{' '}
+                  {Number(plans.find((p) => p.id === selectedPlanId)?.price) === 0
+                    ? 'Claim Free Trial'
+                    : `Pay ₹${Number(plans.find((p) => p.id === selectedPlanId)?.price).toLocaleString('en-IN')} & Activate Trial`}
                 </>
               ) : (
                 <>

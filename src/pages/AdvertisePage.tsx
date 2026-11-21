@@ -87,7 +87,7 @@ export default function AdvertisePage({ onNavigate, onOpenAuth: _onOpenAuth }: A
               ],
               isPopular: !isTrial && p.leads_count >= 5,
               isTrial: isTrial,
-              buttonText: isTrial ? 'Claim Trial Plan' : 'Buy Plan',
+              buttonText: isTrial ? 'Get Trial Plan' : 'Buy Plan',
               colorTheme: isTrial ? 'trial' : (p.leads_count >= 5 ? 'orange' : 'gray')
             };
           });
