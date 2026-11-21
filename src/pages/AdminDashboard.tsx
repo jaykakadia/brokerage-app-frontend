@@ -1130,7 +1130,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         duration_days: parseInt(String(planForm.duration_days), 10) || 30,
         description: planForm.description.trim() || undefined,
         status: planForm.status,
-        is_trial: isFeatured ? false : planForm.is_trial
+        is_trial: planForm.is_trial
       };
 
       if (editingPlanId) {
@@ -3017,20 +3017,18 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   </div>
                 </div>
 
-                {planType !== 'featured' && (
-                  <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input
-                      type="checkbox"
-                      id="plan_is_trial_leads"
-                      checked={planForm.is_trial}
-                      onChange={(e) => setPlanForm({ ...planForm, is_trial: e.target.checked })}
-                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                    />
-                    <label htmlFor="plan_is_trial_leads" style={{ fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#0f172a' }}>
-                      One-time Free Trial Plan (limit 1 per email address)
-                    </label>
-                  </div>
-                )}
+                <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="checkbox"
+                    id="plan_is_trial_leads"
+                    checked={planForm.is_trial}
+                    onChange={(e) => setPlanForm({ ...planForm, is_trial: e.target.checked })}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                  />
+                  <label htmlFor="plan_is_trial_leads" style={{ fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#0f172a' }}>
+                    One-time Free Trial Plan (limit 1 per email address)
+                  </label>
+                </div>
 
                 <div className="form-group full" style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 600 }}>Description</label>
