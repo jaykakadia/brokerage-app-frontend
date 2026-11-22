@@ -301,6 +301,12 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
       ? (initialTabParam as 'all' | 'sale' | 'rent' | 'buy' | 'verified')
       : 'all'
   );
+  const initialRoleParam = initialUrlParams.get('role');
+  const initialOwnerRole: 'all' | 'Owner' | 'Agent' | 'Builder' = (
+    initialRoleParam && ['Owner', 'Agent', 'Builder'].includes(initialRoleParam)
+      ? (initialRoleParam as 'Owner' | 'Agent' | 'Builder')
+      : 'all'
+  );
   const initialNewOnly = initialUrlParams.get('new') === '1' || initialUrlParams.get('new') === 'true';
   const initialPage = Math.max(1, parseInt(initialUrlParams.get('page') || '1', 10) || 1);
 
@@ -326,6 +332,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
   const [heroKeyword, setHeroKeyword] = useState(() => initialKeyword || activeLocalitySearch || activeLocality || '');
   const [activeCategoryTab, setActiveCategoryTab] = useState<'all' | 'sale' | 'rent' | 'buy' | 'verified'>(initialTab);
+  const [ownerRoleFilter, setOwnerRoleFilter] = useState<'all' | 'Owner' | 'Agent' | 'Builder'>(initialOwnerRole);
   const [budgetMin, setBudgetMin] = useState(initialMinPrice);
   const [budgetMax, setBudgetMax] = useState(initialMaxPrice);
   const [selectedCities, setSelectedCities] = useState<string[]>(initialCity ? [initialCity] : []);
@@ -355,6 +362,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     if (budgetMax) params.set('maxPrice', budgetMax);
     if (heroKeyword.trim()) params.set('q', heroKeyword.trim());
     if (activeCategoryTab !== 'all') params.set('tab', activeCategoryTab);
+    if (ownerRoleFilter !== 'all') params.set('role', ownerRoleFilter);
     if (newOnly) params.set('new', '1');
     if (currentPage > 1) params.set('page', String(currentPage));
 
@@ -368,7 +376,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     if (newPathAndSearch !== currentPathAndSearch) {
       window.history.replaceState(null, '', newPathAndSearch);
     }
-  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, newOnly, currentPage, activeCity, activeLocality]);
+  }, [heroCity, heroType, budgetMin, budgetMax, heroKeyword, activeCategoryTab, ownerRoleFilter, newOnly, currentPage, activeCity, activeLocality]);
 
   // Support browser Back/Forward buttons updating filters & page
   useEffect(() => {
@@ -385,6 +393,12 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
           ? (tabParam as 'all' | 'sale' | 'rent' | 'buy' | 'verified')
           : 'all'
       );
+      const roleParam = sp.get('role');
+      const r: 'all' | 'Owner' | 'Agent' | 'Builder' = (
+        roleParam && ['Owner', 'Agent', 'Builder'].includes(roleParam)
+          ? (roleParam as 'Owner' | 'Agent' | 'Builder')
+          : 'all'
+      );
       const nOnly = sp.get('new') === '1' || sp.get('new') === 'true';
       const p = Math.max(1, parseInt(sp.get('page') || '1', 10) || 1);
 
@@ -397,6 +411,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
       setBudgetMax(maxP);
       setHeroKeyword(q);
       setActiveCategoryTab(tab);
+      setOwnerRoleFilter(r);
       setNewOnly(nOnly);
       setCurrentPage(p);
     };
@@ -407,7 +422,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
   // Featured Listings are hidden while the user is filtering or searching
   const hasActiveFilters = !!(heroCity || heroType || budgetMin || budgetMax || heroKeyword.trim()
-    || selectedCities.length > 0 || newOnly || activeCategoryTab !== 'all');
+    || selectedCities.length > 0 || newOnly || activeCategoryTab !== 'all' || ownerRoleFilter !== 'all');
 
 
 
@@ -759,6 +774,10 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
         params.new_only = true;
       }
 
+      if (ownerRoleFilter !== 'all') {
+        params.owner_role = ownerRoleFilter;
+      }
+
       const res = await api.get<{ status: string; data: Listing[]; total?: number; total_pages?: number }>('/api/v1/listings', {
         params
       });
@@ -778,7 +797,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     } finally {
       setLoading(false);
     }
-  }, [currentPage, heroCity, selectedCities, heroKeyword, heroType, activeCategoryTab, budgetMin, budgetMax, newOnly]);
+  }, [currentPage, heroCity, selectedCities, heroKeyword, heroType, activeCategoryTab, ownerRoleFilter, budgetMin, budgetMax, newOnly]);
 
   useEffect(() => {
     // 1. Featured properties for carousel (cached, fast)
@@ -1139,6 +1158,7 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
     setTypeInput('');
     setHeroKeyword('');
     setActiveCategoryTab('all');
+    setOwnerRoleFilter('all');
     setNewOnly(false);
     setAllCitiesPicked(false);
     setAllTypesPicked(false);
@@ -1250,6 +1270,27 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
           {listing.verified === 1 && (
             <span className="badge-verified">
               <i className="fas fa-check-circle"></i> Verified
+            </span>
+          )}
+          {listing.owner_role && (
+            <span
+              className={`badge-poster-role badge-poster-${listing.owner_role.toLowerCase()}`}
+              style={{
+                position: 'absolute',
+                bottom: '10px',
+                left: '10px',
+                background: listing.owner_role === 'Owner' ? '#0c6253' : listing.owner_role === 'Builder' ? '#7c3aed' : '#1d4ed8',
+                color: '#fff',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.3px',
+                zIndex: 2,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              }}
+            >
+              {listing.owner_role === 'Owner' ? '👤 Owner' : listing.owner_role === 'Builder' ? '🏗️ Builder' : '🏢 Agent'}
             </span>
           )}
           <span
@@ -2170,6 +2211,42 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
 
               <div className="listings-divider"></div>
 
+              <div className="category-tabs role-tabs" role="tablist" aria-label="Listed By">
+                <span className="role-tabs-label">
+                  Listed by:
+                </span>
+                <button
+                  type="button"
+                  className={`cat-tab ${ownerRoleFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => { setOwnerRoleFilter('all'); setCurrentPage(1); }}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${ownerRoleFilter === 'Owner' ? 'active' : ''}`}
+                  onClick={() => { setOwnerRoleFilter('Owner'); setCurrentPage(1); }}
+                >
+                  Owner
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${ownerRoleFilter === 'Agent' ? 'active' : ''}`}
+                  onClick={() => { setOwnerRoleFilter('Agent'); setCurrentPage(1); }}
+                >
+                  Agent
+                </button>
+                <button
+                  type="button"
+                  className={`cat-tab ${ownerRoleFilter === 'Builder' ? 'active' : ''}`}
+                  onClick={() => { setOwnerRoleFilter('Builder'); setCurrentPage(1); }}
+                >
+                  Builder
+                </button>
+              </div>
+
+              <div className="listings-divider"></div>
+
               <div className="view-toggles" aria-label="View toggle">
                 <button
                   type="button"
@@ -2210,6 +2287,14 @@ export default function HomePage({ activeCity, activeLocality, activeLocalitySea
                   <span className="listing-filter-chip">
                     {activeCategoryTab === 'sale' ? 'For Sale' : activeCategoryTab === 'rent' ? 'For Rent' : activeCategoryTab === 'buy' ? 'For Buy' : 'Verified'}
                     <button type="button" onClick={() => setActiveCategoryTab('all')} title="Show all">
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </span>
+                )}
+                {ownerRoleFilter !== 'all' && (
+                  <span className="listing-filter-chip">
+                    Listed by: {ownerRoleFilter}
+                    <button type="button" onClick={() => setOwnerRoleFilter('all')} title="Show all sellers">
                       <i className="fas fa-times"></i>
                     </button>
                   </span>
