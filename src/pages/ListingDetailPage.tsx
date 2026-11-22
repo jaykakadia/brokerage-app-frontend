@@ -216,10 +216,10 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
     } else {
       const rawSeoTitle = listing.seo_title || `${headingText} | TradeCall India`;
       fullTitle = rawSeoTitle
-        .replace(/\b\d+\s*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land')
-        .replace(/\b\d+\s*BHK\+?\s+(Plot)\b/gi, 'Plot')
-        .replace(/\b\d+\s*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property')
-        .replace(/\b\d+\s*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
+        .replace(/\b\d+[\s+]*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land')
+        .replace(/\b\d+[\s+]*BHK\+?\s+(Plot)\b/gi, 'Plot')
+        .replace(/\b\d+[\s+]*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property')
+        .replace(/\b\d+[\s+]*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
       metaDescription = toMetaDescription(
         `${summary}. ${getListingDescription(listing)} Contact the owner directly on TradeCall India, zero brokerage.`
       );

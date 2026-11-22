@@ -190,10 +190,10 @@ const baseListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>): string
     let t = (listing.title || '').replace(/\bLooking to Rent\b/gi, 'Looking for Rent');
     t = t.replace(/\bCommercial for Sale\b/gi, 'Commercial Property for Sale');
     t = t.replace(/\bCommercial for Rent\b/gi, 'Commercial Property for Rent');
-    t = t.replace(/\b\d+\s*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land');
-    t = t.replace(/\b\d+\s*BHK\+?\s+(Plot)\b/gi, 'Plot');
-    t = t.replace(/\b\d+\s*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property');
-    t = t.replace(/\b\d+\s*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
+    t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Agriculture(?:\s+Land)?)\b/gi, 'Agriculture Land');
+    t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Plot)\b/gi, 'Plot');
+    t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property');
+    t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
     // Fix "in Near / in Next To / in Opp." → "- Near / - Next To / - Opp."
     t = t.replace(/\bin ((?:near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent)\b)/gi, '- $1');
     return t;

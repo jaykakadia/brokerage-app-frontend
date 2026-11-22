@@ -302,7 +302,9 @@ export default function PropertyListingForm({
                 { value: '1BHK', label: '1BHK' },
                 { value: '2BHK', label: '2BHK' },
                 { value: '3BHK', label: '3BHK' },
-                { value: '3BHK+', label: '3BHK+' }
+                { value: '4BHK', label: '4BHK' },
+                { value: '5BHK', label: '5BHK' },
+                { value: '5+ BHK', label: '5+ BHK' }
               ]} />
               <Pills label="Bathroom (Available/Required)" value={form.bath} onChange={(bath) => onChange({ bath })} options={[
                 { value: '1', label: '1' },
