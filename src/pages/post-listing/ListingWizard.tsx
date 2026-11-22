@@ -206,7 +206,8 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
     setError(null);
     try {
       const normalizedLocality = cleanAndNormalizeLocality(form.locality);
-      const location = [normalizedLocality, form.city, form.state].filter(Boolean).join(', ');
+      const rawLocality = form.locality.trim();
+      const location = [rawLocality, form.city, form.state].filter(Boolean).join(', ');
       const fd = new FormData();
       fd.append('title', listingTitle({ ...form, locality: normalizedLocality }, role === 'buyer'));
       fd.append('location', location);
@@ -229,6 +230,7 @@ export default function ListingWizard({ editListing = null, onSaved, onRequireAu
         bhk: isResidential ? form.bhk : '',
         bath: isResidential ? form.bath : '',
         locality: normalizedLocality,
+        fullLocality: rawLocality,
         whatsapp: form.sameAsMobile ? form.mobile : form.whatsapp,
         ...normalizedSocialLinks(form),
         amenities: form.amenities.filter((a) => amenitiesFor(form.propType).includes(a)),

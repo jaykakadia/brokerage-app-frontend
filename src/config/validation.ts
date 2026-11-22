@@ -20,15 +20,54 @@ export const JUNK_LOCALITY_WORDS = new Set([
   'somewhere', 'everywhere', 'city', 'location', 'area'
 ]);
 
-export const DISTANCE_PHRASE_REGEX = /\b(?:\d+[\s-]*(?:mtr|meter|metre|km|kilometer|feet|ft|mile)s?\s*(?:away|from|off)\b|(?:opposite|opp|behind|near|beside|adjacent)\s+(?:to\s+)?(?:the\s+)?(?:highway|station|metro|road|bus|expressway|stand)\b)/i;
+export const DISTANCE_PHRASE_REGEX = /\b(?:\d+[\s-]*(?:mtr|meter|metre|km|kilometer|feet|ft|mile)s?[\s-]*(?:away|from|off)?(?:[\s-]+(?:from|to|near|off))?[\s-]*(?:highway|bypass|station|metro|road|bus|expressway|stand|airport)\b|\d+[\s-]*(?:mtr|meter|metre|km|kilometer|feet|ft|mile)s?[\s-]*(?:away|from|off)\b|(?:opposite|opp|behind|near|beside|adjacent)[\s-]+(?:to[\s-]+)?(?:the[\s-]+)?(?:highway|station|metro|road|bus|expressway|stand|bypass|airport)\b)/i;
 export const PHONE_IN_LOCALITY_REGEX = /(?:\+?91[\s-]?)?[6-9]\d{9}\b|\b\d{10,}\b/;
 export const URL_IN_LOCALITY_REGEX = /https?:\/\/|www\.|\b[a-z0-9-]+\.(?:com|in|org|net|io|co|biz)\b/i;
 
 const PRESERVED_ACRONYMS = new Set(['RPS', 'NH', 'BPTP', 'HUDA', 'Omaxe', 'SRS', 'VIP', 'TDI', 'NCR', 'DLF', 'BHK', 'PO']);
 
+export function isValidLocalityCandidate(cand: string): boolean {
+  if (!cand) return false;
+  const norm = cand.replace(/^[\s,.\-;/()]+|[\s,.\-;/()]+$/g, '');
+  if (norm.length < 2 || norm.length > 60) return false;
+  if (!/[a-zA-Z]/.test(norm)) return false;
+  const lower = norm.toLowerCase();
+  const compact = lower.replace(/[\s\-_]+/g, '');
+  if (JUNK_LOCALITY_WORDS.has(lower) || ['anywhere', 'all', 'any', 'none', 'na', 'null', 'nil', 'test', 'testing', 'demo', 'unknown', 'xyz', 'asdf'].includes(compact)) {
+    return false;
+  }
+  if (URL_IN_LOCALITY_REGEX.test(norm) || PHONE_IN_LOCALITY_REGEX.test(norm)) return false;
+  if (DISTANCE_PHRASE_REGEX.test(norm)) return false;
+  return true;
+}
+
+export function extractPrimaryLocality(raw?: string | null): string {
+  if (!raw) return '';
+  const text = raw.trim();
+  if (!DISTANCE_PHRASE_REGEX.test(text)) return text;
+
+  // 1. Delimiter split: check if text before comma, semicolon, dash, or parenthesis is a valid locality
+  const parts = text.split(/[,;(]/);
+  if (parts.length > 0) {
+    const prefix = parts[0].replace(/^[\s,.\-;/()]+|[\s,.\-;/()]+$/g, '');
+    if (isValidLocalityCandidate(prefix)) return prefix;
+  }
+
+  // 2. Text before the distance phrase
+  const match = text.match(DISTANCE_PHRASE_REGEX);
+  if (match && match.index && match.index > 0) {
+    const prefix = text.slice(0, match.index).replace(/^[\s,.\-;/()]+|[\s,.\-;/()]+$/g, '');
+    if (isValidLocalityCandidate(prefix)) return prefix;
+  }
+
+  return '';
+}
+
 export function cleanAndNormalizeLocality(value?: string | null): string {
   if (!value) return '';
-  const cleaned = value.replace(/[\s_\-]+/g, ' ').replace(/^[ ,.\-;/]+|[ ,.\-;/]+$/g, '');
+  const primary = extractPrimaryLocality(value);
+  const target = primary || value;
+  const cleaned = target.replace(/[\s_\-]+/g, ' ').replace(/^[ ,.\-;/()]+|[ ,.\-;/()]+$/g, '');
   if (!cleaned) return '';
 
   return cleaned
@@ -65,10 +104,13 @@ export function validateLocality(value?: string | null): { valid: boolean; error
     return { valid: false, error: 'Locality cannot contain phone numbers.' };
   }
   if (DISTANCE_PHRASE_REGEX.test(raw)) {
-    return {
-      valid: false,
-      error: "Please provide a specific locality/sector name instead of distance phrases (e.g. use 'Sector 2' or 'Nahar Road' instead of '500 mtr away from highway')."
-    };
+    const primary = extractPrimaryLocality(raw);
+    if (!primary || !isValidLocalityCandidate(primary)) {
+      return {
+        valid: false,
+        error: "Please provide a specific locality/sector name instead of distance phrases (e.g. use 'Sector 2' or 'Nahar Road' instead of '500 mtr away from highway')."
+      };
+    }
   }
   return { valid: true };
 }
