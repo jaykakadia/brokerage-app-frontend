@@ -1875,7 +1875,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="text"
-                  placeholder="Search ID, title, name, email, phone..."
+                  placeholder="Search ID, title, name, email, phone, 2nd no, business..."
                   value={listingSearch}
                   onChange={(e) => setListingSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -1884,7 +1884,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       fetchAdminListings();
                     }
                   }}
-                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '270px' }}
+                  style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '290px' }}
                 />
                 <button
                   type="button"
@@ -2733,7 +2733,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
                   <input
                     type="text"
-                    placeholder="Search name, email, phone..."
+                    placeholder="Search name, email, phone, 2nd no (WhatsApp), business..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -2742,7 +2742,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         fetchUsers();
                       }
                     }}
-                    style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '220px' }}
+                    style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', width: '310px' }}
                   />
 
                   <button
@@ -2826,11 +2826,23 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '12px 14px', color: '#64748b' }}>#{u.id}</td>
                           <td style={{ padding: '12px 14px', fontWeight: 700, color: '#111827' }}>
-                            {u.name}
+                            <div>{u.name}</div>
+                            {u.business_name && (
+                              <div style={{ fontSize: '11px', color: '#4f46e5', fontWeight: 600, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fas fa-building" style={{ fontSize: '10px' }}></i> {u.business_name}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '12px 14px' }}>
-                            <div>{u.email}</div>
-                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{u.phone || 'No phone'}</div>
+                            <div style={{ fontWeight: 500 }}>{u.email}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <i className="fas fa-phone-alt" style={{ fontSize: '10px' }}></i> {u.phone || 'No phone'}
+                            </div>
+                            {u.whatsapp && (
+                              <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <i className="fab fa-whatsapp" style={{ fontSize: '11px' }}></i> {u.whatsapp} <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>(2nd no)</span>
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '12px 14px' }}>
                             <select
