@@ -138,29 +138,50 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
       return;
     }
     const isBiz = isBusinessListing(listing);
-    const currentCity = getListingCity(listing).toLowerCase();
+    const currentCity = getListingCity(listing);
     const currentLocality = (listing.form_data?.locality || listing.location?.split(',')[0] || '').toString().trim().toLowerCase();
     const currentCategories = getBusinessCategories(listing).map((c) => c.toLowerCase());
     const currentPropType = (listing.form_data?.propType || '').toString().toLowerCase();
 
+    // Query server directly with city and prop_type to avoid missing items beyond the first page
+    const params: Record<string, any> = {
+      status: 'approved',
+      city: currentCity || undefined,
+      kind: isBiz ? 'business' : 'property',
+      limit: 40
+    };
+    if (!isBiz && currentPropType) {
+      params.prop_type = currentPropType;
+    }
+
     api
-      .get<ApiResponse<Listing[]>>('/api/v1/listings', {
-        params: { status: 'approved', kind: isBiz ? 'business' : undefined, limit: 80 }
-      })
-      .then((res) => {
-        const all = Array.isArray(res.data?.data) ? res.data.data : [];
-        const candidates = all.filter((item) => {
+      .get<ApiResponse<Listing[]>>('/api/v1/listings', { params })
+      .then(async (res) => {
+        let items = Array.isArray(res.data?.data) ? [...res.data.data] : [];
+
+        // If fewer than 4 items matching exact prop_type, fetch city fallback to fill recommendations
+        if (!isBiz && items.filter((i) => String(i.id) !== String(listing.id)).length < 4 && currentCity) {
+          try {
+            const fallbackRes = await api.get<ApiResponse<Listing[]>>('/api/v1/listings', {
+              params: { status: 'approved', city: currentCity, kind: 'property', limit: 20 }
+            });
+            const fallbackItems = Array.isArray(fallbackRes.data?.data) ? fallbackRes.data.data : [];
+            const seenIds = new Set(items.map((i) => i.id));
+            for (const fb of fallbackItems) {
+              if (!seenIds.has(fb.id)) {
+                items.push(fb);
+                seenIds.add(fb.id);
+              }
+            }
+          } catch {
+            // Keep existing items if fallback fails
+          }
+        }
+
+        const candidates = items.filter((item) => {
           if (String(item.id) === String(listing.id)) return false;
           if (item.form_data?.kind === 'buyer') return false;
           if (!(isBiz ? isBusinessListing(item) : !isBusinessListing(item))) return false;
-          // Hard filter: same city required
-          const itemCity = getListingCity(item).toLowerCase();
-          if (!itemCity || itemCity !== currentCity) return false;
-          // Hard filter: same property type required (for property listings)
-          if (!isBiz) {
-            const itemPropType = (item.form_data?.propType || '').toString().toLowerCase();
-            if (!itemPropType || itemPropType !== currentPropType) return false;
-          }
           return true;
         });
 
@@ -168,6 +189,10 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
           let score = 0;
           const itemLoc = (item.form_data?.locality || item.location?.split(',')[0] || '').toString().trim().toLowerCase();
           if (currentLocality && itemLoc && itemLoc === currentLocality) score += 5;
+          if (!isBiz) {
+            const itemPropType = (item.form_data?.propType || '').toString().toLowerCase();
+            if (currentPropType && itemPropType === currentPropType) score += 10;
+          }
           if (isBiz) {
             const itemCats = getBusinessCategories(item).map((c) => c.toLowerCase());
             if (currentCategories.some((c) => itemCats.includes(c))) score += 5;
