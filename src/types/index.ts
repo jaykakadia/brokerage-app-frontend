@@ -16,3 +16,4 @@ export * from './navigation';
 export * from './enquiry';
 export * from './metadata';
 export * from './supportChat';
+export * from './review';

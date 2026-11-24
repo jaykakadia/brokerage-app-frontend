@@ -41,6 +41,7 @@ import RichTextEditor from '../components/RichTextEditor';
 import AdminMetadataManager from '../components/AdminMetadataManager';
 import AdminAuditLogs from '../components/AdminAuditLogs';
 import AdminBackupManager from '../components/AdminBackupManager';
+import AdminReviews from '../components/AdminReviews';
 import AdminEditListingModal, { LISTING_STATUSES, STATUS_COLORS, statusAction } from '../components/AdminEditListingModal';
 import { formatListingPrice } from './HomePage';
 import { normalizeExternalUrl } from '../utils/url';
@@ -280,6 +281,7 @@ type AdminModule =
   | 'tracker'
   | 'blogs'
   | 'support-chat'
+  | 'reviews'
   | 'enquiries'
   | 'metadata'
   | 'audit-logs'
@@ -298,6 +300,7 @@ const ADMIN_NAV: Array<{ key: AdminModule; label: string; icon: string }> = [
   { key: 'tracker', label: 'Business Associates', icon: 'fas fa-chart-line' },
   { key: 'blogs', label: 'Blog Management', icon: 'fas fa-blog' },
   { key: 'support-chat', label: 'Live Support Chat', icon: 'fas fa-headset' },
+  { key: 'reviews', label: 'Ratings & Reviews', icon: 'fas fa-star-half-alt' },
   { key: 'enquiries', label: 'Enquiry Management', icon: 'fas fa-envelope-open-text' },
   { key: 'metadata', label: 'Meta Data', icon: 'fas fa-globe' },
   { key: 'audit-logs', label: 'Audit Logs', icon: 'fas fa-history' },
@@ -1808,6 +1811,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             showToast={showToast}
             onCountsChange={(counts) => setUnreadSupportCount(counts.unread_total)}
           />
+        )}
+
+        {activeModule === 'reviews' && (
+          <AdminReviews showToast={showToast} />
         )}
 
         {activeModule === 'enquiries' && (

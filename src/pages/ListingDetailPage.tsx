@@ -10,7 +10,9 @@ import { getBusinessCategories, getBusinessMobile, getListingDescription, public
 import { DEFAULT_FEATURED_LISTINGS } from './HomePage';
 import PlansModal from '../components/PlansModal';
 import ContactRevealModal, { ContactLinks, contactDataFromReveal, type ContactRevealData } from '../components/ContactRevealModal';
+import ListingReviews from '../components/ListingReviews';
 import type { Listing, ApiResponse, MessageResponse, NavigateFunction } from '../types';
+import type { ListingReviewsData } from '../types/review';
 
 export interface AuthModalOptions {
   title?: string;
@@ -34,6 +36,7 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type?: 'success' | 'error' } | null>(null);
+  const [reviewsData, setReviewsData] = useState<ListingReviewsData | null>(null);
 
   // Phase 2 state
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -657,6 +660,15 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <i className="fas fa-check-circle"></i> Verified
                 </div>
               )}
+              {reviewsData && reviewsData.total_reviews > 0 && (
+                <div
+                  className="ld-badge"
+                  style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <i className="fas fa-star" style={{ color: '#f59e0b' }}></i>
+                  {reviewsData.average_rating.toFixed(1)} ({reviewsData.total_reviews})
+                </div>
+              )}
               {/* Audit Point 3 H1: e.g. "Ashoka Property – Property Dealer in Greater Faridabad" */}
               <h1 className="ld-title">
                 {heading}
@@ -706,6 +718,18 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <div className="ld-desc">{getListingDescription(listing)}</div>
                 </>
               )}
+
+              <ListingReviews
+                listingId={Number(listing.id)}
+                isOwner={user?.id === listing.user_id}
+                onRequireAuth={() =>
+                  onOpenAuth?.({
+                    title: 'Sign In to Review',
+                    subtitle: 'Join TradeCall to rate and share your feedback.',
+                  })
+                }
+                onReviewsLoaded={setReviewsData}
+              />
             </div>
           </div>
 
