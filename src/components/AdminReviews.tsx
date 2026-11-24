@@ -220,6 +220,19 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
                     ) : (
                       <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Rating only (no comment)</span>
                     )}
+                    {r.images && r.images.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        {r.images.map((img, idx) => (
+                          <a key={idx} href={img} target="_blank" rel="noreferrer">
+                            <img
+                              src={img}
+                              alt={`Review attachment ${idx + 1}`}
+                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e7eb' }}
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </td>
 
                   <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>

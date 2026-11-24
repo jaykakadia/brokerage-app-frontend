@@ -718,18 +718,6 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
                   <div className="ld-desc">{getListingDescription(listing)}</div>
                 </>
               )}
-
-              <ListingReviews
-                listingId={Number(listing.id)}
-                isOwner={user?.id === listing.user_id}
-                onRequireAuth={() =>
-                  onOpenAuth?.({
-                    title: 'Sign In to Review',
-                    subtitle: 'Join TradeCall to rate and share your feedback.',
-                  })
-                }
-                onReviewsLoaded={setReviewsData}
-              />
             </div>
           </div>
 
@@ -864,6 +852,21 @@ export default function ListingDetailPage({ listingId, onNavigate, onOpenAuth }:
               </a>
             </div>
           </aside>
+        </div>
+
+        {/* Full-width Amazon-style Customer Reviews Section */}
+        <div className="ld-card" style={{ marginTop: '28px', padding: '28px' }}>
+          <ListingReviews
+            listingId={Number(listing.id)}
+            isOwner={user?.id === listing.user_id}
+            onRequireAuth={() =>
+              onOpenAuth?.({
+                title: 'Sign In to Review',
+                subtitle: 'Join TradeCall to rate and share your feedback.',
+              })
+            }
+            onReviewsLoaded={setReviewsData}
+          />
         </div>
 
         {/* Audit Points 2 & 2a: Internal Linking to Related Properties / Businesses in the Same City & Category */}

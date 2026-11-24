@@ -5,6 +5,7 @@ export interface Review {
   user_name?: string | null;
   rating: number;
   comment?: string | null;
+  images?: string[];
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
