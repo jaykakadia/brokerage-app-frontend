@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api, { getApiErrorMessage } from '../services/api';
 import ListingWizard from '../pages/post-listing/ListingWizard';
 import type { ApiResponse, Listing } from '../types';
@@ -13,6 +13,7 @@ export default function UserEditListingModal({ listing, onClose, onSaved }: User
   const [fullListing, setFullListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const isBackdropMouseDown = useRef(false);
 
   useEffect(() => {
     if (!listing?.id) {
@@ -54,7 +55,8 @@ export default function UserEditListingModal({ listing, onClose, onSaved }: User
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => { isBackdropMouseDown.current = e.target === e.currentTarget; }}
+      onClick={(e) => { if (e.target === e.currentTarget && isBackdropMouseDown.current) onClose(); }}
     >
       <div className="post-wrap" style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 840, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '20px 24px 0' }}>

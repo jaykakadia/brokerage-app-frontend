@@ -126,6 +126,7 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [prefilledFromLast, setPrefilledFromLast] = useState(false);
+  const citySelectProps = useMemo(() => cityPicker(cities, form.city, form.state), [cities, form.city, form.state]);
 
   useEffect(() => {
     setCodes(refCodes);
@@ -435,10 +436,23 @@ export default function BusinessListingForm({ cities, refCodes, onSuccess, onSte
             <SearchableSelect
               label="City"
               required
-              {...cityPicker(cities, form.city, form.state)}
+              {...citySelectProps}
               onChange={(key) => patch(parseCityKey(key))}
             />
-            <FloatSelect label="State" required value={form.state} onChange={(state) => patch({ state })}>
+            <FloatSelect
+              label="State"
+              required
+              value={form.state}
+              onChange={(nextState) => {
+                const cityStillValid = !form.city || cities.some(
+                  (c) => c.city.toLowerCase() === form.city.toLowerCase() && c.state.toLowerCase() === nextState.toLowerCase()
+                );
+                patch({
+                  state: nextState,
+                  ...(cityStillValid ? {} : { city: '' })
+                });
+              }}
+            >
               <StateOptions current={form.state} />
             </FloatSelect>
           </div>

@@ -66,6 +66,7 @@ export const ALL_INDIAN_CITIES: CityInfo[] = [
   { name: 'Moradabad', slug: 'moradabad', state: 'Uttar Pradesh' },
   { name: 'Gorakhpur', slug: 'gorakhpur', state: 'Uttar Pradesh' },
   { name: 'Hathras', slug: 'hathras', state: 'Uttar Pradesh' },
+  { name: 'Barabanki', slug: 'barabanki', state: 'Uttar Pradesh' },
 
   // Maharashtra
   { name: 'Nagpur', slug: 'nagpur', state: 'Maharashtra' },
@@ -182,6 +183,7 @@ const ALIASES: Record<string, string> = {
   'mewat': 'nuh-mewat',
   'vrindavan': 'mathura-vrindavan',
   'vrindaban': 'mathura-vrindavan',
+  'bara-banki': 'barabanki',
 };
 
 /** Convert city display name into clean slug */

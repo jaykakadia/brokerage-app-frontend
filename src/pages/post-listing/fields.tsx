@@ -12,7 +12,8 @@ export function FloatField({
   prefix,
   readOnly = false,
   maxLength,
-  inputMode
+  inputMode,
+  autoComplete
 }: {
   label: string;
   value: string;
@@ -24,6 +25,7 @@ export function FloatField({
   readOnly?: boolean;
   maxLength?: number;
   inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal' | 'url';
+  autoComplete?: string;
 }) {
   return (
     <div className={`premium-float${prefix ? ' input-with-prefix' : ''}`}>
@@ -36,6 +38,7 @@ export function FloatField({
         readOnly={readOnly}
         maxLength={maxLength}
         inputMode={inputMode}
+        autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
       />
       <label>
@@ -119,6 +122,9 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const skipBlurCloseRef = useRef(false);
 
   useEffect(() => {
     if (!open) setQuery(shown);
@@ -140,9 +146,17 @@ export function SearchableSelect({
     setQuery(option.label);
     setOpen(false);
     setActive(-1);
+    if (document.activeElement === inputRef.current) {
+      skipBlurCloseRef.current = true;
+      inputRef.current?.blur();
+    }
   };
 
   const close = () => {
+    if (skipBlurCloseRef.current) {
+      skipBlurCloseRef.current = false;
+      return;
+    }
     // Typed text that names exactly one option picks it; anything else keeps the current choice
     const exact = options.filter((o) => o.label.toLowerCase() === q);
     if (exact.length === 1) {
@@ -154,6 +168,22 @@ export function SearchableSelect({
     setOpen(false);
     setActive(-1);
   };
+
+  // Click outside listener so dropdown collapses immediately when clicking/tapping anywhere else (e.g. Locality)
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        close();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  });
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
@@ -173,8 +203,9 @@ export function SearchableSelect({
   };
 
   return (
-    <div className="premium-float searchable-select">
+    <div className="premium-float searchable-select" ref={containerRef}>
       <input
+        ref={inputRef}
         type="text"
         placeholder={shown || ' '}
         value={query}
@@ -228,16 +259,28 @@ export function SearchableSelect({
 
 /**
  * Options and current value for a City picker: one option per city and state, with the state shown so
- * same-named towns (Aurangabad in Bihar, Maharashtra…) can be told apart. A saved city that is no longer
- * in the list is kept as an option so editing an older listing doesn't blank the field.
+ * same-named towns (Aurangabad in Bihar, Maharashtra…) can be told apart.
+ * When a state is selected, options are strictly scoped to that state so invalid pairings cannot occur.
  */
 export function cityPicker(cities: { city: string; state: string }[], city: string, state: string): { options: SearchableOption[]; value: string } {
-  const options = cities.map((c) => ({ value: cityKey(c.city, c.state), label: c.city, hint: c.state }));
+  const scoped = state.trim()
+    ? cities.filter((c) => c.state.trim().toLowerCase() === state.trim().toLowerCase())
+    : cities;
+
+  const options = scoped.map((c) => ({ value: cityKey(c.city, c.state), label: c.city, hint: c.state }));
   if (!city) return { options, value: '' };
+
   const exact = cityKey(city, state);
   if (options.some((o) => o.value === exact)) return { options, value: exact };
+
   const sameName = options.find((o) => o.label.toLowerCase() === city.toLowerCase());
-  if (sameName && !state) return { options, value: sameName.value };
+  if (sameName) return { options, value: sameName.value };
+
+  // If a state is selected and city does not exist in that state, do NOT create an invalid pair
+  if (state.trim() && !cities.some((c) => c.city.toLowerCase() === city.toLowerCase() && c.state.toLowerCase() === state.toLowerCase())) {
+    return { options, value: '' };
+  }
+
   return { options: [{ value: exact, label: city, hint: state || undefined }, ...options], value: exact };
 }
 

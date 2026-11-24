@@ -72,7 +72,7 @@
     .premium-float input:focus ~ .field-icon { color: #0c6253; }
 
     .bf-row { display: flex; gap: 12px; margin-bottom: 16px; }
-    .bf-row .premium-float { flex: 1; margin-bottom: 0; }
+    .bf-row .premium-float { flex: 1; min-width: 0; margin-bottom: 0; }
     
     .btn-premium {
       width: 100%;

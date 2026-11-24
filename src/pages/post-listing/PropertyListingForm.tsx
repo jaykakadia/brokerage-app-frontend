@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ExistingPhotos, FloatField, FloatSelect, MultiPills, PhoneWhatsAppFields, Pills, RefCodeSearch, SearchableSelect, SocialLinkFields, StepIndicator, cityPicker, parseCityKey } from './fields';
 import { StateOptions } from '../../utils/indianStates';
 import {
@@ -72,6 +73,7 @@ export default function PropertyListingForm({
   singlePage = false
 }: PropertyListingFormProps) {
   const show = (s: PropertyStep): boolean => singlePage || step === s;
+  const citySelectProps = useMemo(() => cityPicker(cities, form.city, form.state), [cities, form.city, form.state]);
   const amountInWords = (value: string) => {
     const words = inrInWords(value);
     return words ? <div className="amount-words">₹ {words}</div> : null;
@@ -239,16 +241,30 @@ export default function PropertyListingForm({
             <SearchableSelect
               label="City"
               required
-              {...cityPicker(cities, form.city, form.state)}
+              {...citySelectProps}
               onChange={(key) => onChange(parseCityKey(key))}
             />
-            <FloatSelect label="State" required value={form.state} onChange={(state) => onChange({ state })}>
+            <FloatSelect
+              label="State"
+              required
+              value={form.state}
+              onChange={(nextState) => {
+                const cityStillValid = !form.city || cities.some(
+                  (c) => c.city.toLowerCase() === form.city.toLowerCase() && c.state.toLowerCase() === nextState.toLowerCase()
+                );
+                onChange({
+                  state: nextState,
+                  ...(cityStillValid ? {} : { city: '' })
+                });
+              }}
+            >
               <StateOptions current={form.state} />
             </FloatSelect>
           </div>
           <FloatField
             label="Locality / Project / Society"
             maxLength={50}
+            autoComplete="off"
             value={form.locality}
             onChange={(locality) => onChange({ locality: locality.slice(0, 50) })}
           />

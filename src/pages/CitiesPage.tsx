@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { NavigateFunction } from '../types';
 import { ALL_INDIAN_CITIES, ACTIVE_CITIES, getCitySlug } from '../config/cities';
-import api from '../services/api';
+import api, { getListingStats } from '../services/api';
 
 interface CitiesPageProps {
   onNavigate: NavigateFunction;
@@ -10,18 +10,23 @@ interface CitiesPageProps {
 export default function CitiesPage({ onNavigate }: CitiesPageProps) {
   const [search, setSearch] = useState('');
   const [locations, setLocations] = useState<Array<{ city_name: string; state: string }>>([]);
+  const [liveActiveSlugs, setLiveActiveSlugs] = useState<string[]>([]);
 
-  // Active cities set that have >= 1 approved listing
+  // Active cities set that have >= 1 approved listing (merges baseline + live stats)
   const activeCitySlugs = useMemo(() => {
-    return new Set(ACTIVE_CITIES.map((c) => c.slug));
-  }, []);
+    const slugs = new Set(ACTIVE_CITIES.map((c) => c.slug));
+    liveActiveSlugs.forEach((s) => {
+      if (s) slugs.add(s);
+    });
+    return slugs;
+  }, [liveActiveSlugs]);
 
   const popularHubs = useMemo(() => {
     return [...ACTIVE_CITIES].sort((a, b) => b.count - a.count).slice(0, 10);
   }, []);
 
   useEffect(() => {
-    // Optionally fetch live locations from backend DB
+    // Fetch live locations and active listing city counts from backend DB
     api.get('/api/v1/locations')
       .then((res: any) => {
         if (res.data?.status === 'success' && Array.isArray(res.data.data)) {
@@ -31,6 +36,21 @@ export default function CitiesPage({ onNavigate }: CitiesPageProps) {
       .catch(() => {
         // Fall back gracefully to ALL_INDIAN_CITIES
       });
+    getListingStats()
+      .then((res) => {
+        const counts = res.data?.city_counts;
+        if (Array.isArray(counts)) {
+          const slugs: string[] = [];
+          counts.forEach((c) => {
+            if (c.count <= 0) return;
+            const slug = getCitySlug(c.name);
+            if (slug) slugs.push(slug);
+            if (c.name.toLowerCase().includes('barabanki')) slugs.push('barabanki');
+          });
+          setLiveActiveSlugs(slugs);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Merge backend locations with static predefined list
