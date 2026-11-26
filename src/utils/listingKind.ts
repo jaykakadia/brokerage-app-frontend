@@ -194,8 +194,8 @@ const baseListingTitle = (listing: Pick<Listing, 'title' | 'form_data'>): string
     t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Plot)\b/gi, 'Plot');
     t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Commercial(?:\s+Property)?)\b/gi, 'Commercial Property');
     t = t.replace(/\b\d+[\s+]*BHK\+?\s+(Industrial(?:\s+Land)?)\b/gi, 'Industrial Land');
-    // Fix "in Near / in Next To / in Opp." → "- Near / - Next To / - Opp."
-    t = t.replace(/\bin ((?:near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent)\b)/gi, '- $1');
+    // Fix "in Near / in From / in Opp." → "- Near / - From / - Opp."
+    t = t.replace(/\bin ((?:near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent|from|between|along|towards|on|at|around|via)\b)/gi, '- $1');
     return t;
   }
   const saved = fd as Partial<PropertyFormState>;

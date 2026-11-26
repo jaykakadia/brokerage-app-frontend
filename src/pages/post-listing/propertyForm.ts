@@ -205,7 +205,7 @@ export function listingTitle(form: PropertyFormState, isBuyer = false): string {
   } else {
     title = `${rooms}${typeText} ${form.forWhat === 'rent' ? 'for Rent' : 'for Sale'}`;
   }
-  const placeJoiner = /^(near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent)\b/i.test(place) ? ' - ' : ' in ';
+  const placeJoiner = /^(near|next to|opp\.?|opposite|behind|beside|adj\.?|adjacent|from|between|along|towards|on|at|around|via)\b/i.test(place) ? ' - ' : ' in ';
   return `${title}${place ? `${placeJoiner}${place}` : ''}`.replace(/\s+/g, ' ').trim();
 }
 

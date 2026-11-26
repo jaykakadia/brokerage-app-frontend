@@ -181,40 +181,56 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb', color: '#374151', fontWeight: 700 }}>
-                <th style={{ padding: '12px 16px' }}>Rating</th>
-                <th style={{ padding: '12px 16px' }}>Listing</th>
-                <th style={{ padding: '12px 16px' }}>Reviewer</th>
-                <th style={{ padding: '12px 16px' }}>Comment</th>
-                <th style={{ padding: '12px 16px' }}>Status</th>
-                <th style={{ padding: '12px 16px' }}>Date</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
+                <th style={{ padding: '12px 10px 12px 14px', width: '92px' }}>Rating</th>
+                <th style={{ padding: '12px 10px', width: '155px' }}>Listing</th>
+                <th style={{ padding: '12px 10px', width: '165px' }}>Reviewer</th>
+                <th style={{ padding: '12px 12px', minWidth: '360px', width: '42%' }}>Comment</th>
+                <th style={{ padding: '12px 10px', width: '88px' }}>Status</th>
+                <th style={{ padding: '12px 10px', width: '94px' }}>Date</th>
+                <th style={{ padding: '12px 14px 12px 10px', textAlign: 'right', width: '165px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {reviews.map((r) => (
                 <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '12px 10px 12px 14px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>{renderStars(r.rating)}</div>
                     <span style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>{r.rating} / 5</span>
                   </td>
 
-                  <td style={{ padding: '12px 16px', maxWidth: '200px' }}>
-                    <div style={{ fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <td style={{ padding: '12px 10px', maxWidth: '155px' }}>
+                    <div
+                      title={r.listing_title || `Listing #${r.listing_id}`}
+                      style={{ fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
                       {r.listing_title || `Listing #${r.listing_id}`}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                    <div
+                      title={`ID #${r.listing_id}${r.listing_city ? ` · ${r.listing_city}` : ''}`}
+                      style={{ fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
                       ID #{r.listing_id} {r.listing_city ? `· ${r.listing_city}` : ''}
                     </div>
                   </td>
 
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                    <div style={{ fontWeight: 600, color: '#111827' }}>{r.user_name || 'Verified User'}</div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>{r.user_email || r.user_phone || `ID #${r.user_id}`}</div>
+                  <td style={{ padding: '12px 10px', maxWidth: '165px' }}>
+                    <div
+                      title={r.user_name || 'Verified User'}
+                      style={{ fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {r.user_name || 'Verified User'}
+                    </div>
+                    <div
+                      title={r.user_email || r.user_phone || `ID #${r.user_id}`}
+                      style={{ fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {r.user_email || r.user_phone || `ID #${r.user_id}`}
+                    </div>
                   </td>
 
-                  <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
+                  <td style={{ padding: '12px 12px', minWidth: '360px' }}>
                     {r.comment ? (
-                      <p style={{ margin: 0, color: '#374151', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                      <p style={{ margin: 0, color: '#374151', lineHeight: 1.45, wordBreak: 'break-word' }}>
                         "{r.comment}"
                       </p>
                     ) : (
@@ -235,13 +251,13 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
                     )}
                   </td>
 
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '12px 10px', whiteSpace: 'nowrap' }}>
                     <span
                       style={{
                         display: 'inline-block',
-                        padding: '3px 8px',
+                        padding: '3px 7px',
                         borderRadius: '12px',
-                        fontSize: '11px',
+                        fontSize: '10.5px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         background:
@@ -254,12 +270,12 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
                     </span>
                   </td>
 
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '12px' }}>
+                  <td style={{ padding: '12px 10px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '12px' }}>
                     {new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
 
-                  <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                  <td style={{ padding: '12px 14px 12px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'inline-flex', gap: '4px' }}>
                       {r.status !== 'approved' && (
                         <button
                           type="button"
@@ -270,9 +286,9 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
                             background: '#0c6253',
                             color: '#fff',
                             border: 'none',
-                            padding: '6px 10px',
+                            padding: '5px 8px',
                             borderRadius: '6px',
-                            fontSize: '12px',
+                            fontSize: '11.5px',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -293,9 +309,9 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
                             background: '#fee2e2',
                             color: '#991b1b',
                             border: '1px solid #fecaca',
-                            padding: '6px 10px',
+                            padding: '5px 8px',
                             borderRadius: '6px',
-                            fontSize: '12px',
+                            fontSize: '11.5px',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -315,9 +331,9 @@ export default function AdminReviews({ showToast, onCountsChange }: AdminReviews
                           background: '#f3f4f6',
                           color: '#dc2626',
                           border: 'none',
-                          padding: '6px 10px',
+                          padding: '5px 8px',
                           borderRadius: '6px',
-                          fontSize: '12px',
+                          fontSize: '11.5px',
                           cursor: 'pointer',
                         }}
                       >
